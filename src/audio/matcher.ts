@@ -19,8 +19,15 @@ function isPicked(note: Note): boolean {
  */
 export function buildExpectedEvents(song: Song, tempo: TempoMap): ExpectedEvent[] {
   const groups = new Map<number, Note[]>();
+  // A bend is a continuation (not picked) only when it follows a note on the
+  // same string at the same fret; a bend "from nowhere" or on a new fret is
+  // picked and bent right away, so it has a real attack.
+  const lastFret = new Map<number, number>();
   for (const note of song.notes) {
-    if (!isPicked(note)) continue;
+    const prevFret = lastFret.get(note.string);
+    lastFret.set(note.string, note.fret);
+    const freshBend = note.meta.connection?.kind === "bend" && prevFret !== note.fret;
+    if (!isPicked(note) && !freshBend) continue;
     const list = groups.get(note.startTick);
     if (list) {
       list.push(note);

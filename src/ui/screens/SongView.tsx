@@ -5,17 +5,20 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ParseError, Settings, Song } from "../../model";
-import { parse, serialize, withYoutubeOffset } from "../../songFormat";
+import { buildRepairPrompt, parse, serialize, withYoutubeOffset } from "../../songFormat";
 import { computeLayout } from "../../layout";
 import { Sheet, buildSongIndex } from "../../render";
 import { TransportBar } from "../components/TransportBar";
 import { BpmRampPanel } from "../components/BpmRampPanel";
-import { ErrorList } from "../components/ErrorList";
+import { SongEditor, type SongEditorHandle } from "../editor/SongEditor";
+import { ProblemsPanel } from "../editor/ProblemsPanel";
+import { SyntaxReference } from "../editor/SyntaxReference";
+import ed from "../editor/Editor.module.css";
 import { SessionSummaryPanel } from "../components/SessionSummaryPanel";
 import { usePlaybackEngine } from "../usePlaybackEngine";
-import { offsetOfLine, useDebouncedValue } from "../utils";
+import { copyToClipboard, useDebouncedValue } from "../utils";
 import { useElementWidth } from "../useElementWidth";
-import { Mic, MicOff, VideoOff } from "lucide-react";
+import { Copy, Mic, MicOff, VideoOff } from "lucide-react";
 import { ChipRow, StatusChip } from "../shell/StatusChip";
 import { useShell } from "../shell/AppShellContext";
 
@@ -34,6 +37,10 @@ function EditorPreview({ song, settings }: { song: Song; settings: Settings }) {
     </div>
   );
 }
+
+/** Practice-area width at which the video docks right, and its width there. */
+const VIDEO_DOCK_MIN_WIDTH = 1100;
+const VIDEO_DOCK_WIDTH = 420;
 
 export function PracticeArea({
   song,
@@ -60,7 +67,12 @@ export function PracticeArea({
   const [widthRef, width] = useElementWidth(900);
   const [videoPanelHeight, setVideoPanelHeight] = useState(320);
 
-  useEffect(() => setViewportWidth(width), [width, setViewportWidth]);
+  // Wide screens dock the video to the right of the sheet (revamp 5); the
+  // sheet then lays out in the remaining width.
+  const showVideo = engine.mode === "video" && engine.hasVideo;
+  const dockVideoRight = showVideo && width >= VIDEO_DOCK_MIN_WIDTH;
+  const sheetWidth = dockVideoRight ? width - VIDEO_DOCK_WIDTH - 16 : width;
+  useEffect(() => setViewportWidth(sheetWidth), [sheetWidth, setViewportWidth]);
 
   function startResize(e: React.MouseEvent) {
     e.preventDefault();
@@ -77,8 +89,116 @@ export function PracticeArea({
     window.addEventListener("mouseup", onUp);
   }
 
+  // Keyboard shortcuts while practising (revamp section 10). Ignored while
+  // typing in a field so BPM/loop inputs keep working.
+  const engineRef = useRef(engine);
+  engineRef.current = engine;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const eng = engineRef.current;
+      switch (e.key) {
+        case " ":
+          eng.togglePlay();
+          break;
+        case "Escape":
+          eng.stop();
+          break;
+        case "l":
+        case "L":
+          eng.setLoopEnabled(!eng.loopEnabled);
+          break;
+        case "m":
+        case "M":
+          if (eng.micAvailable) eng.toggleMic();
+          break;
+        case "[":
+          if (eng.mode === "grid") eng.setSpeedPercent(Math.max(25, eng.speedPercent - 5));
+          break;
+        case "]":
+          if (eng.mode === "grid") eng.setSpeedPercent(Math.min(200, eng.speedPercent + 5));
+          break;
+        case "ArrowLeft":
+          eng.seekBars(-1);
+          break;
+        case "ArrowRight":
+          eng.seekBars(1);
+          break;
+        default:
+          return;
+      }
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <div className="practice-area" ref={(el) => widthRef(el)}>
+
+
+      <ChipRow>
+        {engine.micErrorMessage ? (
+          <StatusChip tone="error" icon={<MicOff size={13} />} title={engine.micErrorMessage}>
+            Mic unavailable
+          </StatusChip>
+        ) : engine.micListening ? (
+          <StatusChip tone="info" pulse title="Measuring room noise: stay quiet for a moment.">
+            Listening… stay quiet
+          </StatusChip>
+        ) : engine.micOn ? (
+          <StatusChip tone="ok" icon={<Mic size={13} />}>
+            Mic on
+          </StatusChip>
+        ) : (
+          <StatusChip icon={<MicOff size={13} />}>Mic off</StatusChip>
+        )}
+        {engine.micNotCalibrated && (
+          <StatusChip tone="warning" title="Timing may look late until you calibrate." onClick={shell.openCalibration}>
+            Not calibrated
+          </StatusChip>
+        )}
+        {engine.videoNotice && (
+          <StatusChip tone="warning" icon={<VideoOff size={13} />} title={engine.videoNotice}>
+            Video unavailable, using grid
+          </StatusChip>
+        )}
+      </ChipRow>
+      {!engine.following && (
+        <button className="resume-follow-btn" onClick={engine.resumeFollow}>
+          Resume follow
+        </button>
+      )}
+
+      <div className={`practice-main${dockVideoRight ? " video-right" : ""}`}>
+      {showVideo && (
+        <div className="video-panel" style={dockVideoRight ? { width: VIDEO_DOCK_WIDTH } : { height: videoPanelHeight }}>
+          <div ref={engine.videoMountRef} className="video-mount" />
+          <div className="video-controls">
+            {OFFSET_STEPS_MS.map((d) => (
+              <button key={d} onClick={() => engine.nudgeVideoOffset(d)}>
+                {d > 0 ? `+${d}` : d} ms
+              </button>
+            ))}
+            <button onClick={engine.setBar1Here}>Set bar 1 here</button>
+          </div>
+          {!dockVideoRight && <div className="video-resize-handle" onMouseDown={startResize} />}
+        </div>
+      )}
+
+      <Sheet
+        song={song}
+        layout={engine.layout}
+        songIndex={engine.songIndex}
+        lanes={engine.lanes}
+        onReady={engine.sheetOnReady}
+        loopRange={engine.loopRange}
+        onBarMouseDown={engine.onBarMouseDown}
+        onBarMouseEnter={engine.onBarMouseEnter}
+      />
+      </div>
       <TransportBar
         playing={engine.playing}
         onPlayPause={engine.togglePlay}
@@ -120,69 +240,12 @@ export function PracticeArea({
         zoom={engine.zoom}
         onZoomChange={engine.setZoom}
         bpmRampActive={engine.bpmRampActive}
-      />
-
-      {engine.mode === "grid" && (
-        <BpmRampPanel config={engine.bpmRamp} onChange={engine.setBpmRamp} micOn={engine.micOn} />
-      )}
-
-      <ChipRow>
-        {engine.micErrorMessage ? (
-          <StatusChip tone="error" icon={<MicOff size={13} />} title={engine.micErrorMessage}>
-            Mic unavailable
-          </StatusChip>
-        ) : engine.micListening ? (
-          <StatusChip tone="info" pulse title="Measuring room noise: stay quiet for a moment.">
-            Listening… stay quiet
-          </StatusChip>
-        ) : engine.micOn ? (
-          <StatusChip tone="ok" icon={<Mic size={13} />}>
-            Mic on
-          </StatusChip>
-        ) : (
-          <StatusChip icon={<MicOff size={13} />}>Mic off</StatusChip>
-        )}
-        {engine.micNotCalibrated && (
-          <StatusChip tone="warning" title="Timing may look late until you calibrate." onClick={shell.openCalibration}>
-            Not calibrated
-          </StatusChip>
-        )}
-        {engine.videoNotice && (
-          <StatusChip tone="warning" icon={<VideoOff size={13} />} title={engine.videoNotice}>
-            Video unavailable, using grid
-          </StatusChip>
-        )}
-      </ChipRow>
-      {!engine.following && (
-        <button className="resume-follow-btn" onClick={engine.resumeFollow}>
-          Resume follow
-        </button>
-      )}
-
-      {engine.mode === "video" && engine.hasVideo && (
-        <div className="video-panel" style={{ height: videoPanelHeight }}>
-          <div ref={engine.videoMountRef} className="video-mount" />
-          <div className="video-controls">
-            {OFFSET_STEPS_MS.map((d) => (
-              <button key={d} onClick={() => engine.nudgeVideoOffset(d)}>
-                {d > 0 ? `+${d}` : d} ms
-              </button>
-            ))}
-            <button onClick={engine.setBar1Here}>Set bar 1 here</button>
-          </div>
-          <div className="video-resize-handle" onMouseDown={startResize} />
-        </div>
-      )}
-
-      <Sheet
-        song={song}
-        layout={engine.layout}
-        songIndex={engine.songIndex}
-        lanes={engine.lanes}
-        onReady={engine.sheetOnReady}
-        loopRange={engine.loopRange}
-        onBarMouseDown={engine.onBarMouseDown}
-        onBarMouseEnter={engine.onBarMouseEnter}
+        positionRef={engine.positionRef}
+        practiceExtras={
+          engine.mode === "grid" ? (
+            <BpmRampPanel config={engine.bpmRamp} onChange={engine.setBpmRamp} micOn={engine.micOn} />
+          ) : null
+        }
       />
 
       {engine.sessionSummary && (
@@ -210,7 +273,7 @@ export function SongView({ initialText, settings, onSave, onBack, onSettingsChan
   const [savedText, setSavedText] = useState(initialText);
   const debouncedText = useDebouncedValue(text, 300);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorRef = useRef<SongEditorHandle | null>(null);
 
   const initialParse = useMemo(() => parse(initialText), [initialText]);
   const [editing, setEditing] = useState(!initialParse.ok);
@@ -218,13 +281,16 @@ export function SongView({ initialText, settings, onSave, onBack, onSettingsChan
   const parseResult = useMemo(() => parse(debouncedText), [debouncedText]);
   const errors: ParseError[] = parseResult.ok ? parseResult.warnings : [...parseResult.errors, ...parseResult.warnings];
 
-  function jumpToLine(line: number) {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const offset = offsetOfLine(text, line);
-    ta.focus();
-    ta.setSelectionRange(offset, offset + (text.slice(offset).split("\n")[0]?.length ?? 0));
+  function jumpToLine(line: number, column?: number) {
+    editorRef.current?.jumpToLine(line, column);
   }
+
+  const blockingErrors = errors.filter((e) => e.severity !== "warning");
+  async function copyRepairPrompt() {
+    const ok = await copyToClipboard(buildRepairPrompt(blockingErrors, text));
+    toast(ok ? "Repair prompt copied." : "Could not copy the repair prompt: copy it manually.", ok ? "success" : "error");
+  }
+
 
   async function handleSave() {
     if (!parseResult.ok) return;
@@ -268,20 +334,34 @@ export function SongView({ initialText, settings, onSave, onBack, onSettingsChan
       {saveError && <div className="notice notice-error">Could not save: {saveError}</div>}
 
       {editing ? (
-        <div className="editor-pane">
-          <textarea
-            ref={textareaRef}
-            className="song-editor"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            spellCheck={false}
-          />
-          <div className="editor-side">
-            <button className="btn-primary" disabled={!parseResult.ok} onClick={() => void handleSave()}>
-              Save
-            </button>
-            <ErrorList errors={errors} onJump={jumpToLine} />
-            {parseResult.ok && <EditorPreview song={parseResult.song} settings={settings} />}
+        <div className={ed.split}>
+          <div className={ed.pane}>
+            <SongEditor ref={editorRef} value={text} onChange={setText} errors={errors} className={ed.editorHost} />
+            <ProblemsPanel
+              errors={errors}
+              onJump={jumpToLine}
+              actions={
+                blockingErrors.length > 0 ? (
+                  <button onClick={() => void copyRepairPrompt()}>
+                    <Copy size={14} /> Copy repair prompt
+                  </button>
+                ) : null
+              }
+            />
+            <SyntaxReference />
+            <div className={ed.actions}>
+              <span className={ed.hint}>Comments and blank lines are not kept when saving.</span>
+              <button className={`btn-primary ${ed.actionsEnd}`} disabled={!parseResult.ok || !unsaved} onClick={() => void handleSave()}>
+                Save
+              </button>
+            </div>
+          </div>
+          <div className={ed.pane}>
+            {parseResult.ok ? (
+              <EditorPreview song={parseResult.song} settings={settings} />
+            ) : (
+              <div className={ed.previewEmpty}>Fix the errors to see the preview</div>
+            )}
           </div>
         </div>
       ) : parseResult.ok ? (
@@ -293,7 +373,7 @@ export function SongView({ initialText, settings, onSave, onBack, onSettingsChan
           onSettingsChange={onSettingsChange}
         />
       ) : (
-        <ErrorList errors={errors} onJump={jumpToLine} />
+        <ProblemsPanel errors={errors} onJump={(line, col) => { setEditing(true); window.setTimeout(() => jumpToLine(line, col), 0); }} />
       )}
     </div>
   );

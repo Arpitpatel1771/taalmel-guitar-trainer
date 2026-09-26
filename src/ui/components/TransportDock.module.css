@@ -1,0 +1,210 @@
+/* Transport dock (UI revamp 5.1). */
+
+.dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 64px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.playBtn {
+  width: 44px;
+  height: 44px;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+}
+.playBtn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.iconBtn {
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.ghostBtn {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+.on,
+.on:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+}
+
+.loopRange {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.loopRange input {
+  width: 52px;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+.clearBtn {
+  width: 22px;
+  height: 22px;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.dim {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.tempo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.bpmInput {
+  width: 76px;
+  height: 34px !important;
+  border-color: transparent;
+  background: transparent;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}
+.bpmInput:hover,
+.bpmInput:focus-visible {
+  background: var(--surface-2);
+}
+
+.tempoMeta {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+}
+
+.position {
+  min-width: 64px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-0);
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* ---- Popover ---- */
+
+.popoverRoot {
+  position: relative;
+}
+
+.popover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-3));
+  z-index: 50;
+  width: 320px;
+  max-height: 70vh;
+  overflow: auto;
+  padding: var(--space-2);
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+  animation: popIn var(--duration-fast) var(--ease-out);
+}
+
+.popoverDown {
+  top: calc(100% + var(--space-1));
+  bottom: auto;
+}
+
+.menuItem {
+  width: 100%;
+  justify-content: flex-start;
+  background: transparent;
+  border-color: transparent;
+}
+.menuDanger { color: var(--danger); }
+
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.panelSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+.panelSection + .panelSection {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.panelTitle {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-md);
+}
+.row input[type="range"] {
+  flex: 1;
+}
+.row select {
+  margin-left: auto;
+}
+
+.value {
+  min-width: 44px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-align: right;
+}

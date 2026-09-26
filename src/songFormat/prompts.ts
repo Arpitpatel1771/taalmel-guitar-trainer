@@ -68,10 +68,10 @@ Notes look like:
   "key: value":
     | Key         | Value           | Meaning                                                      |
     | ----------- | --------------- | ------------------------------------------------------------ |
-    | hammer      | (none)          | Reached by hammer-on from the previous note on this string.   |
+    | hammer      | (none)          | Hammer-on: sounded without picking. Needs no previous note.   |
     | pull        | (none)          | Reached by pull-off from the previous note on this string.    |
     | slide       | (none)          | Reached by sliding from the previous note on this string.     |
-    | bend        | 0-4, step 0.5   | Bent this many semitones above the fretted note; 0 = release. |
+    | bend        | 0-4, step 0.5   | Bent N semitones above the fret; 0 = release. May stand alone. |
     | slide_in    | (none)          | Approached by a slide from an unspecified lower fret; picked.  |
     | slide_out   | (none)          | Slides away to an unspecified fret at its end.                 |
     | vibrato     | (none)          | Held with vibrato.                                             |
@@ -86,13 +86,15 @@ whenever the source notes/tab spell that pitch as a flat (e.g. "Db" rather than
 for natural notes (no black key) -- "flat" on a natural is an error. A song can mix
 sharp- and flat-spelled notes freely.
 
-Connection flag rule (hammer/pull/slide/bend): the flag goes on the DESTINATION note
+Connection flag rule (pull/slide): the flag goes on the DESTINATION note
 and describes how it is reached from the previous note on the SAME STRING (the most
 recent earlier note with that string number, searching back across bars if needed).
-- hammer: fret must be greater than the previous note's fret.
+- hammer: no rule. It may follow any note or none at all ("hammer-on from nowhere").
 - pull: fret must be less than the previous note's fret.
 - slide: fret must differ from the previous note's fret.
-- bend: fret must equal the previous note's fret.
+- bend: no rule. Write the bent note at the SAME fret you press (the number is the
+  semitones, not the target fret). Same fret as the previous note = bend of that
+  note; alone or on a new fret = picked and bent immediately.
 - At most one of hammer/pull/slide/bend per note. slide_in cannot combine with a
   connection flag.`;
 

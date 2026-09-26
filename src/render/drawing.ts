@@ -37,22 +37,28 @@ export function clearCanvas(canvas: HTMLCanvasElement): void {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
+// Okabe-Ito colors (match --verdict-* tokens). Every verdict also has its
+// own shape, so none relies on color alone (UI revamp 11, WCAG 1.4.1):
+// on time = filled dot, close = hollow ring, off = diamond, missed = dashed
+// tick with an x, extra = plus. Pitch: right = solid ring, wrong = dashed
+// ring, unknown = dotted grey ring.
 const TIER_COLORS: Record<TimingTier, string> = {
-  onTime: "#4ade80",
-  close: "#facc15",
-  off: "#f87171",
+  onTime: "#009e73",
+  close: "#e69f00",
+  off: "#d55e00",
+};
+const MISSED_COLOR = "#cc79a7";
+const EXTRA_COLOR = "#999999";
+
+const PITCH_STYLE: Record<string, { color: string; dash: number[] }> = {
+  right: { color: "#009e73", dash: [] },
+  wrong: { color: "#d55e00", dash: [3, 2] },
+  unknown: { color: "#999999", dash: [1, 2] },
 };
 
-const PITCH_COLORS: Record<string, string> = {
-  right: "#22c55e",
-  wrong: "#ef4444",
-  unknown: "#9ca3af",
-  skipped: "transparent",
-};
-
-/** Draws a matched-verdict marker: a dot at the onset x, a thin connector to
- * the expected x so early/late is visible at a glance (spec 9.4), and,
- * if a pitch verdict is already known, a colored ring around it (spec 9.5).
+/** Draws a matched-verdict marker: a tier-shaped mark at the onset x, a thin
+ * connector to the expected x so early/late is visible at a glance (spec 9.4),
+ * and, if a pitch verdict is already known, a styled ring around it (spec 9.5).
  * `y` is the row's vertical center (same axis the envelope overlay mirrors
  * around), so markers sit on the same overlay, behind the lanes/notes. */
 export function drawMatchedMarker(
@@ -63,47 +69,76 @@ export function drawMatchedMarker(
   tier: TimingTier,
   pitch?: string,
 ): void {
-  ctx.strokeStyle = TIER_COLORS[tier];
+  const color = TIER_COLORS[tier];
+  ctx.strokeStyle = color;
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(expectedX, y);
   ctx.lineTo(onsetX, y);
   ctx.stroke();
 
-  ctx.fillStyle = TIER_COLORS[tier];
   ctx.beginPath();
-  ctx.arc(onsetX, y, 4, 0, Math.PI * 2);
-  ctx.fill();
+  if (tier === "onTime") {
+    ctx.fillStyle = color;
+    ctx.arc(onsetX, y, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (tier === "close") {
+    ctx.lineWidth = 2;
+    ctx.arc(onsetX, y, 4, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = color;
+    ctx.moveTo(onsetX, y - 5.5);
+    ctx.lineTo(onsetX + 5.5, y);
+    ctx.lineTo(onsetX, y + 5.5);
+    ctx.lineTo(onsetX - 5.5, y);
+    ctx.closePath();
+    ctx.fill();
+  }
 
   ctx.beginPath();
+  ctx.lineWidth = 1;
   ctx.moveTo(expectedX, y - 5);
   ctx.lineTo(expectedX, y + 5);
   ctx.strokeStyle = "rgba(255,255,255,0.5)";
   ctx.stroke();
 
-  if (pitch && pitch !== "skipped") {
-    ctx.strokeStyle = PITCH_COLORS[pitch] ?? "#9ca3af";
+  const ps = pitch ? PITCH_STYLE[pitch] : undefined;
+  if (ps) {
+    ctx.strokeStyle = ps.color;
     ctx.lineWidth = 1.5;
+    ctx.setLineDash(ps.dash);
     ctx.beginPath();
-    ctx.arc(onsetX, y, 7, 0, Math.PI * 2);
+    ctx.arc(onsetX, y, 8, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.setLineDash([]);
   }
 }
 
 export function drawMissedMarker(ctx: CanvasRenderingContext2D, expectedX: number, y: number): void {
-  ctx.strokeStyle = "rgba(156,163,175,0.9)";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = MISSED_COLOR;
+  ctx.lineWidth = 1.5;
   ctx.setLineDash([2, 2]);
   ctx.beginPath();
-  ctx.moveTo(expectedX, y - 6);
-  ctx.lineTo(expectedX, y + 6);
+  ctx.moveTo(expectedX, y - 7);
+  ctx.lineTo(expectedX, y + 7);
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(expectedX - 3, y - 3);
+  ctx.lineTo(expectedX + 3, y + 3);
+  ctx.moveTo(expectedX + 3, y - 3);
+  ctx.lineTo(expectedX - 3, y + 3);
+  ctx.stroke();
 }
 
 export function drawExtraMarker(ctx: CanvasRenderingContext2D, onsetX: number, y: number): void {
-  ctx.fillStyle = "rgba(168,85,247,0.9)";
+  ctx.strokeStyle = EXTRA_COLOR;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(onsetX, y, 3, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(onsetX - 3.5, y);
+  ctx.lineTo(onsetX + 3.5, y);
+  ctx.moveTo(onsetX, y - 3.5);
+  ctx.lineTo(onsetX, y + 3.5);
+  ctx.stroke();
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { GridClock, SCHEDULE_HEADROOM_SEC, type AudioClockContext } from "./gridClock";
+import { GridClock, MAX_SPEED, MIN_SPEED, SCHEDULE_HEADROOM_SEC, type AudioClockContext } from "./gridClock";
 import { TempoMap } from "../tempo";
 import { makeSong } from "../tempo/testSongs";
 
@@ -96,15 +96,19 @@ describe("GridClock: speed factor", () => {
     expect(clock.positionSec()).toBeCloseTo(2, 10);
   });
 
-  it("clamps speed to [0.25, 2.0]", () => {
-    const song = makeSong([{ bpm: 120, bars: 4 }]);
+  it("accepts speeds beyond 0.25x-2x (absolute BPM UI) but clamps to sanity bounds", () => {
+    const song = makeSong([{ bpm: 60, bars: 4 }]);
     const tempo = new TempoMap(song);
     const clock = new GridClock({ ctx: makeFakeCtx(), tempo, song, countIn: false });
 
-    clock.setSpeed(5);
-    expect(clock.speed()).toBe(2.0);
+    clock.setSpeed(400 / 60); // 400 BPM on a 60 BPM song
+    expect(clock.speed()).toBeCloseTo(400 / 60);
     clock.setSpeed(0.1);
-    expect(clock.speed()).toBe(0.25);
+    expect(clock.speed()).toBe(0.1);
+    clock.setSpeed(100);
+    expect(clock.speed()).toBe(MAX_SPEED);
+    clock.setSpeed(0);
+    expect(clock.speed()).toBe(MIN_SPEED);
   });
 });
 

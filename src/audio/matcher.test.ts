@@ -96,6 +96,16 @@ describe("buildExpectedEvents", () => {
     const events = buildExpectedEvents(onlyHammer, t);
     expect(events.map((e) => e.tick)).toEqual([0]);
   });
+
+  it("counts a fresh bend as picked but a same-fret bend as a continuation", () => {
+    const song = buildSong([
+      note({ string: 2, fret: 7, startTick: 0, meta: { connection: { kind: "bend", semitones: 2 } } }), // from nowhere: picked
+      note({ string: 2, fret: 7, startTick: 480, meta: { connection: { kind: "bend", semitones: 0 } } }), // same fret: continuation
+      note({ string: 2, fret: 9, startTick: 960, meta: { connection: { kind: "bend", semitones: 1 } } }), // new fret: picked
+    ]);
+    const events = buildExpectedEvents(song, new TempoMap(song));
+    expect(events.map((e) => e.tick)).toEqual([0, 960]);
+  });
 });
 
 describe("Matcher", () => {

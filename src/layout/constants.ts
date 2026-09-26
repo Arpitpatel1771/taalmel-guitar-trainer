@@ -11,16 +11,16 @@ export const DEFAULT_ZOOM = 240;
 export const STRING_COUNT = 6;
 
 /** Vertical gap between adjacent string lines in the tab lane. */
-export const TAB_STRING_GAP = 14;
+export const TAB_STRING_GAP = 18;
 /** Padding below the bottom string line. */
 export const TAB_LANE_PADDING = 10;
 /** Band above the top string line holding bar numbers, section names, strum
  * arrows and technique labels. */
-export const TAB_LANE_TOP = 30;
+export const TAB_LANE_TOP = 36;
 export const TAB_LANE_HEIGHT = TAB_LANE_TOP + TAB_STRING_GAP * (STRING_COUNT - 1) + TAB_LANE_PADDING;
 
 /** Line height of one letter; a chord slot stacks up to six letters. */
-export const LETTER_LINE_HEIGHT = 11;
+export const LETTER_LINE_HEIGHT = 14;
 export const LETTER_LANE_HEIGHT = 4 + LETTER_LINE_HEIGHT * STRING_COUNT;
 export const TEACHER_LANE_HEIGHT = 40;
 

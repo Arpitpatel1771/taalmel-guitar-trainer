@@ -4,13 +4,11 @@
 // updates React state on discrete events (play/pause/row change/loop/stop),
 // per spec 4.3 rule 3.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { LaneId, PracticeMode, Settings, Song, Verdict } from "../model";
 import { TempoMap } from "../tempo";
 import {
   GridClock,
-  MAX_SPEED,
-  MIN_SPEED,
   VideoClock,
   createYouTubePlayer,
   type LoopRange,
@@ -80,6 +78,14 @@ export interface LoopBars {
  * start (spec 10.2). */
 export type RestBars = 0 | 1 | 2 | 4;
 
+/** Allowed practice tempo range, absolute (matches the song format's bpm limit spirit). */
+export const MIN_BPM = 20;
+export const MAX_BPM = 400;
+
+export function clampBpm(bpm: number): number {
+  return Math.min(MAX_BPM, Math.max(MIN_BPM, Math.round(bpm)));
+}
+
 export interface PlaybackEngineOptions {
   song: Song;
   settings: Settings;
@@ -91,6 +97,7 @@ export interface PlaybackEngineOptions {
 }
 
 export interface PlaybackEngine {
+  positionRef: RefObject<HTMLSpanElement | null>;
   mode: PracticeMode;
   setMode: (m: PracticeMode) => void;
   hasVideo: boolean;
@@ -100,6 +107,8 @@ export interface PlaybackEngine {
   pause: () => void;
   togglePlay: () => void;
   stop: () => void;
+  /** Jump by whole bars from the current position (keyboard ← / →). */
+  seekBars: (delta: number) => void;
 
   baseBpm: number;
   currentBpm: number;
@@ -230,7 +239,9 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
   const [videoNotice, setVideoNotice] = useState<string | null>(null);
 
   const [playing, setPlaying] = useState(false);
-  const [speedPercent, setSpeedPercentState] = useState(100);
+  /** Absolute practice tempo in BPM (spec 10.1): the source of truth. The
+   * clock's speed factor and the % readout are derived from it. */
+  const [targetBpm, setTargetBpm] = useState(() => clampBpm(song.header.bpm));
   const [videoRate, setVideoRateState] = useState(1);
   const [availableVideoRates, setAvailableVideoRates] = useState<number[]>([0.25, 0.5, 0.75, 1, 1.25, 1.5, 2]);
   const [countIn, setCountIn] = useState(settings.countIn);
@@ -259,6 +270,8 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
   const micAutoStartTriedRef = useRef(false);
 
   const tempo = useMemo(() => new TempoMap(song), [song]);
+  /** Bar:beat readout in the transport dock, written per frame by the controller. */
+  const positionRef = useRef<HTMLSpanElement | null>(null);
   const songIndex = useMemo(() => buildSongIndex(song), [song]);
   const layout = useMemo(
     () => computeLayout(song, { viewportWidth, zoom, lanes }),
@@ -287,8 +300,9 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
   const [videoMountEl, setVideoMountEl] = useState<HTMLDivElement | null>(null);
 
   const baseBpm = song.header.bpm;
-  const effectiveSpeedPercent = speedPercent;
-  const currentBpm = rampBpmOverride ?? Math.round((baseBpm * effectiveSpeedPercent) / 100);
+  const speedFactor = targetBpm / baseBpm;
+  const speedPercent = Math.round(speedFactor * 100);
+  const currentBpm = rampBpmOverride ?? targetBpm;
 
   const micNotCalibrated = settings.calibration === null;
   const latencySec = (settings.calibration?.latencyMs ?? 0) / 1000;
@@ -319,6 +333,8 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
       cursorEl: handle.cursor,
       getRowCanvas: handle.getRowCanvas,
       onFollowChange: setFollowing,
+      getPositionEl: () => positionRef.current,
+      beatTicks: song.header.time.denominator >= 8 ? 3840 / song.header.time.denominator : 960,
     });
     controller.start();
     controllerRef.current = controller;
@@ -363,9 +379,9 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
           const base = prev ?? bpmRamp.startBpm;
           const next = base + bpmRamp.stepBpm;
           const clamped = bpmRamp.maxBpm !== null ? Math.min(bpmRamp.maxBpm, next) : next;
-          const factor = Math.max(MIN_SPEED, Math.min(MAX_SPEED, clamped / baseBpm));
-          clockRef.current?.setSpeed(factor);
-          setSpeedPercentState(Math.round(factor * 100));
+          const bpm = clampBpm(clamped);
+          clockRef.current?.setSpeed(bpm / baseBpm);
+          setTargetBpm(bpm);
           return clamped;
         });
       }
@@ -406,7 +422,7 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
         clockRef.current = clock;
         clock.onStateChange((s) => setPlaying(s.playing));
         clock.onLoop(() => handleLoopPass());
-        clock.setSpeed(effectiveSpeedPercent / 100);
+        clock.setSpeed(speedFactor);
       }
 
       const ctx = getAudioContext();
@@ -447,9 +463,9 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
 
   useEffect(() => {
     if (clockRef.current?.kind === "grid") {
-      clockRef.current.setSpeed(effectiveSpeedPercent / 100);
+      clockRef.current.setSpeed(speedFactor);
     }
-  }, [effectiveSpeedPercent]);
+  }, [speedFactor]);
 
   // Safety net for the imperative applyLoopNow() calls in the setters below:
   // re-applies whenever loop state changes, so the live clock never drifts
@@ -718,11 +734,10 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
   const setBpmField = useCallback(
     (bpm: number) => {
       if (!Number.isFinite(bpm) || bpm <= 0) return;
-      const pct = Math.max(MIN_SPEED, Math.min(MAX_SPEED, bpm / baseBpm)) * 100;
-      setSpeedPercentState(Math.round(pct));
+      setTargetBpm(clampBpm(bpm));
       setRampBpmOverride(null);
     },
-    [baseBpm],
+    [],
   );
 
   const setVideoRate = useCallback((r: number) => {
@@ -748,7 +763,23 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
 
   const closeSessionSummary = useCallback(() => setSessionSummary(null), []);
 
+  const seekBars = useCallback(
+    (delta: number) => {
+      const clock = clockRef.current;
+      if (!clock) return;
+      const bars = song.sections.flatMap((sec) => sec.bars);
+      if (bars.length === 0) return;
+      const tick = Math.max(0, clock.positionTick());
+      let idx = bars.findIndex((b) => tick >= b.startTick && tick < b.startTick + b.lengthTicks);
+      if (idx < 0) idx = bars.length - 1;
+      const target = bars[Math.min(bars.length - 1, Math.max(0, idx + delta))];
+      clock.seekTick(target.startTick);
+    },
+    [song],
+  );
+
   return {
+    positionRef,
     mode,
     setMode,
     hasVideo,
@@ -757,13 +788,14 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
     play,
     pause,
     togglePlay,
+    seekBars,
     stop,
 
     baseBpm,
     currentBpm,
     speedPercent,
     setSpeedPercent: (p: number) => {
-      setSpeedPercentState(p);
+      setTargetBpm(clampBpm((baseBpm * p) / 100));
       setRampBpmOverride(null);
     },
     setBpmField,

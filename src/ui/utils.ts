@@ -29,3 +29,13 @@ export function offsetOfLine(text: string, line: number): number {
   }
   return offset;
 }
+
+/** Copies text to the clipboard; returns false instead of throwing. */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}

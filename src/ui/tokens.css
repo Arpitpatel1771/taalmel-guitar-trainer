@@ -16,7 +16,7 @@
   /* Text */
   --text-primary: #ecebe8;
   --text-secondary: #a9a7a1;
-  --text-muted: #75736e;
+  --text-muted: #95938d; /* 4.5:1+ on every surface (WCAG AA) */
   --text-on-accent: #1a1204;
 
   /* Accent: warm amber. */

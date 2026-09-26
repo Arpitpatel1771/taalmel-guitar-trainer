@@ -213,10 +213,10 @@ Length rules:
 
 | Key         | Value                   | Kind       | Meaning                                                                                                                                                            |
 | ----------- | ----------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `hammer`    | none                    | connection | Reached by hammer-on from the previous note on this string. Not picked.                                                                                            |
+| `hammer`    | none                    | connection | Hammer-on: sounded by the fretting hand, not picked. Needs no previous note ("hammer-on from nowhere").                                                          |
 | `pull`      | none                    | connection | Reached by pull-off from the previous note on this string. Not picked.                                                                                             |
 | `slide`     | none                    | connection | Reached by sliding from the previous note on this string. Not picked.                                                                                              |
-| `bend`      | number 0 to 4, step 0.5 | connection | Pitch bent to this many semitones above the fretted note, reached from the previous note on this string without picking. `0` = released back to the fretted pitch. |
+| `bend`      | number 0 to 4, step 0.5 | connection | Pitch bent to this many semitones above the fretted note. On the same fret as the previous note on this string it continues that note (not picked); alone or on a new fret it is picked and bent immediately. `0` = released. |
 | `slide_in`  | none                    | modifier   | Note is approached by a slide from an unspecified lower fret. It **is** picked (the pick happens during the slide).                                                |
 | `slide_out` | none                    | modifier   | Note slides away to an unspecified fret at its end.                                                                                                                |
 | `vibrato`   | none                    | modifier   | Note is held with vibrato. Picked or not according to its other flags; can combine with a connection flag (e.g. `(bend: 2, vibrato)`).                             |
@@ -226,15 +226,15 @@ Length rules:
 
 Letter names display as sharps by default; there is no user-facing sharps/flats setting. `flat` is per-note and only meaningful on a black-key fret -- applying it to a natural (white-key) note is an error (`FLAT_ON_NATURAL`).
 
-**Connection flag rule (applies to `hammer`, `pull`, `slide`, `bend`):** the flag goes on the **destination** note and describes how that note is reached from the **previous note on the same string** (the most recent earlier-starting note with the same string number, searching back across bars). This works even inside chords because one string plays one note at a time.
+**Connection flag rule (applies to `pull`, `slide`; `hammer` and `bend` are exempt):** the flag goes on the **destination** note and describes how that note is reached from the **previous note on the same string** (the most recent earlier-starting note with the same string number, searching back across bars). This works even inside chords because one string plays one note at a time.
 
 Validation for connection flags:
 
-- There must be a previous note on the same string. Otherwise error.
-- `hammer`: fret must be greater than the previous note's fret.
+- There must be a previous note on the same string (except for `hammer` and `bend`). Otherwise error.
+- `hammer`: no rule. It may follow any note on the string, or none.
 - `pull`: fret must be less than the previous note's fret.
 - `slide`: fret must differ from the previous note's fret.
-- `bend`: fret must equal the previous note's fret.
+- `bend`: no rule. The note is written at the fret being pressed; the value is semitones.
 - At most one of `hammer`, `pull`, `slide`, `bend` per note.
 - `slide_in` cannot combine with a connection flag.
 
@@ -362,7 +362,7 @@ Derived helpers (in `notation`): `pitchOf(string, fret) -> midi number` using st
 
 - Built from the song: a list of segments `{ startTick, startSec, bpm }`, one per section (sections with the same BPM as the previous still get a segment; harmless).
 - `ticksToSec(tick)` and `secToTicks(sec)` are piecewise linear. Seconds per tick = `60 / (bpm * 960)`.
-- A **speed factor** (grid mode tempo slider, as a multiplier on all section BPMs) is applied by the clock, not baked into the map.
+- A **speed factor** (practice BPM ÷ song header BPM, a multiplier on all section BPMs) is applied by the clock, not baked into the map. The user sets an absolute BPM; the factor is derived.
 - Note offsets (`offsetMs`) are added after `ticksToSec`, and only affect expected-time comparisons and display positioning of the note marker, never the grid itself.
 
 ### 7.2 `Clock` interface (`src/clock`)
@@ -376,7 +376,7 @@ interface Clock {
   positionTick(): number; // current musical position, may be negative during count-in
   positionSec(): number; // song-relative seconds (0 = bar 1 slot 1)
   isPlaying(): boolean;
-  setSpeed(factor: number): void; // grid: any 0.25..2.0; video: nearest available YouTube rate
+  setSpeed(factor: number): void; // grid: practice BPM / song BPM (UI limits BPM to 20..400); video: nearest available YouTube rate
   onStateChange(cb: (s: ClockState) => void): () => void;
 }
 ```
@@ -486,7 +486,7 @@ Useful property for the v1.1 input parser: within one zone on one string pair (t
 
 ### 9.4 Timing verdicts (matcher, `src/audio/matcher`)
 
-- **Expected events:** every distinct start tick that has at least one **picked** note (a note without a connection flag). Their expected time = `ticksToSec(tick) + offsetMs` of the earliest-listed note at that tick. Connection-flag notes are excluded because hammer-ons, pull-offs, slides, and bends have weak or no attack.
+- **Expected events:** every distinct start tick that has at least one **picked** note (a note without a connection flag, or a `bend` that does not follow a note on the same string at the same fret). Their expected time = `ticksToSec(tick) + offsetMs` of the earliest-listed note at that tick. Connection-flag notes are excluded because hammer-ons, pull-offs, slides, and bends have weak or no attack.
 - Each onset is matched to the nearest unmatched expected event within the **miss window** (default 150 ms). Each expected event matches at most one onset.
 - Tiers by absolute error (settings, defaults): **on time** <= 30 ms, **close** <= 80 ms, otherwise **off**. Expected events with no onset within the window once the clock passes them by 150 ms are **missed**. Onsets matching nothing are **extra**.
 - Each verdict is drawn as a small marker on the envelope strip at the onset position (colored by tier), with a thin connector to the expected position so early/late is visible.
@@ -534,7 +534,7 @@ If no calibration exists, feedback still runs with latency 0 and a persistent no
 
 ### 10.1 Transport bar
 
-Play/pause, stop (returns to loop start or song start), mode toggle (grid / video, video only if the song has a link), speed control (grid: BPM field and a percentage slider 25% to 200%; video: YouTube rate picker), count-in toggle (grid mode), metronome volume and mute, subdivision clicks toggle, mic on/off, **loop on/off toggle** with **From/To bar-number inputs** next to it, a rest-between-loops picker (10.2, shown whenever looping is on in grid mode), lanes toggle, zoom.
+Play/pause, stop (returns to loop start or song start), mode toggle (grid / video, video only if the song has a link), speed control (grid: an absolute BPM field, 20 to 400, applied on Enter/blur, with the percentage of the song tempo shown as a readout; video: YouTube rate picker), count-in toggle (grid mode), metronome volume and mute, subdivision clicks toggle, mic on/off, **loop on/off toggle** with **From/To bar-number inputs** next to it, a rest-between-loops picker (10.2, shown whenever looping is on in grid mode), lanes toggle, zoom.
 
 ### 10.2 Looping
 

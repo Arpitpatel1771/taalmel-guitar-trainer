@@ -24,6 +24,10 @@ export interface PlaybackControllerOptions {
   getRowCanvas: (rowIndex: number) => HTMLCanvasElement | null;
   onRowChange?: (rowIndex: number) => void;
   onFollowChange?: (following: boolean) => void;
+  /** Element showing "bar:beat"; its text is written directly each frame. */
+  getPositionEl?: () => HTMLElement | null;
+  /** Ticks per metronome beat, for the bar:beat readout. */
+  beatTicks?: number;
 }
 
 interface EnvelopePoint {
@@ -66,7 +70,7 @@ export class PlaybackController {
   };
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    const scrollKeys = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
+    const scrollKeys = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"]);
     if (scrollKeys.has(e.key)) this.onManualScrollHint();
   };
 
@@ -128,6 +132,23 @@ export class PlaybackController {
     this.opts.container.removeEventListener("keydown", this.onKeyDown);
   }
 
+  private lastPositionText = "";
+
+  private writePosition(row: Layout["rows"][number], tick: number): void {
+    const el = this.opts.getPositionEl?.();
+    if (!el) return;
+    let text = "Count-in";
+    if (tick >= 0) {
+      const bar = row.bars.find((b) => tick >= b.startTick && tick < b.startTick + b.lengthTicks) ?? row.bars[row.bars.length - 1];
+      const beat = bar ? Math.floor((tick - bar.startTick) / (this.opts.beatTicks ?? 960)) + 1 : 1;
+      text = bar ? `${bar.barNumber}:${beat}` : "";
+    }
+    if (text !== this.lastPositionText) {
+      this.lastPositionText = text;
+      el.textContent = text;
+    }
+  }
+
   private frame(): void {
     const layout = this.opts.getLayout();
     if (layout.rows.length === 0) return;
@@ -138,9 +159,14 @@ export class PlaybackController {
     const x = tickToX(row, Math.max(tick, row.startTick));
 
     this.opts.cursorEl.style.transform = `translate(${x}px, ${row.y}px)`;
+    this.writePosition(row, tick);
     this.opts.cursorEl.style.height = `${row.height}px`;
 
+    // Active-row emphasis (revamp 5.2): toggled imperatively, never via React state.
+    this.opts.container.classList.toggle("is-playing", this.opts.clock.isPlaying());
     if (rowIndex !== this.lastRowIndex) {
+      this.opts.container.querySelector(`[data-row="${this.lastRowIndex}"]`)?.classList.remove("active-row");
+      this.opts.container.querySelector(`[data-row="${rowIndex}"]`)?.classList.add("active-row");
       this.lastRowIndex = rowIndex;
       this.opts.onRowChange?.(rowIndex);
       if (this.following) this.beginScrollAnim(row);

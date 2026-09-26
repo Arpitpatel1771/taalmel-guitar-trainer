@@ -1,0 +1,37 @@
+.field { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; }
+.fieldLabel { color: var(--text-secondary); font-size: var(--text-sm); }
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  padding: 2px;
+  gap: 2px;
+  background: var(--surface-0);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+.segment {
+  height: 28px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+.segment:hover:not(:disabled) { background: var(--surface-2); border-color: transparent; color: var(--text-primary); }
+.segmentOn,
+.segmentOn:hover:not(:disabled) { background: var(--surface-3); color: var(--text-primary); border-color: var(--border-strong); }
+
+.stepper { display: inline-flex; align-items: center; }
+.stepper input {
+  width: 64px;
+  border-radius: 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  -moz-appearance: textfield;
+}
+.stepper input::-webkit-outer-spin-button,
+.stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.stepBtn { width: 32px; justify-content: center; padding: 0; }
+.stepBtn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.stepBtn:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }

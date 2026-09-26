@@ -1,6 +1,6 @@
 # Taalmel: UI Revamp Design (proposal)
 
-Status: approved 2026-09-26. Phase 1 done; phase 2 next.
+Status: approved 2026-09-26. Phases 1-5 implemented (light theme skipped per decision 4). Deferred: command palette (4), loop edge drag-handles (5.2), timing histogram in the session summary (5.3), live per-click detection dots in calibration (9).
 Date: 2026-09-26
 Scope: visual design, layout, and interaction of every screen. Data model, song format, audio and clock modules do not change. Companion to `specs/26-9-claude.md`.
 

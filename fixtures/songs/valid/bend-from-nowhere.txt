@@ -1,0 +1,7 @@
+title: Bend From Nowhere
+time: 4/4
+bpm: 100
+unit: 8
+
+[A]
+Bar 1: {1} 2S7(bend: 2) {3} 1S5 {5} 1S7(bend: 1) {7} 1S7(bend: 0)

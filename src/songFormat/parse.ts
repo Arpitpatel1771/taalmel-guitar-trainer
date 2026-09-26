@@ -940,7 +940,11 @@ export function parse(text: string): ParseResult {
             }
           }
 
-          if (connectionKind) {
+          // hammer and bend need no previous note and have no fret rule: a note
+          // can be hammered on "from nowhere", or picked and bent right away
+          // (user decisions, 2026-09-26). A bend on the same fret as the
+          // previous note is a continuation of it; otherwise it is picked.
+          if (connectionKind && connectionKind !== "hammer" && connectionKind !== "bend") {
             const prev = lastNoteForString.get(rn.stringNum);
             if (!prev) {
               errors.push(
@@ -948,15 +952,6 @@ export function parse(text: string): ParseResult {
                   rn.line,
                   "NO_PREVIOUS_NOTE",
                   `No previous note on string ${rn.stringNum} to connect from`,
-                  { bar: b.barNumber, slot: g.slot, column: rn.column, token: rn.token },
-                ),
-              );
-            } else if (connectionKind === "hammer" && !(rn.fret > prev.fret)) {
-              errors.push(
-                mkError(
-                  rn.line,
-                  "INVALID_HAMMER",
-                  `hammer requires a higher fret than the previous note (${prev.fret})`,
                   { bar: b.barNumber, slot: g.slot, column: rn.column, token: rn.token },
                 ),
               );
@@ -978,18 +973,12 @@ export function parse(text: string): ParseResult {
                   { bar: b.barNumber, slot: g.slot, column: rn.column, token: rn.token },
                 ),
               );
-            } else if (connectionKind === "bend" && rn.fret !== prev.fret) {
-              errors.push(
-                mkError(
-                  rn.line,
-                  "INVALID_BEND_FRET",
-                  `bend requires the same fret as the previous note (${prev.fret})`,
-                  { bar: b.barNumber, slot: g.slot, column: rn.column, token: rn.token },
-                ),
-              );
             }
-            meta.connection =
-              connectionKind === "bend" ? { kind: "bend", semitones: bendSemitones } : { kind: connectionKind };
+            meta.connection = { kind: connectionKind };
+          } else if (connectionKind === "hammer") {
+            meta.connection = { kind: "hammer" };
+          } else if (connectionKind === "bend") {
+            meta.connection = { kind: "bend", semitones: bendSemitones };
           }
 
           lastNoteForString.set(rn.stringNum, { fret: rn.fret });

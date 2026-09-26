@@ -239,6 +239,27 @@ Bar 1: {1} 1S2(flat)
     expect(result.song.notes[0]!.meta.flat).toBe(true);
   });
 
+  it("allows hammer with no previous note and any fret (hammer-on from nowhere)", () => {
+    const text = "title: T\ntime: 4/4\nbpm: 100\nunit: 8\n\n[A]\nBar 1: {1} 2S7(hammer) {2} 1S5 {3} 1S3(hammer)\n";
+    const result = parse(text);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const hammers = result.song.notes.filter((n) => n.meta.connection?.kind === "hammer");
+    expect(hammers.map((n) => `${n.string}S${n.fret}`)).toEqual(["2S7", "1S3"]);
+  });
+
+  it("allows bend with no previous note or on a different fret", () => {
+    const text = "title: T\ntime: 4/4\nbpm: 100\nunit: 8\n\n[A]\nBar 1: {1} 2S7(bend: 2) {3} 1S5 {5} 1S7(bend: 1)\n";
+    const result = parse(text);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const bends = result.song.notes.filter((n) => n.meta.connection?.kind === "bend");
+    expect(bends.map((n) => n.meta.connection)).toEqual([
+      { kind: "bend", semitones: 2 },
+      { kind: "bend", semitones: 1 },
+    ]);
+  });
+
   it("rejects flat on a natural note with FLAT_ON_NATURAL", () => {
     const text = `title: T
 time: 4/4
