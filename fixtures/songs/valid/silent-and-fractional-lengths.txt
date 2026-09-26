@@ -1,0 +1,9 @@
+title: Silent Bars and Fractional Lengths
+time: 4/4
+bpm: 100
+unit: 16
+
+[A]
+Bar 1: {1} 1S5[3X1/16>10?] {5} 1S5[>-8]
+Bar 2: (8)
+Bar 3: {1} 1S0[?]

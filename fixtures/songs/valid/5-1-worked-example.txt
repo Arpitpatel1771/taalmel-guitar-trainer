@@ -1,0 +1,17 @@
+title: Example Song
+time: 4/4
+bpm: 94
+unit: 8
+youtube: https://youtu.be/xxxxxxxxxxx
+offset: 12.35
+
+[Intro]
+Bar 1: (8) {1} 2S5[2] {3} 1S5 3S7[2] {5} 1S8[4]
+Bar 2: (12) {1} 2S5 {2} 2S7 {3} 1S5[4?]
+
+[Verse]
+bpm: 100
+unit: 16
+Bar 3: {1} 1S3 {2} 1S5(hammer) {3} 1S4(pull) {5} 1S3[2>-15]
+Bar 4: {1} 2S7 {3} 2S7[2](bend: 2) {5} 2S7[4](bend: 0)
+Bar 5: {1} 6S0[4](strum: down) 5S2[4] 4S2[4] {9} 6S0(strum: up, muted)

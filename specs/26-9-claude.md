@@ -222,6 +222,9 @@ Length rules:
 | `vibrato`   | none                    | modifier   | Note is held with vibrato. Picked or not according to its other flags; can combine with a connection flag (e.g. `(bend: 2, vibrato)`).                             |
 | `muted`     | none                    | modifier   | Palm-muted or dead note.                                                                                                                                           |
 | `strum`     | `up` or `down`          | modifier   | Strum direction. Conventionally placed on the first note of a chord slot; applies to that whole slot.                                                              |
+| `flat`      | none                    | modifier   | Spells this note as a flat (e.g. `Db`) instead of the default sharp (e.g. `C#`). A song can mix flat- and sharp-spelled notes freely.                              |
+
+Letter names display as sharps by default; there is no user-facing sharps/flats setting. `flat` is per-note and only meaningful on a black-key fret -- applying it to a natural (white-key) note is an error (`FLAT_ON_NATURAL`).
 
 **Connection flag rule (applies to `hammer`, `pull`, `slide`, `bend`):** the flag goes on the **destination** note and describes how that note is reached from the **previous note on the same string** (the most recent earlier-starting note with the same string number, searching back across bars). This works even inside chords because one string plays one note at a time.
 
@@ -254,7 +257,7 @@ Tab equivalents, for prompt examples and documentation:
 - `(n)` written only when it differs from the effective section unit.
 - Within a slot, notes ordered by string number ascending.
 - Length block written only when non-default; count written in grid form `<k>` when it is a whole number of the bar's units, otherwise `<k>X<a>/<b>` in lowest terms. Offset written only when non-zero, with explicit sign for negatives only (`>-15`, `>20`).
-- Metadata keys in the order of the table in 5.6. Boolean entries written bare.
+- Metadata keys in the order of the table in 5.6 (`flat` last). Boolean entries written bare.
 - Comments and blank lines from the input are **not** preserved. (Users are told this in the editor. Revisit if it proves annoying.)
 
 **Round-trip guarantee:** for every valid text `t`, `parse(serialize(parse(t)))` equals `parse(t)`.
@@ -304,6 +307,7 @@ interface NoteMeta {
   vibrato?: boolean;
   muted?: boolean;
   strum?: "up" | "down";
+  flat?: boolean; // spell as flat (Db) instead of the default sharp (C#)
 }
 
 interface Note {
@@ -348,7 +352,7 @@ interface Song {
 }
 ```
 
-Derived helpers (in `notation`): `pitchOf(string, fret) -> midi number` using standard tuning MIDI values 64, 59, 55, 50, 45, 40 for strings 1 to 6. `letterOf(midi, accidentals: "sharps" | "flats") -> "C#" | "Db"` (user setting, default sharps). `isPicked(note) -> !note.meta.connection`.
+Derived helpers (in `notation`): `pitchOf(string, fret) -> midi number` using standard tuning MIDI values 64, 59, 55, 50, 45, 40 for strings 1 to 6. `letterOfNote(note) -> "C#" | "Db"` (sharps by default, flats when `note.meta.flat`; there is no user setting). `isPicked(note) -> !note.meta.connection`.
 
 ---
 
@@ -417,7 +421,7 @@ interface Clock {
 A row stacks the enabled lanes vertically, sharing the time axis. Bar lines and slot grid lines pass through all lanes.
 
 1. **Tab lane** (default on): six horizontal lines, string 1 on top. Each note shows its fret number on its string line. Box width spans its duration (thin bar behind the number).
-2. **Letter lane** (default on): letter name per note, as sharps (`C#`) or flats (`Db`) per the accidentals setting (default sharps); chord slots stack letters vertically, highest string on top.
+2. **Letter lane** (default on): letter name per note, as sharps (`C#`) unless the note has the `flat` flag (`Db`); chord slots stack letters vertically, highest string on top.
 3. **Teacher notation lane** (default off): see 8.3.
 
 Technique labels in the tab lane between connected notes: `h` (hammer), `p` (pull), `/` or `\` (slide up/down), `b<n>` for bend targets (`b2`, `r` for release to 0), `~/` prefix for `slide_in`, `\~` suffix for `slide_out`, `x` for muted, `~` after the fret number for vibrato. Strum direction shown as an arrow above the slot (`↑`/`↓`). Uncertain notes: dashed outline plus a distinct tint in every lane.
@@ -462,14 +466,15 @@ Useful property for the v1.1 input parser: within one zone on one string pair (t
 - `getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } })`. The defaults are tuned for voice calls and damage guitar onsets.
 - Mic source feeds an `AudioWorkletNode` (`envelope-processor`). It is not connected to the speakers.
 - Mic is optional. The player works fully without it.
+- **Enabled by default** (`settings.micEnabled`, default true, 11.4): the practice view starts the mic automatically on the first Play press of a session (a user gesture, needed for `AudioContext.resume()` and the permission prompt), unless the user has turned it off. If permission is denied, the usual error banner shows and the mic is not retried on later plays in that session; toggling the mic in the transport updates `micEnabled`.
 
 ### 9.2 Envelope
 
 - The worklet computes RMS for each 128-sample render quantum (~2.7 ms at 48 kHz).
 - It batches points and posts them over its `MessagePort` every ~10 ms: `{ frameStart, rms[] }` where `frameStart` is the `currentFrame` of the first point, so timestamps are exact audio-clock times.
 - Main thread converts audio time to song time: `songSec = audioTimeSec - calibrationLatencySec` mapped through the active clock (for GridClock, directly via `audioStart`; for VideoClock, via the relationship between `AudioContext.getOutputTimestamp()` and `performance.now()` sampled each poll).
-- Each row has its own canvas strip under its lanes, same width as the row. Only the active row's strip is drawn to live. Past rows keep their drawing until the song is stopped and restarted or the user leaves the song, so the whole take can be reviewed afterward.
-- Drawing: vertical line per point, height = RMS mapped on a log scale (-60 dB floor to 0 dB), at x = `tickToX(secToTicks(songSec))`.
+- Each row has its own canvas, same width as the row, drawn as an **overlay behind the tab lane** (and the letter/teacher lanes too, when enabled) rather than a separate strip below them: it spans the row's whole lane-stack height and paints first, so the grid lines, lane content and notes all render on top of it and stay readable. Only the active row's canvas is drawn to live. Past rows keep their drawing until the song is stopped and restarted or the user leaves the song, so the whole take can be reviewed afterward. There is no reserved "envelope strip" height in the layout; a row's height is exactly its enabled lanes' heights.
+- Drawing: a vertical bar per point, semi-transparent, mirrored/centered on the row's vertical midpoint (height = RMS mapped on a log scale, -60 dB floor to 0 dB, split evenly above and below center), at x = `tickToX(secToTicks(songSec))`. Verdict markers and their expected-time connectors (9.4, 9.5) are drawn on this same overlay, centered the same way.
 
 ### 9.3 Onset detection (in the worklet)
 
@@ -529,13 +534,15 @@ If no calibration exists, feedback still runs with latency 0 and a persistent no
 
 ### 10.1 Transport bar
 
-Play/pause, stop (returns to loop start or song start), mode toggle (grid / video, video only if the song has a link), speed control (grid: BPM field and a percentage slider 25% to 200%; video: YouTube rate picker), count-in toggle (grid mode), metronome volume and mute, subdivision clicks toggle, mic on/off, loop toggle, lanes toggle, zoom.
+Play/pause, stop (returns to loop start or song start), mode toggle (grid / video, video only if the song has a link), speed control (grid: BPM field and a percentage slider 25% to 200%; video: YouTube rate picker), count-in toggle (grid mode), metronome volume and mute, subdivision clicks toggle, mic on/off, **loop on/off toggle** with **From/To bar-number inputs** next to it, a rest-between-loops picker (10.2, shown whenever looping is on in grid mode), lanes toggle, zoom.
 
 ### 10.2 Looping
 
-- User selects a bar range by clicking a start bar and shift-clicking an end bar, or picks a section from a dropdown.
-- Loop plays the range repeatedly. Grid mode: clock seeks back to the range start at the range end (count-in only on the first pass). Video mode: `seekTo(rangeStartSec + offset)`; a short audible gap is expected and acceptable.
-- Mic feedback resets per loop pass; the summary aggregates across passes and also shows the last pass.
+- A single **loop on/off toggle** controls whether looping happens at all. With it on and no bar range chosen, the whole song/exercise loops. With a bar range chosen, exactly that range loops.
+- The bar range is chosen by the user directly, in bars, not by song section: **From/To number inputs** in the transport (clamped to 1..the last bar, From <= To), or by **clicking a bar header and shift-clicking another** (or **clicking and dragging** across bar headers) on the sheet. The chosen range is tinted on the sheet and the From/To inputs stay in sync with it either way. Songs' `[Section]` names are not a loop source.
+- Loop plays the range (or whole song) repeatedly. Grid mode: the clock seeks back to the range start at the range end (count-in only on the first pass of a play). Video mode: `seekTo(rangeStartSec + offset)`; a short audible gap is expected and acceptable.
+- **Rest between loops** (grid mode only): 0 (default), 1, 2 or 4 bars of rest held at the loop's end before it wraps back to the start. The underlying clock keeps running through the rest (the metronome keeps clicking), but the displayed position (cursor, and the mic matcher's timeline) holds at the loop end throughout the rest, then jumps to the start when the rest elapses -- so no expected note ages into "missed" during the rest.
+- Mic feedback resets per loop pass (including passes separated by a rest); the summary aggregates across passes and also shows the last pass.
 
 ### 10.3 YouTube video mode
 
@@ -565,7 +572,7 @@ The prompt is a template in `songFormat/prompts.ts`. It contains, in order:
 1. Task: transcribe the provided notes into the song format; output only one fenced block tagged `song`.
 2. Header values pre-filled from the form, with the instruction to copy them exactly.
 3. The format specification: sections 5.2 to 5.6 condensed, including the metadata table and connection flag rule.
-4. The **string/fret to note name table** for all 6 strings, frets 0 to 12, in standard tuning, with the instruction to **look up** positions in the table rather than compute them.
+4. The **string/fret to note name table** for all 6 strings, frets 0 to 12, in standard tuning (black keys listed with both spellings, e.g. `C#4/Db4`, plus the rule to add `(flat)` when the source writes a flat), with the instruction to **look up** positions in the table rather than compute them.
 5. Rhythm instructions: if confident of the song's rhythm, encode it; if not, place notes on consecutive slots of the default grid with length 1 and mark **every** such note uncertain with `?`. Never invent confident-looking rhythm.
 6. The worked example from 5.1, plus the tab equivalents table.
 7. Reminders of the most common errors: bar numbering is global, slots strictly increase, notes must fit inside their bar, one note per string per slot.
@@ -593,7 +600,7 @@ Database `taalmel`, version 1.
   }
   ```
   Index on `updatedAt` for "recent first" listing.
-- Store `settings`, single record with key `"settings"`: calibration `{ latencyMs, method: "loopback" | "tap", measuredAt }`, enabled lanes, letter accidentals (sharps or flats), zoom, default mode, metronome volume, subdivision clicks, timing tier thresholds, count-in default.
+- Store `settings`, single record with key `"settings"`: calibration `{ latencyMs, method: "loopback" | "tap", measuredAt }`, enabled lanes, zoom, default mode, metronome volume, subdivision clicks, timing tier thresholds, count-in default, **mic enabled by default (`micEnabled`, default true)**.
 - On first run the app calls `navigator.storage.persist()`. If denied, a dismissible banner recommends exporting the library regularly.
 - On load, every stored song is parsed lazily when opened. A song that fails to parse (e.g. after a format change) opens in the editor with its errors instead of breaking the library.
 - Storage errors (quota, blocked) are shown to the user as-is. Never swallowed.
@@ -633,7 +640,7 @@ All generators take `bpm` and `time` (default 4/4) and produce a title like `Chr
 
 ### 12.2 BPM ramp
 
-Available for any loop (song or exercise), grid mode only: start BPM, step (+N BPM), advance condition. Condition is "after M loop passes" with mic off, or "after M consecutive passes with at least X% on time and no misses" with mic on. Optional max BPM. Current BPM shown on the transport bar.
+Available for any loop (song or exercise), grid mode only: start BPM, step (+N BPM), advance condition. Condition is "after M loop passes" with mic off, or "after M consecutive passes with at least X% on time and no misses" with mic on. Optional max BPM. Current BPM shown on the transport bar. The rest-between-loops control (10.2) is the same control for a song or an exercise loop -- exercises are practiced through the same transport/loop machinery, with no special-cased looping.
 
 ---
 

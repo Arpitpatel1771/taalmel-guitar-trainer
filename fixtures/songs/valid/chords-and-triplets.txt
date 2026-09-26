@@ -1,0 +1,8 @@
+title: Chords and Triplets
+time: 4/4
+bpm: 100
+unit: 12
+
+[A]
+Bar 1: {1} 1S0 2S1 3S2 {4} 1S3[2] 2S3[2] {7} 3S0[6]
+Bar 2: {1} 6S0 5S2 4S2

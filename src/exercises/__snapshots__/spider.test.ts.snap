@@ -1,0 +1,14 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`spider > matches the snapshot for fixed params 1`] = `
+"title: Spider 13/24, fret 3, 1/8
+time: 4/4
+bpm: 90
+unit: 8
+
+[Exercise]
+Bar 1: {1} 2S3 {2} 4S3 {3} 2S4 {4} 4S4 {5} 3S3 {6} 5S3 {7} 3S4 {8} 5S4
+Bar 2: {1} 4S3 {2} 6S3 {3} 4S4 {4} 6S4 {5} 1S4 {6} 3S4 {7} 1S5 {8} 3S5
+Bar 3: {1} 2S4 {2} 4S4 {3} 2S5 {4} 4S5 {5} 3S4 {6} 5S4 {7} 3S5 {8} 5S5
+"
+`;

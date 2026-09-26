@@ -1,0 +1,6 @@
+title: T
+time: 4/4
+bpm: 100
+
+[A]
+Bar 1: {1} 1S0

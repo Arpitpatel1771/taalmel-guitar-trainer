@@ -1,0 +1,9 @@
+title: Video Synced Song
+time: 4/4
+bpm: 100
+unit: 8
+youtube: https://www.youtube.com/watch?v=xxxxxxxxxxx
+offset: 3.5
+
+[A]
+Bar 1: {1} 1S0

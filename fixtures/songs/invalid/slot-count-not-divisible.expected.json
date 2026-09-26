@@ -1,0 +1,8 @@
+{
+  "errors": [
+    {
+      "code": "SLOT_COUNT_NOT_DIVISIBLE",
+      "line": 7
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`rhythm > matches the snapshot for fixed params 1`] = `
+"title: Rhythm gallop, 6S0, 1/16
+time: 4/4
+bpm: 120
+unit: 16
+
+[Exercise]
+Bar 1: {1} 6S0(muted) {3} 6S0(muted) {4} 6S0(muted) {5} 6S0(muted) {7} 6S0(muted) {8} 6S0(muted) {9} 6S0(muted) {11} 6S0(muted) {12} 6S0(muted) {13} 6S0(muted) {15} 6S0(muted) {16} 6S0(muted)
+Bar 2: {1} 6S0(muted) {3} 6S0(muted) {4} 6S0(muted) {5} 6S0(muted) {7} 6S0(muted) {8} 6S0(muted) {9} 6S0(muted) {11} 6S0(muted) {12} 6S0(muted) {13} 6S0(muted) {15} 6S0(muted) {16} 6S0(muted)
+"
+`;

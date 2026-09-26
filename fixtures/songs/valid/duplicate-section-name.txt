@@ -1,0 +1,10 @@
+title: Duplicate Section Names
+time: 4/4
+bpm: 100
+unit: 8
+
+[A]
+Bar 1: {1} 1S0
+
+[A]
+Bar 2: {1} 1S0

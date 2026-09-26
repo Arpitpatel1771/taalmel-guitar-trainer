@@ -1,0 +1,287 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildImportPrompt (spec 11.2) > matches the expected prompt for a song with a video link (snapshot) 1`] = `
+"Task: transcribe the guitar notes shown in the attached photo/text into the
+"Taalmel song format" described below. Output ONLY one fenced code block tagged
+\`song\` (\`\`\`song ... \`\`\`) containing the transcribed song. Do not include any
+other fenced blocks, and do not add commentary inside the block.
+
+Use exactly these header lines, copied verbatim (do not change any value):
+title: My Song
+time: 4/4
+bpm: 96
+unit: 8
+youtube: https://youtu.be/xxxxxxxxxxx
+offset: 12.5
+
+--- Song format specification ---
+Line types: header fields ("key: value") come before any section. A section
+starts with "[Name]" on its own line; at least one section is required, and each
+section needs at least one bar. Immediately after a section start, and before that
+section's first bar, you may write "bpm: <number>" and/or "unit: <int>" to override
+the song defaults for that section only.
+
+Bars look like:
+  Bar <k>: [(<n>)] {<s>} <note> <note>... {<s>} <note>...
+- <k> is the bar number, numbered 1, 2, 3, ... consecutively across the WHOLE song
+  (never restart per section). A gap or a repeat is an error.
+- (<n>) is an optional slot count for this bar (defaults to the section/song "unit").
+  n must divide the bar's ticks evenly.
+- {<s>} marks the slot (1..n) where the following notes start. Slot markers within a
+  bar must strictly increase. A bar with no slots at all is a valid, fully silent bar.
+- Notes in the same slot are played together and must be on different strings.
+- There are no rest tokens: silence is simply the absence of notes.
+
+Notes look like:
+  <string>S<fret>[<length>](<meta>)
+- <string> is 1-6 (1 = high E, 6 = low E), <fret> is 0-24. The "S" is uppercase.
+- The optional [length] block, in this fixed order, each part optional (omit the
+  whole block if none apply):
+    1. Count: "<k>" = k units of this bar's grid (e.g. [2] = 2 slots), or
+       "<k>X<a>/<b>" = k times the note value a/b of a whole note (e.g. [3X1/16] =
+       three sixteenth notes), independent of the bar's grid. Omitted = 1 unit.
+    2. Offset: ">-15" or ">20" - a millisecond timing nudge applied after converting
+       to seconds (negative = early, positive = late). Omitted = 0. Range -500..500.
+    3. "?" - marks this note's rhythm as a guess. Omit if you are confident.
+  Examples: 1S5[2], 1S5[2>-15], 1S5[?], 1S5[4?], 1S5[3X1/16>10?], 1S5[>-8].
+- The optional (meta) block is comma-separated entries, each "key" (boolean) or
+  "key: value":
+    | Key         | Value           | Meaning                                                      |
+    | ----------- | --------------- | ------------------------------------------------------------ |
+    | hammer      | (none)          | Reached by hammer-on from the previous note on this string.   |
+    | pull        | (none)          | Reached by pull-off from the previous note on this string.    |
+    | slide       | (none)          | Reached by sliding from the previous note on this string.     |
+    | bend        | 0-4, step 0.5   | Bent this many semitones above the fretted note; 0 = release. |
+    | slide_in    | (none)          | Approached by a slide from an unspecified lower fret; picked.  |
+    | slide_out   | (none)          | Slides away to an unspecified fret at its end.                 |
+    | vibrato     | (none)          | Held with vibrato.                                             |
+    | muted       | (none)          | Palm-muted or dead note.                                       |
+    | strum       | up / down       | Strum direction (place on the slot's first note).              |
+    | flat        | (none)          | Spells this note as a flat (e.g. Db) instead of the default sharp (e.g. C#). |
+  Unknown metadata keys are errors, so never invent new ones.
+
+Letter spelling: every note displays as a sharp by default. Add "(flat)" to a note
+whenever the source notes/tab spell that pitch as a flat (e.g. "Db" rather than
+"C#"); leave it off when the source spells it as a sharp, and always leave it off
+for natural notes (no black key) -- "flat" on a natural is an error. A song can mix
+sharp- and flat-spelled notes freely.
+
+Connection flag rule (hammer/pull/slide/bend): the flag goes on the DESTINATION note
+and describes how it is reached from the previous note on the SAME STRING (the most
+recent earlier note with that string number, searching back across bars if needed).
+- hammer: fret must be greater than the previous note's fret.
+- pull: fret must be less than the previous note's fret.
+- slide: fret must differ from the previous note's fret.
+- bend: fret must equal the previous note's fret.
+- At most one of hammer/pull/slide/bend per note. slide_in cannot combine with a
+  connection flag.
+
+--- String/fret to note name table (standard tuning, frets 0-12) ---
+Look up positions in this table rather than computing them yourself:
+| Fret | String 1 | String 2 | String 3 | String 4 | String 5 | String 6 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 | E4 | B3 | G3 | D3 | A2 | E2 |
+| 1 | F4 | C4 | G#3/Ab3 | D#3/Eb3 | A#2/Bb2 | F2 |
+| 2 | F#4/Gb4 | C#4/Db4 | A3 | E3 | B2 | F#2/Gb2 |
+| 3 | G4 | D4 | A#3/Bb3 | F3 | C3 | G2 |
+| 4 | G#4/Ab4 | D#4/Eb4 | B3 | F#3/Gb3 | C#3/Db3 | G#2/Ab2 |
+| 5 | A4 | E4 | C4 | G3 | D3 | A2 |
+| 6 | A#4/Bb4 | F4 | C#4/Db4 | G#3/Ab3 | D#3/Eb3 | A#2/Bb2 |
+| 7 | B4 | F#4/Gb4 | D4 | A3 | E3 | B2 |
+| 8 | C5 | G4 | D#4/Eb4 | A#3/Bb3 | F3 | C3 |
+| 9 | C#5/Db5 | G#4/Ab4 | E4 | B3 | F#3/Gb3 | C#3/Db3 |
+| 10 | D5 | A4 | F4 | C4 | G3 | D3 |
+| 11 | D#5/Eb5 | A#4/Bb4 | F#4/Gb4 | C#4/Db4 | G#3/Ab3 | D#3/Eb3 |
+| 12 | E5 | B4 | G4 | D4 | A3 | E3 |
+
+--- Rhythm instructions ---
+If you are confident of the song's rhythm (note lengths and starts), encode it using
+the length block. If you are NOT confident, place the notes on consecutive slots of
+the default grid ("unit" above) with length 1, and mark EVERY such note uncertain
+with "?". Never invent a confident-looking rhythm you are not sure of.
+
+--- Worked example ---
+\`\`\`song
+title: Example Song
+time: 4/4
+bpm: 94
+unit: 8
+
+[Intro]
+Bar 1: (8) {1} 2S5[2] {3} 1S5 3S7[2] {5} 1S8[4]
+Bar 2: (12) {1} 2S5 {2} 2S7 {3} 1S5[4?]
+
+[Verse]
+bpm: 100
+unit: 16
+Bar 3: {1} 1S3 {2} 1S5(hammer) {3} 1S4(pull) {5} 1S3[2>-15]
+Bar 4: {1} 2S7 {3} 2S7[2](bend: 2) {5} 2S7[4](bend: 0)
+Bar 5: {1} 6S0[4](strum: down) 5S2[4] 4S2[4] {9} 6S0(strum: up, muted)
+\`\`\`
+
+Tab equivalents:
+| Tab        | Song format                                 |
+| ---------- | -------------------------------------------- |
+| e: 3h5p4   | {1} 1S3 {2} 1S5(hammer) {3} 1S4(pull)         |
+| e: 3/5\\2   | {1} 1S3 {2} 1S5(slide) {4} 1S2(slide)         |
+| B: 7b9r7   | {1} 2S7 {3} 2S7(bend: 2) {5} 2S7(bend: 0)     |
+
+--- Common errors to avoid ---
+1. Bar numbering is global across the whole song (1, 2, 3, ...), never restarted
+   per section.
+2. Slot markers within a bar must strictly increase.
+3. Every note must fit inside its bar (it cannot extend past the bar's end).
+4. Only one note per string per slot (a chord/double-stop needs different strings)."
+`;
+
+exports[`buildImportPrompt (spec 11.2) > matches the expected prompt for a song without video (snapshot) 1`] = `
+"Task: transcribe the guitar notes shown in the attached photo/text into the
+"Taalmel song format" described below. Output ONLY one fenced code block tagged
+\`song\` (\`\`\`song ... \`\`\`) containing the transcribed song. Do not include any
+other fenced blocks, and do not add commentary inside the block.
+
+Use exactly these header lines, copied verbatim (do not change any value):
+title: My Song
+time: 4/4
+bpm: 96
+unit: 8
+
+--- Song format specification ---
+Line types: header fields ("key: value") come before any section. A section
+starts with "[Name]" on its own line; at least one section is required, and each
+section needs at least one bar. Immediately after a section start, and before that
+section's first bar, you may write "bpm: <number>" and/or "unit: <int>" to override
+the song defaults for that section only.
+
+Bars look like:
+  Bar <k>: [(<n>)] {<s>} <note> <note>... {<s>} <note>...
+- <k> is the bar number, numbered 1, 2, 3, ... consecutively across the WHOLE song
+  (never restart per section). A gap or a repeat is an error.
+- (<n>) is an optional slot count for this bar (defaults to the section/song "unit").
+  n must divide the bar's ticks evenly.
+- {<s>} marks the slot (1..n) where the following notes start. Slot markers within a
+  bar must strictly increase. A bar with no slots at all is a valid, fully silent bar.
+- Notes in the same slot are played together and must be on different strings.
+- There are no rest tokens: silence is simply the absence of notes.
+
+Notes look like:
+  <string>S<fret>[<length>](<meta>)
+- <string> is 1-6 (1 = high E, 6 = low E), <fret> is 0-24. The "S" is uppercase.
+- The optional [length] block, in this fixed order, each part optional (omit the
+  whole block if none apply):
+    1. Count: "<k>" = k units of this bar's grid (e.g. [2] = 2 slots), or
+       "<k>X<a>/<b>" = k times the note value a/b of a whole note (e.g. [3X1/16] =
+       three sixteenth notes), independent of the bar's grid. Omitted = 1 unit.
+    2. Offset: ">-15" or ">20" - a millisecond timing nudge applied after converting
+       to seconds (negative = early, positive = late). Omitted = 0. Range -500..500.
+    3. "?" - marks this note's rhythm as a guess. Omit if you are confident.
+  Examples: 1S5[2], 1S5[2>-15], 1S5[?], 1S5[4?], 1S5[3X1/16>10?], 1S5[>-8].
+- The optional (meta) block is comma-separated entries, each "key" (boolean) or
+  "key: value":
+    | Key         | Value           | Meaning                                                      |
+    | ----------- | --------------- | ------------------------------------------------------------ |
+    | hammer      | (none)          | Reached by hammer-on from the previous note on this string.   |
+    | pull        | (none)          | Reached by pull-off from the previous note on this string.    |
+    | slide       | (none)          | Reached by sliding from the previous note on this string.     |
+    | bend        | 0-4, step 0.5   | Bent this many semitones above the fretted note; 0 = release. |
+    | slide_in    | (none)          | Approached by a slide from an unspecified lower fret; picked.  |
+    | slide_out   | (none)          | Slides away to an unspecified fret at its end.                 |
+    | vibrato     | (none)          | Held with vibrato.                                             |
+    | muted       | (none)          | Palm-muted or dead note.                                       |
+    | strum       | up / down       | Strum direction (place on the slot's first note).              |
+    | flat        | (none)          | Spells this note as a flat (e.g. Db) instead of the default sharp (e.g. C#). |
+  Unknown metadata keys are errors, so never invent new ones.
+
+Letter spelling: every note displays as a sharp by default. Add "(flat)" to a note
+whenever the source notes/tab spell that pitch as a flat (e.g. "Db" rather than
+"C#"); leave it off when the source spells it as a sharp, and always leave it off
+for natural notes (no black key) -- "flat" on a natural is an error. A song can mix
+sharp- and flat-spelled notes freely.
+
+Connection flag rule (hammer/pull/slide/bend): the flag goes on the DESTINATION note
+and describes how it is reached from the previous note on the SAME STRING (the most
+recent earlier note with that string number, searching back across bars if needed).
+- hammer: fret must be greater than the previous note's fret.
+- pull: fret must be less than the previous note's fret.
+- slide: fret must differ from the previous note's fret.
+- bend: fret must equal the previous note's fret.
+- At most one of hammer/pull/slide/bend per note. slide_in cannot combine with a
+  connection flag.
+
+--- String/fret to note name table (standard tuning, frets 0-12) ---
+Look up positions in this table rather than computing them yourself:
+| Fret | String 1 | String 2 | String 3 | String 4 | String 5 | String 6 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 | E4 | B3 | G3 | D3 | A2 | E2 |
+| 1 | F4 | C4 | G#3/Ab3 | D#3/Eb3 | A#2/Bb2 | F2 |
+| 2 | F#4/Gb4 | C#4/Db4 | A3 | E3 | B2 | F#2/Gb2 |
+| 3 | G4 | D4 | A#3/Bb3 | F3 | C3 | G2 |
+| 4 | G#4/Ab4 | D#4/Eb4 | B3 | F#3/Gb3 | C#3/Db3 | G#2/Ab2 |
+| 5 | A4 | E4 | C4 | G3 | D3 | A2 |
+| 6 | A#4/Bb4 | F4 | C#4/Db4 | G#3/Ab3 | D#3/Eb3 | A#2/Bb2 |
+| 7 | B4 | F#4/Gb4 | D4 | A3 | E3 | B2 |
+| 8 | C5 | G4 | D#4/Eb4 | A#3/Bb3 | F3 | C3 |
+| 9 | C#5/Db5 | G#4/Ab4 | E4 | B3 | F#3/Gb3 | C#3/Db3 |
+| 10 | D5 | A4 | F4 | C4 | G3 | D3 |
+| 11 | D#5/Eb5 | A#4/Bb4 | F#4/Gb4 | C#4/Db4 | G#3/Ab3 | D#3/Eb3 |
+| 12 | E5 | B4 | G4 | D4 | A3 | E3 |
+
+--- Rhythm instructions ---
+If you are confident of the song's rhythm (note lengths and starts), encode it using
+the length block. If you are NOT confident, place the notes on consecutive slots of
+the default grid ("unit" above) with length 1, and mark EVERY such note uncertain
+with "?". Never invent a confident-looking rhythm you are not sure of.
+
+--- Worked example ---
+\`\`\`song
+title: Example Song
+time: 4/4
+bpm: 94
+unit: 8
+
+[Intro]
+Bar 1: (8) {1} 2S5[2] {3} 1S5 3S7[2] {5} 1S8[4]
+Bar 2: (12) {1} 2S5 {2} 2S7 {3} 1S5[4?]
+
+[Verse]
+bpm: 100
+unit: 16
+Bar 3: {1} 1S3 {2} 1S5(hammer) {3} 1S4(pull) {5} 1S3[2>-15]
+Bar 4: {1} 2S7 {3} 2S7[2](bend: 2) {5} 2S7[4](bend: 0)
+Bar 5: {1} 6S0[4](strum: down) 5S2[4] 4S2[4] {9} 6S0(strum: up, muted)
+\`\`\`
+
+Tab equivalents:
+| Tab        | Song format                                 |
+| ---------- | -------------------------------------------- |
+| e: 3h5p4   | {1} 1S3 {2} 1S5(hammer) {3} 1S4(pull)         |
+| e: 3/5\\2   | {1} 1S3 {2} 1S5(slide) {4} 1S2(slide)         |
+| B: 7b9r7   | {1} 2S7 {3} 2S7(bend: 2) {5} 2S7(bend: 0)     |
+
+--- Common errors to avoid ---
+1. Bar numbering is global across the whole song (1, 2, 3, ...), never restarted
+   per section.
+2. Slot markers within a bar must strictly increase.
+3. Every note must fit inside its bar (it cannot extend past the bar's end).
+4. Only one note per string per slot (a chord/double-stop needs different strings)."
+`;
+
+exports[`buildRepairPrompt (spec 11.3) > matches the expected repair prompt (snapshot) 1`] = `
+"Your previous output had these errors. Fix only these, keep everything else
+identical, and output the full corrected song in one \`\`\`song block.
+
+Line 7 (bar 1, slot 3): Fret must be 0-24, got 25. Token: 1S25
+Line 9: Song must contain at least one section.
+
+--- Current text (preserve any manual edits below) ---
+\`\`\`song
+title: T
+time: 4/4
+bpm: 100
+unit: 8
+
+[A]
+Bar 1: {1} 1S25
+
+\`\`\`"
+`;

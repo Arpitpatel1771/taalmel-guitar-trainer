@@ -1,0 +1,8 @@
+{
+  "errors": [
+    {
+      "code": "DUPLICATE_HEADER_KEY",
+      "line": 5
+    }
+  ]
+}

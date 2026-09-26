@@ -1,0 +1,8 @@
+{
+  "errors": [
+    {
+      "code": "MULTIPLE_CONNECTION_FLAGS",
+      "line": 7
+    }
+  ]
+}

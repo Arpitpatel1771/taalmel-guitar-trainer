@@ -1,0 +1,7 @@
+title: Minimal Song
+time: 3/4
+bpm: 120
+unit: 4
+
+[Verse]
+Bar 1: {1} 6S0 {2} 5S2 {3} 4S2 {4} 3S1

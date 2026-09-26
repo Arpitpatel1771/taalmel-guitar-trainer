@@ -1,0 +1,19 @@
+title: Multi Section Tempo
+time: 4/4
+bpm: 90
+unit: 8
+
+[Intro]
+Bar 1: {1} 1S0
+
+[Verse]
+bpm: 110
+Bar 2: {1} 1S0
+
+[Chorus]
+bpm: 130
+unit: 16
+Bar 3: {1} 1S0
+
+[Outro]
+Bar 4: {1} 1S0

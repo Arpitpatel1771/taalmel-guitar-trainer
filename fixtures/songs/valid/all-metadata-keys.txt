@@ -1,0 +1,8 @@
+title: Metadata Coverage
+time: 4/4
+bpm: 100
+unit: 8
+
+[A]
+Bar 1: {1} 1S3 {2} 1S5(hammer) {3} 1S3(pull) {4} 1S7(slide) {5} 1S10(slide_in) {6} 1S10(slide_out) {7} 1S10(vibrato) {8} 1S10(muted)
+Bar 2: {1} 2S7 {2} 2S7(bend: 2) {3} 2S7(bend: 0) {4} 4S6(flat) {5} 6S0[4](strum: down) 5S2[4] {7} 6S0(strum: up)
