@@ -15,6 +15,9 @@ import { SessionSummaryPanel } from "../components/SessionSummaryPanel";
 import { usePlaybackEngine } from "../usePlaybackEngine";
 import { offsetOfLine, useDebouncedValue } from "../utils";
 import { useElementWidth } from "../useElementWidth";
+import { Mic, MicOff, VideoOff } from "lucide-react";
+import { ChipRow, StatusChip } from "../shell/StatusChip";
+import { useShell } from "../shell/AppShellContext";
 
 const OFFSET_STEPS_MS = [-100, -10, 10, 100];
 
@@ -45,6 +48,7 @@ export function PracticeArea({
   onSetBar1Here: (videoSec: number) => void;
   onSettingsChange?: (next: Settings) => void;
 }) {
+  const shell = useShell();
   const engine = usePlaybackEngine({
     song,
     settings,
@@ -122,12 +126,33 @@ export function PracticeArea({
         <BpmRampPanel config={engine.bpmRamp} onChange={engine.setBpmRamp} micOn={engine.micOn} />
       )}
 
-      {engine.videoNotice && <div className="notice notice-warning">{engine.videoNotice} Falling back to grid mode.</div>}
-      {engine.micNotCalibrated && (
-        <div className="notice notice-info">Not calibrated: your timing may look late. Calibrate in Settings.</div>
-      )}
-      {engine.micErrorMessage && <div className="notice notice-error">{engine.micErrorMessage}</div>}
-      {engine.micListening && <div className="notice notice-info">Listening… stay quiet for a moment.</div>}
+      <ChipRow>
+        {engine.micErrorMessage ? (
+          <StatusChip tone="error" icon={<MicOff size={13} />} title={engine.micErrorMessage}>
+            Mic unavailable
+          </StatusChip>
+        ) : engine.micListening ? (
+          <StatusChip tone="info" pulse title="Measuring room noise: stay quiet for a moment.">
+            Listening… stay quiet
+          </StatusChip>
+        ) : engine.micOn ? (
+          <StatusChip tone="ok" icon={<Mic size={13} />}>
+            Mic on
+          </StatusChip>
+        ) : (
+          <StatusChip icon={<MicOff size={13} />}>Mic off</StatusChip>
+        )}
+        {engine.micNotCalibrated && (
+          <StatusChip tone="warning" title="Timing may look late until you calibrate." onClick={shell.openCalibration}>
+            Not calibrated
+          </StatusChip>
+        )}
+        {engine.videoNotice && (
+          <StatusChip tone="warning" icon={<VideoOff size={13} />} title={engine.videoNotice}>
+            Video unavailable, using grid
+          </StatusChip>
+        )}
+      </ChipRow>
       {!engine.following && (
         <button className="resume-follow-btn" onClick={engine.resumeFollow}>
           Resume follow
@@ -180,6 +205,7 @@ export interface SongViewProps {
 }
 
 export function SongView({ initialText, settings, onSave, onBack, onSettingsChange }: SongViewProps) {
+  const { toast } = useShell();
   const [text, setText] = useState(initialText);
   const [savedText, setSavedText] = useState(initialText);
   const debouncedText = useDebouncedValue(text, 300);
@@ -209,6 +235,7 @@ export function SongView({ initialText, settings, onSave, onBack, onSettingsChan
       setText(canonical);
       setSaveError(null);
       setEditing(false);
+      toast("Song saved.");
     } else {
       setSaveError(result.message);
     }

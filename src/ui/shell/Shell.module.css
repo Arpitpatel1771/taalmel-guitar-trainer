@@ -1,0 +1,227 @@
+/* App shell: sidebar, focus-mode top bar, status chips, toasts. */
+
+.layout {
+  display: flex;
+  height: 100%;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---- Sidebar ---- */
+
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-2);
+  background: var(--surface-1);
+  border-right: 1px solid var(--border-subtle);
+  transition: width var(--duration-base) var(--ease-out);
+}
+
+.sidebarCollapsed {
+  width: var(--sidebar-width-collapsed);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-2);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.brandMark {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.navItem {
+  width: 100%;
+  justify-content: flex-start;
+  height: 36px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.navItem:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: transparent;
+  color: var(--text-primary);
+}
+
+.navItemActive,
+.navItemActive:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.navIcon {
+  flex-shrink: 0;
+}
+
+.sidebarCollapsed .navLabel,
+.sidebarCollapsed .brandName {
+  display: none;
+}
+
+.sidebarCollapsed .navItem {
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebarFooter {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ---- Focus-mode top bar ---- */
+
+.topbar {
+  height: var(--topbar-height);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4) 0 var(--space-2);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.topbarTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbarSlot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ---- Status chips ---- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  height: 26px;
+  padding: 0 var(--space-3);
+  gap: 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+button.chip:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+
+.chipDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.chipOk { color: var(--success); }
+.chipInfo { color: var(--info); background: var(--info-soft); border-color: transparent; }
+.chipWarning { color: var(--warning); background: var(--warning-soft); border-color: transparent; }
+.chipError { color: var(--danger); background: var(--danger-soft); border-color: transparent; }
+.chipAccent { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
+
+.pulse .chipDot {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% { opacity: 0.3; }
+}
+
+/* ---- Toasts ---- */
+
+.toasts {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 260px;
+  max-width: 420px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-popover);
+  font-size: var(--text-md);
+  animation: toastIn var(--duration-base) var(--ease-out);
+}
+
+.toastSuccess { border-left: 3px solid var(--success); }
+.toastInfo { border-left: 3px solid var(--info); }
+.toastError { border-left: 3px solid var(--danger); }
+
+.toastText {
+  flex: 1;
+}
+
+.toastClose {
+  height: 22px;
+  padding: 0 6px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}

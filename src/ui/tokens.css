@@ -1,0 +1,223 @@
+/* Design tokens (specs/26-9-ui-revamp.md section 3). Components use these
+ * semantic names, never raw colors. Dark theme only for now; a light theme
+ * later redefines the same names under [data-theme="light"]. */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces: elevation by lightness, not borders. */
+  --surface-0: #111214; /* page */
+  --surface-1: #18191c; /* panels, sidebar */
+  --surface-2: #202226; /* inputs, raised controls */
+  --surface-3: #2a2c31; /* popovers, hover */
+  --border-subtle: #26282d;
+  --border-strong: #363941;
+
+  /* Text */
+  --text-primary: #ecebe8;
+  --text-secondary: #a9a7a1;
+  --text-muted: #75736e;
+  --text-on-accent: #1a1204;
+
+  /* Accent: warm amber. */
+  --accent: #f2a93b;
+  --accent-hover: #f7ba5c;
+  --accent-active: #d98f22;
+  --accent-soft: rgba(242, 169, 59, 0.14);
+  --accent-softer: rgba(242, 169, 59, 0.08);
+
+  /* Status */
+  --danger: #ef6b5b;
+  --danger-soft: rgba(239, 107, 91, 0.12);
+  --warning: #e8c547;
+  --warning-soft: rgba(232, 197, 71, 0.12);
+  --success: #5cc48a;
+  --info: #7aa7e8;
+  --info-soft: rgba(122, 167, 232, 0.12);
+
+  /* Verdicts: Okabe-Ito based, colorblind-safe. */
+  --verdict-ontime: #009e73;
+  --verdict-close: #e69f00;
+  --verdict-off: #d55e00;
+  --verdict-missed: #cc79a7;
+  --verdict-extra: #999999;
+  --uncertain-tint: rgba(232, 197, 71, 0.16);
+
+  /* Type */
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 14px;
+  --text-lg: 17.5px;
+  --text-xl: 22px;
+  --text-2xl: 27.5px;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* Spacing: 8pt scale with a 4px half-step. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Shape and depth */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-pill: 999px;
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --focus-ring: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--accent);
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Shell */
+  --sidebar-width: 216px;
+  --sidebar-width-collapsed: 60px;
+  --topbar-height: 48px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}
+
+/* ---- Base elements ---- */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+}
+h1 { font-size: var(--text-2xl); }
+h2 { font-size: var(--text-xl); }
+h3 { font-size: var(--text-lg); }
+
+button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-3);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+}
+button:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+button.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: var(--weight-semibold);
+}
+button.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+button.btn-primary:active:not(:disabled) {
+  background: var(--accent-active);
+}
+button.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+button.btn-ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+button.btn-danger {
+  background: var(--danger-soft);
+  border-color: transparent;
+  color: var(--danger);
+}
+
+input,
+select,
+textarea {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  font: inherit;
+  font-size: var(--text-md);
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select {
+  height: 32px;
+}
+textarea {
+  padding: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: var(--border-strong);
+}
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  accent-color: var(--accent);
+}
+label {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+:focus {
+  outline: none;
+}
+:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+::selection {
+  background: var(--accent-soft);
+}

@@ -1,7 +1,7 @@
 // App shell: settings load + persist banner, screen routing (spec 11.4).
 // No external state/router library (spec 3): plain useState-based routing.
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DEFAULT_SETTINGS, type Settings } from "../model";
 import type { StorageAdapter } from "./storageTypes";
 import { Library } from "./screens/Library";
@@ -10,6 +10,10 @@ import { SongView } from "./screens/SongView";
 import { Exercises } from "./screens/Exercises";
 import { SettingsScreen } from "./screens/Settings";
 import { CalibrationScreen } from "./screens/Calibration";
+import { ShellProvider, useShell } from "./shell/AppShellContext";
+import { Sidebar, type NavTarget } from "./shell/Sidebar";
+import { StatusChip } from "./shell/StatusChip";
+import shellStyles from "./shell/Shell.module.css";
 
 export interface AppProps {
   storage: StorageAdapter;
@@ -102,18 +106,22 @@ export function App({ storage }: AppProps) {
     }
   }
 
+  const openCalibration = useCallback(() => setScreen({ kind: "calibration", returnTo: "library" }), []);
+
   if (!settingsLoaded) {
     return <div className="app-shell screen">Loading…</div>;
   }
 
-  return (
-    <div className="app-shell">
-      {globalError && (
-        <div className="notice notice-error" style={{ margin: 12 }}>
-          {globalError}
-          <button onClick={() => setGlobalError(null)}>Dismiss</button>
-        </div>
-      )}
+  const focusMode = screen.kind === "song";
+  const activeNav: NavTarget | null = screen.kind === "song" ? null : screen.kind;
+
+  function navigate(target: NavTarget) {
+    if (target === "calibration") setScreen({ kind: "calibration", returnTo: "library" });
+    else setScreen({ kind: target });
+  }
+
+  const content = (
+    <>
 
       {screen.kind === "library" && (
         <Library
@@ -122,7 +130,7 @@ export function App({ storage }: AppProps) {
           onNewSong={() => setScreen({ kind: "new-song" })}
           onOpenExercises={() => setScreen({ kind: "exercises" })}
           onOpenSettings={() => setScreen({ kind: "settings" })}
-          showPersistBanner={!persisted && !settings.persistBannerDismissed}
+          showPersistBanner={false}
           onDismissPersistBanner={() => persistSettings({ ...settings, persistBannerDismissed: true })}
           refreshToken={refreshToken}
         />
@@ -185,6 +193,45 @@ export function App({ storage }: AppProps) {
           onBack={() => setScreen({ kind: screen.returnTo })}
         />
       )}
-    </div>
+    </>
   );
+
+  return (
+    <ShellProvider openCalibration={openCalibration}>
+      <GlobalErrorToast error={globalError} onShown={() => setGlobalError(null)} />
+      {focusMode ? (
+        <div className={shellStyles.main}>{content}</div>
+      ) : (
+        <div className={shellStyles.layout}>
+          <Sidebar
+            active={activeNav}
+            onNavigate={navigate}
+            footer={
+              !persisted && !settings.persistBannerDismissed ? (
+                <StatusChip
+                  tone="warning"
+                  title="Your browser may clear the library to free space. Export it regularly from the Library."
+                  onClick={() => persistSettings({ ...settings, persistBannerDismissed: true })}
+                >
+                  Storage not persistent
+                </StatusChip>
+              ) : null
+            }
+          />
+          <main className={shellStyles.main}>{content}</main>
+        </div>
+      )}
+    </ShellProvider>
+  );
+}
+
+/** Surfaces app-level storage errors as an error toast (stays until dismissed). */
+function GlobalErrorToast({ error, onShown }: { error: string | null; onShown: () => void }) {
+  const { toast } = useShell();
+  useEffect(() => {
+    if (!error) return;
+    toast(error, "error");
+    onShown();
+  }, [error, toast, onShown]);
+  return null;
 }

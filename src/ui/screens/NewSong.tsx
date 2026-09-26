@@ -1,4 +1,5 @@
 // "New song from notes" import flow (spec 11.1-11.3).
+import { useShell } from "../shell/AppShellContext";
 
 import { useMemo, useRef, useState } from "react";
 import type { ParseError, Settings, TimeSignature } from "../../model";
@@ -50,7 +51,7 @@ export function NewSong({ settings, onSaveSong, onSaved, onCancel }: NewSongProp
 
   const [text, setText] = useState("");
   const debouncedText = useDebouncedValue(text, 300);
-  const [copiedFlash, setCopiedFlash] = useState<string | null>(null);
+  const { toast } = useShell();
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -129,8 +130,7 @@ export function NewSong({ settings, onSaveSong, onSaved, onCancel }: NewSongProp
 
   async function doCopy(label: string, value: string) {
     const ok = await copyToClipboard(value);
-    setCopiedFlash(ok ? `${label} copied.` : `Could not copy ${label.toLowerCase()} -- copy it manually.`);
-    window.setTimeout(() => setCopiedFlash(null), 2500);
+    toast(ok ? `${label} copied.` : `Could not copy ${label.toLowerCase()}: copy it manually.`, ok ? "success" : "error");
   }
 
   async function handleSave() {
@@ -151,7 +151,6 @@ export function NewSong({ settings, onSaveSong, onSaved, onCancel }: NewSongProp
         <button onClick={onCancel}>Cancel</button>
       </div>
 
-      {copiedFlash && <div className="notice notice-info">{copiedFlash}</div>}
 
       {stage === "form" && (
         <div className="new-song-form">

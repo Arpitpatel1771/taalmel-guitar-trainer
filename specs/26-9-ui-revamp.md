@@ -1,6 +1,6 @@
 # Taalmel: UI Revamp Design (proposal)
 
-Status: proposal, not started. No UI code changes until approved.
+Status: approved 2026-09-26. Phase 1 done; phase 2 next.
 Date: 2026-09-26
 Scope: visual design, layout, and interaction of every screen. Data model, song format, audio and clock modules do not change. Companion to `specs/26-9-claude.md`.
 
@@ -178,7 +178,7 @@ The same editor is reused for "Edit text" in the song view.
 ### Phases (each ships working and gets reviewed before the next)
 
 1. Tokens, typography, app shell (sidebar, top bar, toasts, status chips).
-2. Practice view: transport dock + popovers, SVG sheet, overlay polish, shortcuts.
+2. Practice view: transport dock + popovers, SVG sheet with drawn technique curves (5.2: slur arcs, slide lines, bend arrows; half-arcs across row breaks), overlay polish, shortcuts.
 3. Import wizard with CodeMirror editor and problems panel.
 4. Library cards, exercise picker, calibration and settings screens.
 5. Light theme and accessibility pass.
@@ -199,10 +199,10 @@ The same editor is reused for "Edit text" in the song view.
 
 ---
 
-## 14. Open questions for you
+## 14. Decisions (answered 2026-09-26)
 
-1. Accent color: warm (amber/saffron) or cool (blue/teal)?
-2. Video panel default: right side or above the sheet?
-3. Styling: CSS Modules + tokens, or Tailwind/shadcn?
-4. Light theme in the first pass, or dark only?
-5. Techniques as drawn curves now, or keep text labels for the first pass?
+1. Accent color: warm amber.
+2. Video panel: docked right on wide screens.
+3. Styling: CSS Modules + design tokens (no Tailwind/shadcn).
+4. Theme: dark only in the first pass; tokens stay theme-ready.
+5. Technique curves: drawn in phase 2 with the SVG sheet.

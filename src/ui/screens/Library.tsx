@@ -1,5 +1,6 @@
 // Library screen (spec 11.4, 11.5). Recent-first list; open/delete/export a
 // song; export/import the whole library with conflict resolution.
+import { useShell } from "../shell/AppShellContext";
 
 import { useEffect, useRef, useState } from "react";
 import type { SongRecord } from "../../model";
@@ -44,7 +45,7 @@ export function Library({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [pendingImport, setPendingImport] = useState<LibraryImportPlan | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
-  const [importNotice, setImportNotice] = useState<string | null>(null);
+  const { toast } = useShell();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function refresh() {
@@ -67,6 +68,7 @@ export function Library({
       await storage.deleteSong(id);
       setConfirmDeleteId(null);
       await refresh();
+      toast("Song deleted.");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -76,6 +78,7 @@ export function Library({
     try {
       const { filename, text } = storage.exportSongFile(record);
       downloadFile(filename, text, "text/plain");
+      toast(`Exported ${filename}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -85,13 +88,13 @@ export function Library({
     try {
       const { filename, json } = await storage.exportLibrary();
       downloadFile(filename, json, "application/json");
+      toast(`Exported ${filename}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
   }
 
   async function handleImportFile(file: File) {
-    setImportNotice(null);
     const content = await file.text();
     let plan;
     try {
@@ -108,7 +111,7 @@ export function Library({
     if (plan.kind === "song") {
       try {
         await storage.applyImport(plan, { onConflict: "skip", importSettings: false });
-        setImportNotice("Song imported.");
+        toast("Song imported.");
         await refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
@@ -127,7 +130,7 @@ export function Library({
         importSettings: decisions.importSettings,
       });
       setPendingImport(null);
-      setImportNotice(
+      toast(
         `Imported ${summary.imported}, replaced ${summary.replaced}, kept both ${summary.keptBoth}, skipped ${summary.skipped}.`,
       );
       await refresh();
@@ -158,7 +161,6 @@ export function Library({
 
       {error && <div className="notice notice-error">{error}</div>}
       {importError && <div className="notice notice-error">Could not import: {importError}</div>}
-      {importNotice && <div className="notice notice-info">{importNotice}</div>}
 
       <div className="library-import-export">
         <button onClick={() => void handleExportLibrary()}>Export library</button>

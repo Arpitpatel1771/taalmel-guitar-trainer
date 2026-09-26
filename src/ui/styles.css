@@ -1,82 +1,14 @@
-/* Taalmel: dark, practice-tool styling. Plain CSS, no framework. */
+/* Taalmel component styles. Values come from tokens.css; the short names
+ * below are legacy aliases kept so older rules keep working. */
 
 :root {
-  --bg: #14161a;
-  --bg-raised: #1c1f26;
-  --bg-raised-2: #242833;
-  --border: #333846;
-  --text: #e6e8ef;
-  --text-dim: #9aa1b2;
-  --accent: #5b8def;
-  --accent-dim: #3a5a99;
-  --danger: #f87171;
-  --warning: #facc15;
-  --success: #4ade80;
-  --uncertain-tint: rgba(250, 204, 21, 0.18);
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-mono: "SF Mono", Menlo, Consolas, monospace;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
-}
-
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-ui);
-  font-size: 14px;
-}
-
-button {
-  background: var(--bg-raised-2);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 12px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-button:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-button.btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #0a0d12;
-  font-weight: 600;
-}
-
-button.btn-danger {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: #1a0a0a;
-}
-
-input,
-select,
-textarea {
-  background: var(--bg-raised);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 4px 6px;
-  font-family: inherit;
-  font-size: 13px;
+  --bg: var(--surface-0);
+  --bg-raised: var(--surface-1);
+  --bg-raised-2: var(--surface-2);
+  --border: var(--border-subtle);
+  --text: var(--text-primary);
+  --text-dim: var(--text-secondary);
+  --accent-dim: var(--accent-active);
 }
 
 label {
@@ -84,7 +16,7 @@ label {
   align-items: center;
   gap: 6px;
   margin-right: 10px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-dim);
 }
 
@@ -146,17 +78,17 @@ h4 {
 }
 
 .notice-info {
-  background: rgba(91, 141, 239, 0.15);
+  background: var(--info-soft);
   border: 1px solid var(--accent-dim);
 }
 
 .notice-warning {
-  background: rgba(250, 204, 21, 0.12);
+  background: var(--warning-soft);
   border: 1px solid var(--warning);
 }
 
 .notice-error {
-  background: rgba(248, 113, 113, 0.12);
+  background: var(--danger-soft);
   border: 1px solid var(--danger);
 }
 
@@ -288,7 +220,7 @@ h4 {
 }
 
 .error-item {
-  background: rgba(248, 113, 113, 0.1);
+  background: var(--danger-soft);
   border: 1px solid var(--danger);
   border-radius: 4px;
   padding: 6px 8px;
@@ -297,7 +229,7 @@ h4 {
 }
 
 .error-item.warning {
-  background: rgba(250, 204, 21, 0.1);
+  background: var(--warning-soft);
   border-color: var(--warning);
 }
 
@@ -320,7 +252,7 @@ h4 {
 
 .unsaved-badge {
   background: var(--warning);
-  color: #201a00;
+  color: var(--text-on-accent);
   border-radius: 4px;
   padding: 2px 8px;
   font-size: 12px;
@@ -470,7 +402,7 @@ h4 {
 }
 
 .bar-labels.in-loop {
-  background: rgba(91, 141, 239, 0.12);
+  background: var(--accent-softer);
 }
 
 .bar-number {
@@ -761,7 +693,7 @@ h4 {
 
 .exercise-kind-tabs button.active {
   background: var(--accent);
-  color: #0a0d12;
+  color: var(--text-on-accent);
   border-color: var(--accent);
 }
 
@@ -774,4 +706,77 @@ h4 {
 
 .empty-library {
   color: var(--text-dim);
+}
+
+/* ---- UI revamp phase 1: shell-level polish (specs/26-9-ui-revamp.md) ---- */
+
+.screen {
+  padding: var(--space-5) var(--space-6);
+  gap: var(--space-4);
+}
+
+.screen-header {
+  margin-bottom: 0;
+}
+
+.screen-header h2 {
+  font-size: var(--text-xl);
+}
+
+/* Focus mode: the song view's header becomes the slim top bar. */
+.song-view {
+  padding-top: 0;
+}
+
+.song-view > .screen-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--topbar-height);
+  margin: 0 calc(-1 * var(--space-6));
+  padding: 0 var(--space-4);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.song-view > .screen-header h2 {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+/* Panels: elevation by surface, soft borders, consistent radius. */
+.song-row,
+.exercise-form,
+.editor-preview,
+.bpm-ramp-panel,
+.transport-bar,
+.sheet-scroll,
+.settings-screen section,
+.modal {
+  background: var(--surface-1);
+  border-color: var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.song-row:hover {
+  border-color: var(--border-strong);
+}
+
+.notice {
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-md);
+}
+
+.unsaved-badge {
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.resume-follow-btn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+  box-shadow: var(--shadow-popover);
 }
