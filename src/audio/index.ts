@@ -37,3 +37,4 @@ export {
 } from "./calibration";
 export { readTuner, midiToFreq, centsOff, noteName, foldOctave, median, OPEN_STRING_MIDI, IN_TUNE_CENTS, type TunerReading } from "./tuner";
 export { TunerInput } from "./tunerInput";
+export { GuitarPlayer, buildPlayPlan, renderPluck, type PluckPlan, type PitchChange } from "./guitarSynth";

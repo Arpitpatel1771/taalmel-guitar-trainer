@@ -558,6 +558,14 @@ Play/pause, stop (returns to loop start or song start), mode toggle (grid / vide
 - Display: note name, string, Hz, signed cents on a -50..+50 needle; within ±3 cents shows as in tune.
 - Reference A4 = 440 Hz by default, adjustable 430-450 Hz (`a4Hz` setting). No reference tones; standard tuning only.
 
+### 10.5 Play notes (added 2026-09-27)
+
+- Optional synthetic guitar that plays the song ("Play notes" toggle in the dock, volume in the Practice popover; `playNotes` default off, `playNotesVolume` default 0.6). Turned off for the session when entering video mode.
+- Sound: Karplus-Strong plucked string rendered per pitch and cached (`src/audio/guitarSynth.ts`); muted notes use heavy damping and a short buffer.
+- Plan: hammer/pull/slide and same-fret bends continue the previous voice on their string (no re-pluck; slide glides ~60 ms, bend ramps ~120 ms); fresh bends pluck then bend; vibrato is a ~5.5 Hz pitch LFO; strums spread strings ~12 ms apart (down = string 6 first); a new pluck cuts the string's previous voice.
+- Scheduled with the metronome's lookahead pattern on AudioContext time from the active clock; respects speed, loops (voices silenced on wrap) and pause/stop.
+- With the mic on over speakers the mic hears the synth; a status chip recommends headphones.
+
 ---
 
 ## 11. Import, storage, export
@@ -608,7 +616,7 @@ Database `taalmel`, version 1.
   }
   ```
   Index on `updatedAt` for "recent first" listing.
-- Store `settings`, single record with key `"settings"`: calibration `{ latencyMs, method: "loopback" | "tap", measuredAt }`, enabled lanes, zoom, tuner reference `a4Hz` (default 440), default mode, metronome volume, subdivision clicks, timing tier thresholds, count-in default, **mic enabled by default (`micEnabled`, default true)**.
+- Store `settings`, single record with key `"settings"`: calibration `{ latencyMs, method: "loopback" | "tap", measuredAt }`, enabled lanes, zoom, tuner reference `a4Hz` (default 440), Play notes `playNotes`/`playNotesVolume`, default mode, metronome volume, subdivision clicks, timing tier thresholds, count-in default, **mic enabled by default (`micEnabled`, default true)**.
 - On first run the app calls `navigator.storage.persist()`. If denied, a dismissible banner recommends exporting the library regularly.
 - On load, every stored song is parsed lazily when opened. A song that fails to parse (e.g. after a format change) opens in the editor with its errors instead of breaking the library.
 - Storage errors (quota, blocked) are shown to the user as-is. Never swallowed.

@@ -4,7 +4,7 @@
 // else sits in the Practice and View popovers.
 
 import { useState, type ReactNode, type RefObject } from "react";
-import { Gauge, Metronome, Mic, MicOff, Pause, Play, Repeat, SlidersHorizontal, Square, Eye, X } from "lucide-react";
+import { Gauge, Guitar, Metronome, Mic, MicOff, Pause, Play, Repeat, SlidersHorizontal, Square, Eye, X } from "lucide-react";
 import type { LaneId, PracticeMode } from "../../model";
 import { MAX_BPM, MIN_BPM, type RestBars } from "../usePlaybackEngine";
 import { Popover } from "./Popover";
@@ -40,6 +40,11 @@ export interface TransportBarProps {
 
   subdivisionOn: boolean;
   onSubdivisionChange: (v: boolean) => void;
+
+  playNotes: boolean;
+  onPlayNotesChange: (v: boolean) => void;
+  playNotesVolume: number;
+  onPlayNotesVolumeChange: (v: number) => void;
 
   micOn: boolean;
   micAvailable: boolean;
@@ -210,6 +215,14 @@ export function TransportBar(props: TransportBarProps) {
         >
           <Metronome size={16} />
         </button>
+        <button
+          className={`${styles.iconBtn}${props.playNotes ? ` ${styles.on}` : ""}`}
+          onClick={() => props.onPlayNotesChange(!props.playNotes)}
+          aria-pressed={props.playNotes}
+          title="Play notes: a synthetic guitar plays the song"
+        >
+          <Guitar size={16} />
+        </button>
       </div>
 
       <div className={styles.position} title="Bar : beat">
@@ -277,6 +290,25 @@ export function TransportBar(props: TransportBarProps) {
           <label className={styles.row}>
             <input type="checkbox" checked={props.subdivisionOn} onChange={(e) => props.onSubdivisionChange(e.target.checked)} />
             Subdivision clicks
+          </label>
+        </div>
+        <div className={styles.panelSection}>
+          <div className={styles.panelTitle}>Play notes (guitar)</div>
+          <label className={styles.row}>
+            <input type="checkbox" checked={props.playNotes} onChange={(e) => props.onPlayNotesChange(e.target.checked)} />
+            Play the song with a synthetic guitar
+          </label>
+          <label className={styles.row}>
+            Volume
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={props.playNotesVolume}
+              onChange={(e) => props.onPlayNotesVolumeChange(Number(e.target.value))}
+              disabled={!props.playNotes}
+            />
           </label>
         </div>
         {grid && (

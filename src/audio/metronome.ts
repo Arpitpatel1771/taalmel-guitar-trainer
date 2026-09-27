@@ -194,6 +194,12 @@ export class Metronome {
     // period so clicks continue instead of freezing with the cursor.
     const songSecNow = this.clock.unclampedPositionSec();
     const speed = this.clock.speed();
+    // Backward jump (Stop returns to the start, or a seek) without a loop
+    // event: resync the watermark, or clicks stay silent until playback
+    // catches back up to where it was.
+    if (songSecNow < this.lastScheduledSongSec - SCHEDULE_AHEAD_SEC * speed - 0.05) {
+      this.lastScheduledSongSec = songSecNow - 1e-6;
+    }
     const windowEndSongSec = songSecNow + SCHEDULE_AHEAD_SEC * speed;
 
     for (const click of this.clickSchedule) {

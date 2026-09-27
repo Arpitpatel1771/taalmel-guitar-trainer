@@ -160,6 +160,11 @@ export function PracticeArea({
             Not calibrated
           </StatusChip>
         )}
+        {engine.playNotes && engine.micOn && (
+          <StatusChip tone="warning" title="On speakers the mic hears the synthetic guitar and grades it as your playing.">
+            Play notes + mic: use headphones
+          </StatusChip>
+        )}
         {engine.videoNotice && (
           <StatusChip tone="warning" icon={<VideoOff size={13} />} title={engine.videoNotice}>
             Video unavailable, using grid
@@ -222,6 +227,10 @@ export function PracticeArea({
         onMuteChange={engine.setMetronomeMuted}
         subdivisionOn={engine.subdivisionOn}
         onSubdivisionChange={engine.setSubdivisionOn}
+        playNotes={engine.playNotes}
+        onPlayNotesChange={engine.setPlayNotes}
+        playNotesVolume={engine.playNotesVolume}
+        onPlayNotesVolumeChange={engine.setPlayNotesVolume}
         micOn={engine.micOn}
         micAvailable={engine.micAvailable}
         onMicToggle={engine.toggleMic}

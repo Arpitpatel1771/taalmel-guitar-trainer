@@ -19,6 +19,7 @@ import {
   MicError,
   MicInput,
   Metronome,
+  GuitarPlayer,
   PitchDetector,
   buildExpectedEvents,
   getAudioContext,
@@ -130,6 +131,11 @@ export interface PlaybackEngine {
   setMetronomeMuted: (v: boolean) => void;
   subdivisionOn: boolean;
   setSubdivisionOn: (v: boolean) => void;
+  /** Synthetic guitar playing the song ("Play notes"). */
+  playNotes: boolean;
+  setPlayNotes: (v: boolean) => void;
+  playNotesVolume: number;
+  setPlayNotesVolume: (v: number) => void;
 
   micOn: boolean;
   micAvailable: boolean;
@@ -246,6 +252,8 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
   const [availableVideoRates, setAvailableVideoRates] = useState<number[]>([0.25, 0.5, 0.75, 1, 1.25, 1.5, 2]);
   const [countIn, setCountIn] = useState(settings.countIn);
   const [metronomeVolume, setMetronomeVolumeState] = useState(settings.metronomeVolume);
+  const [playNotes, setPlayNotesState] = useState(settings.playNotes);
+  const [playNotesVolume, setPlayNotesVolumeState] = useState(settings.playNotesVolume);
   const [metronomeMuted, setMetronomeMutedState] = useState(settings.metronomeMuted || initialMode === "video");
   const [subdivisionOn, setSubdivisionOnState] = useState(settings.subdivisionClicks);
   const [lanes, setLanes] = useState<Record<LaneId, boolean>>(settings.lanes);
@@ -288,6 +296,7 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
 
   const clockRef = useRef<EngineClock | null>(null);
   const metronomeRef = useRef<Metronome | null>(null);
+  const guitarRef = useRef<GuitarPlayer | null>(null);
   const controllerRef = useRef<PlaybackController | null>(null);
   const sheetHandleRef = useRef<SheetHandle | null>(null);
   const ytPlayerRef = useRef<YTPlayerLike | null>(null);
@@ -395,6 +404,8 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
 
     async function setup() {
       metronomeRef.current?.stop();
+      guitarRef.current?.stop();
+      guitarRef.current = null;
       clockRef.current?.dispose();
       clockRef.current = null;
 
@@ -434,6 +445,13 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
       metronome.start();
       metronomeRef.current = metronome;
 
+      const guitar = new GuitarPlayer(ctx, song, tempo);
+      guitar.setVolume(playNotesVolume);
+      guitar.setEnabled(playNotes);
+      if (clockRef.current) guitar.attach(clockRef.current);
+      guitar.start();
+      guitarRef.current = guitar;
+
       matcherRef.current = new Matcher(buildExpectedEvents(song, tempo), settings.tiers);
       allPassVerdictsRef.current = [];
       passesSinceRampRef.current = 0;
@@ -460,6 +478,17 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
   useEffect(() => {
     metronomeRef.current?.setSubdivision(subdivisionOn);
   }, [subdivisionOn]);
+  useEffect(() => {
+    guitarRef.current?.setEnabled(playNotes);
+  }, [playNotes]);
+  // The video has its own audio: entering video mode turns Play notes off for
+  // this session (not saved); the user can switch it back on.
+  useEffect(() => {
+    if (mode === "video") setPlayNotesState(false);
+  }, [mode]);
+  useEffect(() => {
+    guitarRef.current?.setVolume(playNotesVolume);
+  }, [playNotesVolume]);
 
   useEffect(() => {
     if (clockRef.current?.kind === "grid") {
@@ -626,6 +655,7 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
     return () => {
       clockRef.current?.dispose();
       metronomeRef.current?.stop();
+      guitarRef.current?.stop();
       controllerRef.current?.dispose();
       micRef.current?.stop();
       pitchDetectorRef.current?.dispose();
@@ -810,6 +840,16 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
 
     metronomeVolume,
     setMetronomeVolume: setMetronomeVolumeState,
+    playNotes,
+    setPlayNotes: (v: boolean) => {
+      setPlayNotesState(v);
+      opts.onSettingsChange?.({ ...settings, playNotes: v });
+    },
+    playNotesVolume,
+    setPlayNotesVolume: (v: number) => {
+      setPlayNotesVolumeState(v);
+      opts.onSettingsChange?.({ ...settings, playNotesVolume: v });
+    },
     metronomeMuted,
     setMetronomeMuted: setMetronomeMutedState,
     subdivisionOn,

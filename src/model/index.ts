@@ -111,6 +111,9 @@ export interface Settings {
   persistBannerDismissed: boolean;
   /** Tuner reference pitch for A4, Hz (430..450). */
   a4Hz: number;
+  /** "Play notes": synthetic guitar plays the song. */
+  playNotes: boolean;
+  playNotesVolume: number; // 0..1
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -126,6 +129,8 @@ export const DEFAULT_SETTINGS: Settings = {
   micEnabled: true,
   persistBannerDismissed: false,
   a4Hz: 440,
+  playNotes: false,
+  playNotesVolume: 0.6,
 };
 
 export interface SongRecord {
