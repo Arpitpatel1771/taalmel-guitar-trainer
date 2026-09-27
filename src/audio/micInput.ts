@@ -39,7 +39,7 @@ interface PortMessage {
 
 /** getUserMedia constraints per spec 9.1: defaults are tuned for voice calls
  * and damage guitar onsets, so every processing option is disabled. */
-const MIC_CONSTRAINTS: MediaStreamConstraints = {
+export const MIC_CONSTRAINTS: MediaStreamConstraints = {
   audio: {
     echoCancellation: false,
     noiseSuppression: false,

@@ -10,6 +10,7 @@ import { SongView } from "./screens/SongView";
 import { Exercises } from "./screens/Exercises";
 import { SettingsScreen } from "./screens/Settings";
 import { CalibrationScreen } from "./screens/Calibration";
+import { TunerScreen } from "./screens/TunerScreen";
 import { ShellProvider, useShell } from "./shell/AppShellContext";
 import { Sidebar, type NavTarget } from "./shell/Sidebar";
 import { StatusChip } from "./shell/StatusChip";
@@ -24,6 +25,7 @@ type Screen =
   | { kind: "song"; id: string }
   | { kind: "new-song" }
   | { kind: "exercises" }
+  | { kind: "tuner" }
   | { kind: "settings" }
   | { kind: "calibration"; returnTo: "library" | "settings" };
 
@@ -173,6 +175,8 @@ export function App({ storage }: AppProps) {
           onSettingsChange={persistSettings}
         />
       )}
+
+      {screen.kind === "tuner" && <TunerScreen settings={settings} onChange={persistSettings} />}
 
       {screen.kind === "settings" && (
         <SettingsScreen

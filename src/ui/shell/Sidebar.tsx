@@ -1,13 +1,14 @@
 import { useState, type ReactNode } from "react";
-import { Dumbbell, Library, PanelLeftClose, PanelLeftOpen, Plus, Settings, Timer } from "lucide-react";
+import { Dumbbell, Gauge, Library, PanelLeftClose, PanelLeftOpen, Plus, Settings, Timer } from "lucide-react";
 import styles from "./Shell.module.css";
 
-export type NavTarget = "library" | "new-song" | "exercises" | "calibration" | "settings";
+export type NavTarget = "library" | "new-song" | "exercises" | "tuner" | "calibration" | "settings";
 
 const NAV: { target: NavTarget; label: string; icon: ReactNode }[] = [
   { target: "library", label: "Library", icon: <Library size={18} /> },
   { target: "new-song", label: "New song", icon: <Plus size={18} /> },
   { target: "exercises", label: "Exercises", icon: <Dumbbell size={18} /> },
+  { target: "tuner", label: "Tuner", icon: <Gauge size={18} /> },
   { target: "calibration", label: "Calibration", icon: <Timer size={18} /> },
   { target: "settings", label: "Settings", icon: <Settings size={18} /> },
 ];

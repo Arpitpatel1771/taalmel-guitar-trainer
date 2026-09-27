@@ -35,3 +35,5 @@ export {
   type CalibrationConfig,
   type CalibrationResult,
 } from "./calibration";
+export { readTuner, midiToFreq, centsOff, noteName, foldOctave, median, OPEN_STRING_MIDI, IN_TUNE_CENTS, type TunerReading } from "./tuner";
+export { TunerInput } from "./tunerInput";

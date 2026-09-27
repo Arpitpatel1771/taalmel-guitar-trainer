@@ -109,6 +109,8 @@ export interface Settings {
    * mic toggle updates this. Default true. */
   micEnabled: boolean;
   persistBannerDismissed: boolean;
+  /** Tuner reference pitch for A4, Hz (430..450). */
+  a4Hz: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -123,6 +125,7 @@ export const DEFAULT_SETTINGS: Settings = {
   countIn: true,
   micEnabled: true,
   persistBannerDismissed: false,
+  a4Hz: 440,
 };
 
 export interface SongRecord {

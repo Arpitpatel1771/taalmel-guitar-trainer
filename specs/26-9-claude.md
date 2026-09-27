@@ -550,6 +550,14 @@ Play/pause, stop (returns to loop start or song start), mode toggle (grid / vide
 - **Offset nudge control:** buttons for -100/-10/+10/+100 ms and a "set bar 1 here" button that sets offset to the current video time. Changes update the song header and mark the song as modified (user saves).
 - Failures (invalid ID, embedding disabled by the uploader, offline): notice shown, mode falls back to grid. Embedding-disabled is common for official music uploads.
 
+### 10.4 Tuner (added 2026-09-27)
+
+- Reachable from the sidebar (Tuner screen) and from a Tuner popover in the practice dock (starts listening when opened, stops when closed).
+- Mic (same constraints as 9.1) -> `AnalyserNode` (4096 samples) polled every 50 ms; YIN on the main thread; frames below an RMS floor or with confidence < 0.8 show "no pitch"; readings are median-smoothed over the last 5 frames.
+- Target: nearest standard-tuning open string (E2 A2 D3 G3 B3 E4), or a string the user locks; when locked, octave errors are folded toward the target.
+- Display: note name, string, Hz, signed cents on a -50..+50 needle; within ±3 cents shows as in tune.
+- Reference A4 = 440 Hz by default, adjustable 430-450 Hz (`a4Hz` setting). No reference tones; standard tuning only.
+
 ---
 
 ## 11. Import, storage, export
@@ -600,7 +608,7 @@ Database `taalmel`, version 1.
   }
   ```
   Index on `updatedAt` for "recent first" listing.
-- Store `settings`, single record with key `"settings"`: calibration `{ latencyMs, method: "loopback" | "tap", measuredAt }`, enabled lanes, zoom, default mode, metronome volume, subdivision clicks, timing tier thresholds, count-in default, **mic enabled by default (`micEnabled`, default true)**.
+- Store `settings`, single record with key `"settings"`: calibration `{ latencyMs, method: "loopback" | "tap", measuredAt }`, enabled lanes, zoom, tuner reference `a4Hz` (default 440), default mode, metronome volume, subdivision clicks, timing tier thresholds, count-in default, **mic enabled by default (`micEnabled`, default true)**.
 - On first run the app calls `navigator.storage.persist()`. If denied, a dismissible banner recommends exporting the library regularly.
 - On load, every stored song is parsed lazily when opened. A song that fails to parse (e.g. after a format change) opens in the editor with its errors instead of breaking the library.
 - Storage errors (quota, blocked) are shown to the user as-is. Never swallowed.
@@ -635,6 +643,8 @@ All generators are pure functions returning song text. The output goes through t
 | **Chromatic** | start fret (1 to 20), strings (subset of 1-6, order low to high or high to low), finger pattern (`1234`, `1324`, `1243`, `4321`, custom 4-digit permutation), grid (4, 8, 12, 16), bars (1 to 32), direction (ascending across strings, descending, both) | For each string in order, the 4 frets `start + (finger - 1)` in pattern order, one per slot, length 1.                                                                                                    |
 | **Spider**    | start fret, finger pairs (`13/24` default), grid, bars                                                                                                                                                                                                    | Alternates between string s and s+2: fingers 1 and 3 on the pair, then fingers 2 and 4, walking across the neck. Exact sequence documented in the generator's doc comment and covered by a snapshot test. |
 | **Rhythm**    | string and fret (default 6S0 muted), grid or pattern (preset patterns: quarters, eighths, triplets, sixteenths, "offbeat eighths", "gallop"; or a custom slot list), bars                                                                                 | One note per selected slot.                                                                                                                                                                               |
+
+**Strumming** (added 2026-09-27): chords (open voicings E, Em, A, Am, D, Dm, G, C; one per bar, cycling through a progression), strum pattern (down quarters, down eighths, down-up eighths, folk `D DU UDU`, offbeat ups, sixteenth down-up), bars, 4/4 only. Each strum is a chord slot whose first note carries `strum: up|down`, every note ringing until the next strum. Mic feedback checks timing only (chord slots skip pitch; direction is not detectable).
 
 All generators take `bpm` and `time` (default 4/4) and produce a title like `Chromatic 1234, fret 5, 1/16`.
 

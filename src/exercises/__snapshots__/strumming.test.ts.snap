@@ -1,0 +1,13 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`strumming > matches the snapshot for fixed params 1`] = `
+"title: Strumming G-C, folk D DU UDU
+time: 4/4
+bpm: 90
+unit: 8
+
+[Exercise]
+Bar 1: {1} 1S3[2](strum: down) 2S0[2] 3S0[2] 4S0[2] 5S2[2] 6S3[2] {3} 1S3(strum: down) 2S0 3S0 4S0 5S2 6S3 {4} 1S3[2](strum: up) 2S0[2] 3S0[2] 4S0[2] 5S2[2] 6S3[2] {6} 1S3(strum: up) 2S0 3S0 4S0 5S2 6S3 {7} 1S3(strum: down) 2S0 3S0 4S0 5S2 6S3 {8} 1S3(strum: up) 2S0 3S0 4S0 5S2 6S3
+Bar 2: {1} 1S0[2](strum: down) 2S1[2] 3S0[2] 4S2[2] 5S3[2] {3} 1S0(strum: down) 2S1 3S0 4S2 5S3 {4} 1S0[2](strum: up) 2S1[2] 3S0[2] 4S2[2] 5S3[2] {6} 1S0(strum: up) 2S1 3S0 4S2 5S3 {7} 1S0(strum: down) 2S1 3S0 4S2 5S3 {8} 1S0(strum: up) 2S1 3S0 4S2 5S3
+"
+`;

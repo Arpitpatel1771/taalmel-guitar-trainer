@@ -241,6 +241,8 @@ export function PracticeArea({
         onZoomChange={engine.setZoom}
         bpmRampActive={engine.bpmRampActive}
         positionRef={engine.positionRef}
+        a4Hz={settings.a4Hz}
+        onA4Change={onSettingsChange ? (hz) => onSettingsChange({ ...settings, a4Hz: hz }) : undefined}
         practiceExtras={
           engine.mode === "grid" ? (
             <BpmRampPanel config={engine.bpmRamp} onChange={engine.setBpmRamp} micOn={engine.micOn} />

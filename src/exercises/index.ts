@@ -10,3 +10,6 @@ export type { SpiderParams, SpiderGrid } from "./spider.js";
 
 export { rhythm, DEFAULT_RHYTHM_PARAMS, RHYTHM_PRESETS } from "./rhythm.js";
 export type { RhythmParams, RhythmPattern, RhythmPresetName, RhythmPreset } from "./rhythm.js";
+
+export { strumming, DEFAULT_STRUMMING_PARAMS, STRUM_PATTERNS, CHORDS } from "./strumming.js";
+export type { StrummingParams, StrumPatternName, StrumPattern, ChordName } from "./strumming.js";

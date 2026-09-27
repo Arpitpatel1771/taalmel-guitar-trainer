@@ -4,10 +4,11 @@
 // else sits in the Practice and View popovers.
 
 import { useState, type ReactNode, type RefObject } from "react";
-import { Metronome, Mic, MicOff, Pause, Play, Repeat, SlidersHorizontal, Square, Eye, X } from "lucide-react";
+import { Gauge, Metronome, Mic, MicOff, Pause, Play, Repeat, SlidersHorizontal, Square, Eye, X } from "lucide-react";
 import type { LaneId, PracticeMode } from "../../model";
 import { MAX_BPM, MIN_BPM, type RestBars } from "../usePlaybackEngine";
 import { Popover } from "./Popover";
+import { TunerPanel } from "./TunerPanel";
 import styles from "./TransportDock.module.css";
 
 export interface TransportBarProps {
@@ -66,6 +67,9 @@ export interface TransportBarProps {
   positionRef?: RefObject<HTMLSpanElement | null>;
   /** Extra content for the Practice popover (e.g. the BPM ramp panel). */
   practiceExtras?: ReactNode;
+  /** Tuner reference pitch and its setter (dock tuner popover). */
+  a4Hz?: number;
+  onA4Change?: (hz: number) => void;
 }
 
 const LANE_LABELS: Record<LaneId, string> = { tab: "Tab", letter: "Letters", teacher: "Teacher notation" };
@@ -213,6 +217,12 @@ export function TransportBar(props: TransportBarProps) {
       </div>
 
       <div className={styles.spacer} />
+
+      {props.a4Hz !== undefined && props.onA4Change && (
+        <Popover label="Tuner" icon={<Gauge size={15} />} width={400}>
+          <TunerPanel compact autoStart a4Hz={props.a4Hz} onA4Change={props.onA4Change} />
+        </Popover>
+      )}
 
       <Popover label="Practice" icon={<SlidersHorizontal size={15} />}>
         <div className={styles.panelSection}>

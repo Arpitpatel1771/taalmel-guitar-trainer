@@ -3,7 +3,7 @@
 // special handling (spec 4.1).
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Bug, Drum, Save, Waves } from "lucide-react";
+import { Bug, Drum, Guitar, Save, Waves } from "lucide-react";
 import { Field, Segmented, Stepper } from "../components/Controls";
 import { ProblemsPanel } from "../editor/ProblemsPanel";
 import ex from "./Exercises.module.css";
@@ -12,6 +12,11 @@ import { parse } from "../../songFormat";
 import {
   chromatic,
   rhythm,
+  strumming,
+  STRUM_PATTERNS,
+  DEFAULT_STRUMMING_PARAMS,
+  type ChordName,
+  type StrumPatternName,
   spider,
   DEFAULT_CHROMATIC_PARAMS,
   DEFAULT_RHYTHM_PARAMS,
@@ -30,7 +35,17 @@ export interface ExercisesProps {
   onSettingsChange?: (next: Settings) => void;
 }
 
-type Kind = "chromatic" | "spider" | "rhythm";
+type Kind = "chromatic" | "spider" | "rhythm" | "strumming";
+
+const PROGRESSIONS: ChordName[][] = [
+  ["G", "C", "D"],
+  ["Em", "C", "G", "D"],
+  ["E", "A", "D"],
+  ["C", "Am", "Dm", "G"],
+  ["A", "D", "E"],
+  ["G"], ["C"], ["D"], ["E"], ["A"], ["Em"], ["Am"], ["Dm"],
+];
+const STRUM_PATTERN_NAMES = Object.keys(STRUM_PATTERNS) as StrumPatternName[];
 const ALL_STRINGS: StringNumber[] = [1, 2, 3, 4, 5, 6];
 const RHYTHM_PRESET_NAMES: RhythmPresetName[] = [
   "quarters",
@@ -59,6 +74,8 @@ export function Exercises({ settings, onSaveAsSong, onSaved, onSettingsChange }:
   const [rhythmMuted, setRhythmMuted] = useState(DEFAULT_RHYTHM_PARAMS.muted);
   const [rhythmPreset, setRhythmPreset] = useState<RhythmPresetName>("eighths");
 
+  const [progression, setProgression] = useState(DEFAULT_STRUMMING_PARAMS.chords.join("-"));
+  const [strumPattern, setStrumPattern] = useState<StrumPatternName>(DEFAULT_STRUMMING_PARAMS.pattern);
   const [text, setText] = useState<string | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -75,8 +92,10 @@ export function Exercises({ settings, onSaveAsSong, onSaved, onSettingsChange }:
         result = chromatic({ bpm, startFret, strings, pattern, grid, bars, direction });
       } else if (kind === "spider") {
         result = spider({ bpm, startFret, startStringPair, grid, bars });
-      } else {
+      } else if (kind === "rhythm") {
         result = rhythm({ bpm, string: rhythmString, fret: rhythmFret, muted: rhythmMuted, pattern: rhythmPreset, bars });
+      } else {
+        result = strumming({ bpm, bars, chords: progression.split("-") as ChordName[], pattern: strumPattern });
       }
       setText(result);
     } catch (err) {
@@ -100,12 +119,13 @@ export function Exercises({ settings, onSaveAsSong, onSaved, onSettingsChange }:
     const t = window.setTimeout(generate, 150);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, bpm, bars, grid, startFret, stringsLowToHigh, pattern, direction, startStringPair, rhythmString, rhythmFret, rhythmMuted, rhythmPreset]);
+  }, [kind, bpm, bars, grid, startFret, stringsLowToHigh, pattern, direction, startStringPair, rhythmString, rhythmFret, rhythmMuted, rhythmPreset, progression, strumPattern]);
 
   const KINDS: { id: Kind; name: string; desc: string; icon: ReactNode }[] = [
     { id: "chromatic", name: "Chromatic", desc: "Four-finger runs across the strings.", icon: <Waves size={16} /> },
     { id: "spider", name: "Spider", desc: "Alternating string pairs for finger independence.", icon: <Bug size={16} /> },
     { id: "rhythm", name: "Rhythm", desc: "One note on a rhythm pattern, to lock in timing.", icon: <Drum size={16} /> },
+    { id: "strumming", name: "Strumming", desc: "Open chords with a strum pattern. Mic checks timing.", icon: <Guitar size={16} /> },
   ];
   const GRID_OPTIONS = [4, 8, 12, 16].map((g) => ({ value: g as ChromaticGrid, label: String(g) }));
 
@@ -146,12 +166,12 @@ export function Exercises({ settings, onSaveAsSong, onSaved, onSettingsChange }:
           <Field label="Bars">
             <Stepper label="Bars" value={bars} onChange={setBars} min={1} max={32} />
           </Field>
-          {kind !== "rhythm" && (
+          {(kind === "chromatic" || kind === "spider") && (
             <Field label="Grid (notes per bar)">
               <Segmented label="Grid" value={grid} options={GRID_OPTIONS} onChange={setGrid} />
             </Field>
           )}
-          {kind !== "rhythm" && (
+          {(kind === "chromatic" || kind === "spider") && (
             <Field label="Start fret">
               <Stepper label="Start fret" value={startFret} onChange={setStartFret} min={1} max={20} />
             </Field>
@@ -244,6 +264,29 @@ export function Exercises({ settings, onSaveAsSong, onSaved, onSettingsChange }:
                 <input type="checkbox" checked={rhythmMuted} onChange={(e) => setRhythmMuted(e.target.checked)} />
                 Muted
               </label>
+            </>
+          )}
+          {kind === "strumming" && (
+            <>
+              <Field label="Chords (one per bar)">
+                <select value={progression} onChange={(e) => setProgression(e.target.value)}>
+                  {PROGRESSIONS.map((pr) => (
+                    <option key={pr.join("-")} value={pr.join("-")}>
+                      {pr.join(" – ")}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Strum pattern">
+                <select value={strumPattern} onChange={(e) => setStrumPattern(e.target.value as StrumPatternName)}>
+                  {STRUM_PATTERN_NAMES.map((n) => (
+                    <option key={n} value={n}>
+                      {STRUM_PATTERNS[n].label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <span className="hint">The mic checks strum timing only; it can't hear up vs down.</span>
             </>
           )}
           {genError && <div className="notice notice-error">{genError}</div>}
