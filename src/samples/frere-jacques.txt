@@ -1,0 +1,21 @@
+# Frere Jacques (traditional). Key of C. Each phrase repeats once.
+title: Frere Jacques
+time: 4/4
+bpm: 100
+unit: 8
+
+[Frere Jacques]
+Bar 1: {1} 2S1[2] {3} 2S3[2] {5} 1S0[2] {7} 2S1[2]
+Bar 2: {1} 2S1[2] {3} 2S3[2] {5} 1S0[2] {7} 2S1[2]
+
+[Dormez-vous]
+Bar 3: {1} 1S0[2] {3} 1S1[2] {5} 1S3[4]
+Bar 4: {1} 1S0[2] {3} 1S1[2] {5} 1S3[4]
+
+[Sonnez les matines]
+Bar 5: {1} 1S3 {2} 1S5 {3} 1S3 {4} 1S1 {5} 1S0[2] {7} 2S1[2]
+Bar 6: {1} 1S3 {2} 1S5 {3} 1S3 {4} 1S1 {5} 1S0[2] {7} 2S1[2]
+
+[Ding dang dong]
+Bar 7: {1} 2S1[2] {3} 3S0[2] {5} 2S1[4]
+Bar 8: {1} 2S1[2] {3} 3S0[2] {5} 2S1[4]

@@ -1,0 +1,23 @@
+# Twinkle Twinkle Little Star (traditional). Key of C.
+title: Twinkle Twinkle Little Star
+time: 4/4
+bpm: 100
+unit: 4
+
+[Verse]
+Bar 1: {1} 2S1 {2} 2S1 {3} 1S3 {4} 1S3
+Bar 2: {1} 1S5 {2} 1S5 {3} 1S3[2]
+Bar 3: {1} 1S1 {2} 1S1 {3} 1S0 {4} 1S0
+Bar 4: {1} 2S3 {2} 2S3 {3} 2S1[2]
+
+[Middle]
+Bar 5: {1} 1S3 {2} 1S3 {3} 1S1 {4} 1S1
+Bar 6: {1} 1S0 {2} 1S0 {3} 2S3[2]
+Bar 7: {1} 1S3 {2} 1S3 {3} 1S1 {4} 1S1
+Bar 8: {1} 1S0 {2} 1S0 {3} 2S3[2]
+
+[Verse again]
+Bar 9: {1} 2S1 {2} 2S1 {3} 1S3 {4} 1S3
+Bar 10: {1} 1S5 {2} 1S5 {3} 1S3[2]
+Bar 11: {1} 1S1 {2} 1S1 {3} 1S0 {4} 1S0
+Bar 12: {1} 2S3 {2} 2S3 {3} 2S1[2]

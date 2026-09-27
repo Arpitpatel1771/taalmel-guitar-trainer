@@ -1,0 +1,18 @@
+# Bella Ciao (traditional Italian). A minor, one octave down in open position.
+# Written from memory: the opening line and the "o bella ciao" hook only, all
+# rhythms marked uncertain (?). The closing line ("e ho trovato l'invasor") is
+# left out rather than guessed; add it in the editor or via LLM import.
+title: Bella Ciao
+time: 4/4
+bpm: 110
+unit: 8
+
+[Una mattina]
+Bar 1: {8} 4S2[?]
+Bar 2: {1} 3S2[?] {2} 2S0[?] {3} 2S1[?] {4} 3S2[4?] {8} 4S2[?]
+Bar 3: {1} 3S2[?] {2} 2S0[?] {3} 2S1[?] {4} 3S2[4?] {8} 4S2[?]
+
+[O bella ciao]
+Bar 4: {1} 3S2[?] {2} 2S0[?] {3} 2S1[4?] {7} 2S0[?] {8} 3S2[?]
+Bar 5: {1} 2S1[4?] {5} 2S0[?] {6} 3S2[?] {7} 1S0[2?]
+Bar 6: {1} 2S3[2?] {3} 2S1[2?] {5} 2S0[4?]

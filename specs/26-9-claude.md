@@ -630,6 +630,12 @@ Database `taalmel`, version 1.
 - **Import** accepts either file type. For library files, each song whose `id` already exists prompts: replace, keep both (new id), or skip, with an "apply to all" checkbox. Settings import is opt-in via a checkbox.
 - `formatVersion` exists so future versions can migrate old files rather than reject them. v1 rejects unknown future versions with a clear message.
 
+### 11.6 Example songs (added 2026-09-27)
+
+- Public-domain melodies shipped as plain song-format files in `src/samples/*.txt`, bundled at build time (offline): Happy Birthday, Bella Ciao (opening line and hook only, rhythms marked `?`), Ode to Joy, Twinkle Twinkle Little Star, Frere Jacques, Greensleeves, Amazing Grace.
+- Shown read-only in an "Example songs" section of the Library. Opening one practises it without saving; "Add to my library" (or saving an edited example) stores an editable copy and opens it. Examples are never stored or deleted.
+- A test asserts every example parses.
+
 ---
 
 ## 12. Exercises (`src/exercises`)

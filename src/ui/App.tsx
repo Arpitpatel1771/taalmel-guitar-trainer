@@ -11,6 +11,7 @@ import { Exercises } from "./screens/Exercises";
 import { SettingsScreen } from "./screens/Settings";
 import { CalibrationScreen } from "./screens/Calibration";
 import { TunerScreen } from "./screens/TunerScreen";
+import { SAMPLE_SONGS } from "../samples";
 import { ShellProvider, useShell } from "./shell/AppShellContext";
 import { Sidebar, type NavTarget } from "./shell/Sidebar";
 import { StatusChip } from "./shell/StatusChip";
@@ -23,6 +24,7 @@ export interface AppProps {
 type Screen =
   | { kind: "library" }
   | { kind: "song"; id: string }
+  | { kind: "sample"; id: string }
   | { kind: "new-song" }
   | { kind: "exercises" }
   | { kind: "tuner" }
@@ -114,8 +116,15 @@ export function App({ storage }: AppProps) {
     return <div className="app-shell screen">Loading…</div>;
   }
 
-  const focusMode = screen.kind === "song";
-  const activeNav: NavTarget | null = screen.kind === "song" ? null : screen.kind;
+  const focusMode = screen.kind === "song" || screen.kind === "sample";
+  const activeNav: NavTarget | null = screen.kind === "song" || screen.kind === "sample" ? null : screen.kind;
+
+  /** Saves an example as an editable library copy and opens it. */
+  async function addCopy(text: string) {
+    const r = await handleSaveNewSong(text);
+    if (r.ok) setScreen({ kind: "song", id: r.id });
+    else setGlobalError(r.message);
+  }
 
   function navigate(target: NavTarget) {
     if (target === "calibration") setScreen({ kind: "calibration", returnTo: "library" });
@@ -135,8 +144,35 @@ export function App({ storage }: AppProps) {
           showPersistBanner={false}
           onDismissPersistBanner={() => persistSettings({ ...settings, persistBannerDismissed: true })}
           refreshToken={refreshToken}
+          onOpenSample={(id) => setScreen({ kind: "sample", id })}
+          onAddSample={(text) => void addCopy(text)}
         />
       )}
+
+      {screen.kind === "sample" &&
+        (() => {
+          const sample = SAMPLE_SONGS.find((x) => x.id === screen.id);
+          return sample ? (
+            <SongView
+              key={`sample-${sample.id}`}
+              initialText={sample.text}
+              settings={settings}
+              // Examples are read-only: saving an edited example creates a
+              // library copy and opens it.
+              onSave={async (text) => {
+                const r = await handleSaveNewSong(text);
+                if (r.ok) setScreen({ kind: "song", id: r.id });
+                return r.ok ? { ok: true as const } : r;
+              }}
+              onBack={() => setScreen({ kind: "library" })}
+              onSettingsChange={persistSettings}
+            />
+          ) : (
+            <div className="screen">
+              <div className="notice notice-error">Example song not found.</div>
+            </div>
+          );
+        })()}
 
       {screen.kind === "new-song" && (
         <NewSong

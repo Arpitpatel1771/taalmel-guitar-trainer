@@ -8,6 +8,7 @@ import { parse } from "../../songFormat";
 import { Popover } from "../components/Popover";
 import dock from "../components/TransportDock.module.css";
 import lib from "./Library.module.css";
+import { SAMPLE_SONGS } from "../../samples";
 import type { SongRecord } from "../../model";
 import type { StorageAdapter } from "../storageTypes";
 import { ConflictDialog, type ConflictDialogDecisions, type LibraryImportPlan } from "../components/ConflictDialog";
@@ -21,6 +22,8 @@ export interface LibraryProps {
   showPersistBanner: boolean;
   onDismissPersistBanner: () => void;
   refreshToken: number;
+  onOpenSample: (id: string) => void;
+  onAddSample: (text: string) => void;
 }
 
 function downloadFile(filename: string, content: string, mime: string) {
@@ -43,6 +46,8 @@ export function Library({
   showPersistBanner,
   onDismissPersistBanner,
   refreshToken,
+  onOpenSample,
+  onAddSample,
 }: LibraryProps) {
   const [songs, setSongs] = useState<SongRecord[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -293,6 +298,50 @@ export function Library({
           })}
         </ul>
       )}
+
+      <div className={lib.examplesHeader}>
+        <h3>Example songs</h3>
+        <span className={lib.emptyText}>Public-domain melodies. Practise them as they are, or add a copy you can edit.</span>
+      </div>
+      <ul className={lib.grid}>
+        {SAMPLE_SONGS.map((sample) => {
+          const sum = summarize(sample.text);
+          const maxDensity = Math.max(1, ...sum.density);
+          return (
+            <li key={sample.id} className={`${lib.card} ${lib.sampleCard}`} onClick={() => onOpenSample(sample.id)}>
+              <div className={lib.cardTop}>
+                <button className={lib.title} onClick={(e) => { e.stopPropagation(); onOpenSample(sample.id); }}>
+                  {sample.title}
+                </button>
+              </div>
+              <div className={lib.meta}>
+                {sum.time && <span className={lib.metaStrong}>{sum.time}</span>}
+                <span>{sum.bars} bars</span>
+              </div>
+              <div className={lib.density} aria-hidden>
+                {sum.density.map((d, i) => (
+                  <span key={i} className={lib.densityBar} style={{ height: `${Math.max(8, (d / maxDensity) * 100)}%` }} />
+                ))}
+              </div>
+              <div className={lib.chips}>
+                <span className={lib.chip}>Example</span>
+                {sum.sections.map((name, i) => (
+                  <span key={i} className={lib.chip}>{name}</span>
+                ))}
+              </div>
+              <button
+                className={lib.addBtn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddSample(sample.text);
+                }}
+              >
+                <Plus size={14} /> Add to my library
+              </button>
+            </li>
+          );
+        })}
+      </ul>
 
       {pendingImport && (
         <ConflictDialog plan={pendingImport} onConfirm={(d) => void confirmImport(d)} onCancel={() => setPendingImport(null)} />
