@@ -81,7 +81,7 @@ export type RestBars = 0 | 1 | 2 | 4;
 
 /** Allowed practice tempo range, absolute (matches the song format's bpm limit spirit). */
 export const MIN_BPM = 20;
-export const MAX_BPM = 400;
+export const MAX_BPM = 999;
 
 export function clampBpm(bpm: number): number {
   return Math.min(MAX_BPM, Math.max(MIN_BPM, Math.round(bpm)));

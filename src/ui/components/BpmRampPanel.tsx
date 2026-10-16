@@ -2,7 +2,8 @@
 // BPM, step, optional max, and an advance condition (after M passes, or after
 // M consecutive accurate passes when mic is on).
 
-import type { BpmRampConfig } from "../usePlaybackEngine";
+import { MAX_BPM, MIN_BPM, type BpmRampConfig } from "../usePlaybackEngine";
+import { NumberInput } from "./Controls";
 
 export interface BpmRampPanelProps {
   config: BpmRampConfig;
@@ -25,37 +26,34 @@ export function BpmRampPanel({ config, onChange, micOn }: BpmRampPanelProps) {
         <>
           <label>
             Start
-            <input
-              type="number"
-              value={config.startBpm}
-              onChange={(e) => patch({ startBpm: Number(e.target.value) })}
-            />
+            <NumberInput value={config.startBpm} min={MIN_BPM} max={MAX_BPM} onCommit={(v) => v !== null && patch({ startBpm: v })} />
           </label>
           <label>
             Step
-            <input type="number" value={config.stepBpm} onChange={(e) => patch({ stepBpm: Number(e.target.value) })} />
+            <NumberInput value={config.stepBpm} onCommit={(v) => v !== null && patch({ stepBpm: v })} />
           </label>
           <label>
             Max
-            <input
-              type="number"
-              value={config.maxBpm ?? ""}
+            <NumberInput
+              value={config.maxBpm}
+              min={MIN_BPM}
+              max={MAX_BPM}
+              allowEmpty
               placeholder="none"
-              onChange={(e) => patch({ maxBpm: e.target.value === "" ? null : Number(e.target.value) })}
+              onCommit={(v) => patch({ maxBpm: v })}
             />
           </label>
           <label>
             Advance after
-            <input
-              type="number"
+            <NumberInput
               min={1}
+              integer
               value={config.condition.count}
-              onChange={(e) =>
+              onCommit={(v) =>
+                v !== null &&
                 patch({
                   condition:
-                    config.condition.kind === "passes"
-                      ? { kind: "passes", count: Number(e.target.value) }
-                      : { ...config.condition, count: Number(e.target.value) },
+                    config.condition.kind === "passes" ? { kind: "passes", count: v } : { ...config.condition, count: v },
                 })
               }
             />
@@ -80,14 +78,14 @@ export function BpmRampPanel({ config, onChange, micOn }: BpmRampPanelProps) {
           {config.condition.kind === "accuracy" && (
             <label>
               Min on-time %
-              <input
-                type="number"
+              <NumberInput
                 min={0}
                 max={100}
                 value={config.condition.minOnTimePct}
-                onChange={(e) =>
+                onCommit={(v) =>
+                  v !== null &&
                   patch({
-                    condition: { ...config.condition, minOnTimePct: Number(e.target.value) } as BpmRampConfig["condition"],
+                    condition: { ...config.condition, minOnTimePct: v } as BpmRampConfig["condition"],
                   })
                 }
               />

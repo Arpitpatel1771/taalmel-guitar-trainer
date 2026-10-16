@@ -411,7 +411,7 @@ function validateHeader(fields: RawHeaderField[], errors: ParseError[]): SongHea
   const bpmField = seen.get("bpm");
   if (bpmField) {
     const v = Number(bpmField.value.trim());
-    if (bpmField.value.trim() === "" || !Number.isFinite(v) || v <= 0 || v > 400) {
+    if (bpmField.value.trim() === "" || !Number.isFinite(v) || v <= 0 || v > 999) {
       errors.push(
         mkError(bpmField.line, "INVALID_BPM", `Invalid bpm '${bpmField.value}'`, {
           token: bpmField.value,
@@ -600,7 +600,7 @@ export function parse(text: string): ParseResult {
     for (const f of s.fields) {
       if (f.key === "bpm") {
         const v = Number(f.value.trim());
-        if (f.value.trim() === "" || !Number.isFinite(v) || v <= 0 || v > 400) {
+        if (f.value.trim() === "" || !Number.isFinite(v) || v <= 0 || v > 999) {
           errors.push(mkError(f.line, "INVALID_BPM", `Invalid bpm '${f.value}'`, { token: f.value }));
         }
       } else {

@@ -281,7 +281,7 @@ h4 {
   font-size: 12px;
 }
 
-.bpm-ramp-panel input[type="number"] {
+.bpm-ramp-panel input:not([type="checkbox"]) {
   width: 56px;
 }
 

@@ -1,6 +1,6 @@
-// Small form controls for the revamp: segmented control and number stepper.
+// Small form controls for the revamp: segmented control, number input and number stepper.
 
-import { useState, type ReactNode } from "react";
+import { useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { Minus, Plus } from "lucide-react";
 import styles from "./Controls.module.css";
 
@@ -39,6 +39,59 @@ export function Segmented<T extends string | number>({
         </button>
       ))}
     </div>
+  );
+}
+
+/**
+ * Free-typing number field. Typing only edits a local draft; it is parsed and
+ * clamped on blur or Enter (Escape reverts), so in-progress input like "1" on
+ * the way to "112" is never rejected or rewritten mid-typing. With
+ * `allowEmpty`, clearing the field commits null.
+ */
+export function NumberInput({
+  value,
+  onCommit,
+  min = -Infinity,
+  max = Infinity,
+  integer = false,
+  allowEmpty = false,
+  ...rest
+}: {
+  value: number | null;
+  onCommit: (v: number | null) => void;
+  min?: number;
+  max?: number;
+  integer?: boolean;
+  allowEmpty?: boolean;
+} & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "min" | "max" | "type">) {
+  const [draft, setDraft] = useState<string | null>(null);
+  function commit() {
+    if (draft === null) return;
+    const trimmed = draft.trim();
+    const n = Number(trimmed);
+    if (trimmed === "" && allowEmpty) onCommit(null);
+    else if (trimmed !== "" && Number.isFinite(n)) {
+      const v = Math.min(max, Math.max(min, integer ? Math.round(n) : n));
+      if (v !== value) onCommit(v);
+    }
+    setDraft(null);
+  }
+  return (
+    <input
+      {...rest}
+      type="text"
+      inputMode={integer ? "numeric" : "decimal"}
+      value={draft ?? (value === null ? "" : String(value))}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        else if (e.key === "Escape") {
+          setDraft(null);
+          e.currentTarget.blur();
+        }
+      }}
+    />
   );
 }
 

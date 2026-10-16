@@ -7,6 +7,7 @@ import { useState, type ReactNode, type RefObject } from "react";
 import { Gauge, Guitar, Metronome, Mic, MicOff, Pause, Play, Repeat, SlidersHorizontal, Square, Eye, X } from "lucide-react";
 import type { LaneId, PracticeMode } from "../../model";
 import { MAX_BPM, MIN_BPM, type RestBars } from "../usePlaybackEngine";
+import { NumberInput } from "./Controls";
 import { Popover } from "./Popover";
 import { TunerPanel } from "./TunerPanel";
 import styles from "./TransportDock.module.css";
@@ -149,22 +150,22 @@ export function TransportBar(props: TransportBarProps) {
         </button>
         {props.loopEnabled && (
           <div className={styles.loopRange}>
-            <input
-              type="number"
+            <NumberInput
               aria-label="Loop from bar"
+              integer
               min={props.firstBarNumber}
               max={props.lastBarNumber}
               value={rangeFrom}
-              onChange={(e) => props.onLoopRangeFromChange(Number(e.target.value))}
+              onCommit={(v) => v !== null && props.onLoopRangeFromChange(v)}
             />
             <span className={styles.dim}>to</span>
-            <input
-              type="number"
+            <NumberInput
               aria-label="Loop to bar"
+              integer
               min={props.firstBarNumber}
               max={props.lastBarNumber}
               value={rangeTo}
-              onChange={(e) => props.onLoopRangeToChange(Number(e.target.value))}
+              onCommit={(v) => v !== null && props.onLoopRangeToChange(v)}
             />
             {props.loopRange && (
               <button className={styles.clearBtn} onClick={props.onLoopRangeClear} aria-label="Loop whole song" title="Loop whole song">

@@ -105,7 +105,7 @@ describe("GridClock: speed factor", () => {
     expect(clock.speed()).toBeCloseTo(400 / 60);
     clock.setSpeed(0.1);
     expect(clock.speed()).toBe(0.1);
-    clock.setSpeed(100);
+    clock.setSpeed(1000);
     expect(clock.speed()).toBe(MAX_SPEED);
     clock.setSpeed(0);
     expect(clock.speed()).toBe(MIN_SPEED);

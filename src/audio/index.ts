@@ -3,6 +3,7 @@
 export { getAudioContext, resumeAudio } from "./context";
 
 export { Metronome, scheduleClick, buildClickSchedule } from "./metronome";
+export { FreeMetronome, clampFreeBpm, clickInterval, FREE_MIN_BPM, FREE_MAX_BPM, MAX_BEATS_PER_BAR, type Subdivision } from "./freeMetronome";
 
 export {
   OnsetDetector,

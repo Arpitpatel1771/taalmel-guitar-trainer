@@ -21,10 +21,10 @@ export interface GridClockOptions {
 }
 
 export const SCHEDULE_HEADROOM_SEC = 0.1;
-// Sanity bounds only: the UI limits tempo in absolute BPM (20-400), which on
+// Sanity bounds only: the UI limits tempo in absolute BPM (20-999), which on
 // slow or fast songs can exceed the old 0.25x-2x range.
 export const MIN_SPEED = 0.02;
-export const MAX_SPEED = 20;
+export const MAX_SPEED = 100;
 
 function clampSpeed(factor: number): number {
   return Math.min(MAX_SPEED, Math.max(MIN_SPEED, factor));

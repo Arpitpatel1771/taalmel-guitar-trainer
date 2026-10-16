@@ -154,7 +154,7 @@ The parser processes lines in order. Leading/trailing whitespace is trimmed. Emp
 | --------- | ------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `title`   | yes                       | free text                                                                  | Song title.                                                                                                                                                                                 |
 | `time`    | yes                       | `<int>/<int>`                                                              | Time signature for the whole song. Denominator must be 1, 2, 4, 8, 16, or 32. Numerator 1 to 32.                                                                                            |
-| `bpm`     | yes                       | number > 0, up to 400, decimals allowed                                    | Default tempo. Beats are **quarter notes**, regardless of time signature. For compound meters users convert: a 6/8 song felt at 60 dotted-quarter beats is entered as `bpm: 90` (60 x 1.5). |
+| `bpm`     | yes                       | number > 0, up to 999, decimals allowed                                    | Default tempo. Beats are **quarter notes**, regardless of time signature. For compound meters users convert: a 6/8 song felt at 60 dotted-quarter beats is entered as `bpm: 90` (60 x 1.5). |
 | `unit`    | yes                       | int >= 1                                                                   | Default slot count per bar.                                                                                                                                                                 |
 | `youtube` | no                        | YouTube URL (`youtube.com/watch?v=`, `youtu.be/`, or `youtube.com/embed/`) | Reference video.                                                                                                                                                                            |
 | `offset`  | only if `youtube` present | seconds, decimals allowed, >= 0                                            | Video timestamp at which bar 1, slot 1 begins.                                                                                                                                              |
@@ -376,7 +376,7 @@ interface Clock {
   positionTick(): number; // current musical position, may be negative during count-in
   positionSec(): number; // song-relative seconds (0 = bar 1 slot 1)
   isPlaying(): boolean;
-  setSpeed(factor: number): void; // grid: practice BPM / song BPM (UI limits BPM to 20..400); video: nearest available YouTube rate
+  setSpeed(factor: number): void; // grid: practice BPM / song BPM (UI limits BPM to 20..999); video: nearest available YouTube rate
   onStateChange(cb: (s: ClockState) => void): () => void;
 }
 ```
@@ -534,7 +534,7 @@ If no calibration exists, feedback still runs with latency 0 and a persistent no
 
 ### 10.1 Transport bar
 
-Play/pause, stop (returns to loop start or song start), mode toggle (grid / video, video only if the song has a link), speed control (grid: an absolute BPM field, 20 to 400, applied on Enter/blur, with the percentage of the song tempo shown as a readout; video: YouTube rate picker), count-in toggle (grid mode), metronome volume and mute, subdivision clicks toggle, mic on/off, **loop on/off toggle** with **From/To bar-number inputs** next to it, a rest-between-loops picker (10.2, shown whenever looping is on in grid mode), lanes toggle, zoom.
+Play/pause, stop (returns to loop start or song start), mode toggle (grid / video, video only if the song has a link), speed control (grid: an absolute BPM field, 20 to 999, applied on Enter/blur, with the percentage of the song tempo shown as a readout; video: YouTube rate picker), count-in toggle (grid mode), metronome volume and mute, subdivision clicks toggle, mic on/off, **loop on/off toggle** with **From/To bar-number inputs** next to it, a rest-between-loops picker (10.2, shown whenever looping is on in grid mode), lanes toggle, zoom.
 
 ### 10.2 Looping
 

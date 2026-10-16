@@ -9,6 +9,7 @@ import { Sheet, buildSongIndex } from "../../render";
 import { SongEditor, type SongEditorHandle } from "../editor/SongEditor";
 import { ProblemsPanel } from "../editor/ProblemsPanel";
 import { SyntaxReference } from "../editor/SyntaxReference";
+import { NumberInput } from "../components/Controls";
 import ed from "../editor/Editor.module.css";
 import { ArrowLeft, ArrowRight, Check, Copy } from "lucide-react";
 import { copyToClipboard, useDebouncedValue } from "../utils";
@@ -76,8 +77,8 @@ export function NewSong({ settings, onSaveSong, onSaved, onCancel }: NewSongProp
       setFormError("Time signature must look like 4/4.");
       return;
     }
-    if (!(bpm > 0 && bpm <= 400)) {
-      setFormError("BPM must be between 1 and 400.");
+    if (!(bpm > 0 && bpm <= 999)) {
+      setFormError("BPM must be between 1 and 999.");
       return;
     }
     if (!(unit >= 1)) {
@@ -179,11 +180,11 @@ export function NewSong({ settings, onSaveSong, onSaved, onCancel }: NewSongProp
             </label>
             <label className={ed.field}>
               BPM
-              <input type="number" value={bpm} onChange={(e) => setBpm(Number(e.target.value))} />
+              <NumberInput value={bpm} onCommit={(v) => v !== null && setBpm(v)} />
             </label>
             <label className={ed.field}>
               Grid (slots per bar)
-              <input type="number" value={unit} onChange={(e) => setUnit(Number(e.target.value))} />
+              <NumberInput integer value={unit} onCommit={(v) => v !== null && setUnit(v)} />
             </label>
             <label className={`${ed.field} ${ed.fieldWide}`}>
               YouTube link (optional)
@@ -192,7 +193,7 @@ export function NewSong({ settings, onSaveSong, onSaved, onCancel }: NewSongProp
             {youtubeUrl.trim() && (
               <label className={ed.field}>
                 Bar 1 starts at (seconds)
-                <input type="number" value={offsetSec} onChange={(e) => setOffsetSec(Number(e.target.value))} />
+                <NumberInput value={offsetSec} onCommit={(v) => v !== null && setOffsetSec(v)} />
               </label>
             )}
           </div>

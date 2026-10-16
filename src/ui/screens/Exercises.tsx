@@ -161,7 +161,7 @@ export function Exercises({ settings, onSaveAsSong, onSaved, onSettingsChange }:
         <div className={ex.panel}>
           <div className={ex.panelTitle}>Settings</div>
           <Field label="BPM">
-            <Stepper label="BPM" value={bpm} onChange={setBpm} min={20} max={400} step={5} />
+            <Stepper label="BPM" value={bpm} onChange={setBpm} min={20} max={999} step={5} />
           </Field>
           <Field label="Bars">
             <Stepper label="Bars" value={bars} onChange={setBars} min={1} max={32} />

@@ -1,6 +1,6 @@
 title: T
 time: 4/4
-bpm: 500
+bpm: 1000
 unit: 8
 
 [A]
