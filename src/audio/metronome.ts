@@ -25,9 +25,10 @@ const CLICK_DURATION_SEC = 0.03;
 /**
  * Schedules a single short oscillator burst (spec 7.5: "~30 ms, exponential
  * decay"). Exported standalone so calibration can reuse the exact click
- * sound without going through a Metronome instance.
+ * sound without going through a Metronome instance. `extraOut`, when given,
+ * also receives the click (e.g. a recording's MediaStreamDestination).
  */
-export function scheduleClick(ctx: AudioContext, time: number, accent: boolean, volume: number): void {
+export function scheduleClick(ctx: AudioContext, time: number, accent: boolean, volume: number, extraOut?: AudioNode): void {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = "sine";
@@ -40,6 +41,7 @@ export function scheduleClick(ctx: AudioContext, time: number, accent: boolean, 
 
   osc.connect(gain);
   gain.connect(ctx.destination);
+  if (extraOut) gain.connect(extraOut);
   osc.start(time);
   osc.stop(time + CLICK_DURATION_SEC + 0.005);
 }

@@ -12,6 +12,7 @@ import { SettingsScreen } from "./screens/Settings";
 import { CalibrationScreen } from "./screens/Calibration";
 import { TunerScreen } from "./screens/TunerScreen";
 import { MetronomeScreen } from "./screens/MetronomeScreen";
+import { RecorderScreen } from "./screens/RecorderScreen";
 import { SAMPLE_SONGS } from "../samples";
 import { ShellProvider, useShell } from "./shell/AppShellContext";
 import { Sidebar, type NavTarget } from "./shell/Sidebar";
@@ -30,6 +31,7 @@ type Screen =
   | { kind: "exercises" }
   | { kind: "tuner" }
   | { kind: "metronome" }
+  | { kind: "recorder" }
   | { kind: "settings" }
   | { kind: "calibration"; returnTo: "library" | "settings" };
 
@@ -217,6 +219,8 @@ export function App({ storage }: AppProps) {
       {screen.kind === "tuner" && <TunerScreen settings={settings} onChange={persistSettings} />}
 
       {screen.kind === "metronome" && <MetronomeScreen settings={settings} onChange={persistSettings} />}
+
+      {screen.kind === "recorder" && <RecorderScreen settings={settings} />}
 
       {screen.kind === "settings" && (
         <SettingsScreen

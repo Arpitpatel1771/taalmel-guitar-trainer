@@ -9,3 +9,5 @@ Do NOT start any work — no file edits, no code changes, no subagents, no build
 3. Only after the second yes, in a separate prompt, begin.
 
 Nothing else counts as permission: not answering a question, not choosing an option, not describing a problem, not saying what they want changed. Reading files to answer a question is allowed; changing anything is not.
+
+**Subagents:** this rule is enforced by the main Claude session only. A subagent dispatched by the main session is already covered by the user's approval given there; it must not ask again and should start the work it was given right away.

@@ -15,7 +15,7 @@ export const MAX_BEATS_PER_BAR = 16;
 
 export type Subdivision = 1 | 2 | 3 | 4;
 
-export type ClickFn = (ctx: AudioContext, time: number, accent: boolean, volume: number) => void;
+export type ClickFn = (ctx: AudioContext, time: number, accent: boolean, volume: number, extraOut?: AudioNode) => void;
 
 export function clampFreeBpm(bpm: number): number {
   return Math.min(FREE_MAX_BPM, Math.max(FREE_MIN_BPM, bpm));
@@ -32,6 +32,7 @@ export class FreeMetronome {
   private subdivision: Subdivision = 1;
   private accent = true;
   private volume = 0.7;
+  private extraOut: AudioNode | null = null;
 
   private timer: ReturnType<typeof setInterval> | null = null;
   private nextClickTime = 0;
@@ -65,6 +66,11 @@ export class FreeMetronome {
 
   setVolume(v: number): void {
     this.volume = Math.max(0, Math.min(1, v));
+  }
+
+  /** Also sends clicks to `node` (e.g. to mix them into a recording); null stops that. */
+  setExtraOutput(node: AudioNode | null): void {
+    this.extraOut = node;
   }
 
   isRunning(): boolean {
@@ -104,10 +110,10 @@ export class FreeMetronome {
       const beatIndex = Math.floor(this.step / this.subdivision);
       const time = this.nextClickTime;
       if (onBeat) {
-        this.click(this.ctx, time, this.accent && beatIndex === 0, this.volume);
+        this.click(this.ctx, time, this.accent && beatIndex === 0, this.volume, this.extraOut ?? undefined);
         for (const cb of this.beatListeners) cb(beatIndex, time);
       } else {
-        this.click(this.ctx, time, false, this.volume * SUBDIVISION_VOLUME_FACTOR);
+        this.click(this.ctx, time, false, this.volume * SUBDIVISION_VOLUME_FACTOR, this.extraOut ?? undefined);
       }
       // Read the interval per click so tempo changes apply from the next one.
       this.nextClickTime += clickInterval(this.bpm, this.subdivision);
