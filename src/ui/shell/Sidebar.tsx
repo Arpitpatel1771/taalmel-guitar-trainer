@@ -1,13 +1,14 @@
 import { useState, type ReactNode } from "react";
-import { Dumbbell, Gauge, Library, Metronome, PanelLeftClose, PanelLeftOpen, Plus, Settings, Timer, Video } from "lucide-react";
+import { Dumbbell, Gauge, Guitar, Library, Metronome, PanelLeftClose, PanelLeftOpen, Plus, Settings, Timer, Video } from "lucide-react";
 import styles from "./Shell.module.css";
 
-export type NavTarget = "library" | "new-song" | "exercises" | "tuner" | "metronome" | "recorder" | "calibration" | "settings";
+export type NavTarget = "library" | "new-song" | "exercises" | "chords" | "tuner" | "metronome" | "recorder" | "calibration" | "settings";
 
 const NAV: { target: NavTarget; label: string; icon: ReactNode }[] = [
   { target: "library", label: "Library", icon: <Library size={18} /> },
   { target: "new-song", label: "New song", icon: <Plus size={18} /> },
   { target: "exercises", label: "Exercises", icon: <Dumbbell size={18} /> },
+  { target: "chords", label: "Chords", icon: <Guitar size={18} /> },
   { target: "tuner", label: "Tuner", icon: <Gauge size={18} /> },
   { target: "metronome", label: "Metronome", icon: <Metronome size={18} /> },
   { target: "recorder", label: "Recorder", icon: <Video size={18} /> },
@@ -68,6 +69,13 @@ export function Sidebar({
       ))}
       <div className={styles.sidebarFooter}>
         {!collapsed && footer}
+        {!collapsed && (
+          <div className={styles.legalLinks}>
+            <a href="/privacy.html" target="_blank" rel="noopener">Privacy</a>
+            <span aria-hidden>·</span>
+            <a href="/terms.html" target="_blank" rel="noopener">Terms</a>
+          </div>
+        )}
         <button className={styles.navItem} onClick={toggle} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
           <span className={styles.navIcon}>{collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}</span>
           <span className={styles.navLabel}>Collapse</span>

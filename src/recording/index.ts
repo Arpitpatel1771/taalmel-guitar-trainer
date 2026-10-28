@@ -1,6 +1,6 @@
 // Public API of src/recording: capture, clip storage, trimming and saving.
 
-export { listClips, saveClip, renameClip, updateClipFlags, updateClipPeaks, deleteClip, type ClipRecord, type ClipFlag } from "./clipStore";
+export { listClips, saveClip, renameClip, updateClipFlags, updateClipPeaks, deleteClip, setClipBlob, type ClipRecord, type ClipFlag } from "./clipStore";
 export {
   pickMimeType,
   extensionFor,

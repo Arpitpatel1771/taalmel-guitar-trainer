@@ -2,6 +2,8 @@
 // large media blobs never touch the songs/settings database or its exports.
 // Like src/storage/db.ts, every helper rejects with IndexedDB's own error.
 
+import { emitStorageChange, type WriteOptions } from "../storage/changes";
+
 export const CLIPS_DB_NAME = "taalmel-clips";
 const CLIPS_DB_VERSION = 1;
 const CLIPS_STORE = "clips";
@@ -21,8 +23,11 @@ export interface ClipRecord {
   hasVideo: boolean;
   /** Measured while recording: WebM from MediaRecorder often reports no duration. */
   durationSec: number;
+  /** Media size in bytes; kept even when `blob` is null. */
   size: number;
-  blob: Blob;
+  /** null: the media is not on this device (it lives in Drive). */
+  blob: Blob | null;
+  driveFileId?: string;
   /** Absent on clips saved before flags existed: treat as none. */
   flags?: ClipFlag[];
   /** Waveform peaks (0..1), computed the first time the clip is opened in the trimmer. */
@@ -69,32 +74,50 @@ export async function listClips(): Promise<ClipRecord[]> {
   return all.sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export async function saveClip(clip: Omit<ClipRecord, "id" | "size"> & { id?: string }): Promise<ClipRecord> {
-  const record: ClipRecord = { ...clip, id: clip.id ?? crypto.randomUUID(), size: clip.blob.size };
+export async function saveClip(
+  clip: Omit<ClipRecord, "id" | "size"> & { id?: string; size?: number },
+  opts?: WriteOptions
+): Promise<ClipRecord> {
+  const record: ClipRecord = { ...clip, id: clip.id ?? crypto.randomUUID(), size: clip.blob ? clip.blob.size : (clip.size ?? 0) };
   await run("readwrite", (s) => s.put(record));
+  emitStorageChange({ kind: "clip", id: record.id, op: "upsert" }, opts);
   return record;
 }
 
-export async function renameClip(id: string, name: string): Promise<void> {
+export async function renameClip(id: string, name: string, opts?: WriteOptions): Promise<void> {
   const clip = await run("readonly", (s) => s.get(id) as IDBRequest<ClipRecord | undefined>);
   if (!clip) throw new Error(`Clip ${id} was not found.`);
   await run("readwrite", (s) => s.put({ ...clip, name }));
+  emitStorageChange({ kind: "clip", id, op: "upsert" }, opts);
 }
 
-export async function updateClipFlags(id: string, flags: ClipFlag[]): Promise<void> {
+export async function updateClipFlags(id: string, flags: ClipFlag[], opts?: WriteOptions): Promise<void> {
   const clip = await run("readonly", (s) => s.get(id) as IDBRequest<ClipRecord | undefined>);
   if (!clip) throw new Error(`Clip ${id} was not found.`);
   await run("readwrite", (s) => s.put({ ...clip, flags: [...flags].sort((a, b) => a.timeSec - b.timeSec) }));
+  emitStorageChange({ kind: "clip", id, op: "upsert" }, opts);
 }
 
-export async function updateClipPeaks(id: string, peaks: number[]): Promise<void> {
+export async function updateClipPeaks(id: string, peaks: number[], opts?: WriteOptions): Promise<void> {
   const clip = await run("readonly", (s) => s.get(id) as IDBRequest<ClipRecord | undefined>);
   if (!clip) throw new Error(`Clip ${id} was not found.`);
   await run("readwrite", (s) => s.put({ ...clip, peaks }));
+  emitStorageChange({ kind: "clip", id, op: "upsert" }, opts);
 }
 
-export async function deleteClip(id: string): Promise<void> {
+export async function deleteClip(id: string, opts?: WriteOptions): Promise<void> {
   await run("readwrite", (s) => s.delete(id));
+  emitStorageChange({ kind: "clip", id, op: "delete" }, opts);
+}
+
+/** Attaches (or drops, with null) the local media; `size` is kept. */
+export async function setClipBlob(id: string, blob: Blob | null, opts?: WriteOptions): Promise<ClipRecord> {
+  const clip = await run("readonly", (s) => s.get(id) as IDBRequest<ClipRecord | undefined>);
+  if (!clip) throw new Error(`Clip ${id} was not found.`);
+  const next: ClipRecord = { ...clip, blob, size: blob ? blob.size : clip.size };
+  await run("readwrite", (s) => s.put(next));
+  emitStorageChange({ kind: "clip", id, op: "upsert" }, opts);
+  return next;
 }
 
 /** Test-only: drops the cached connection so the database can be deleted. */

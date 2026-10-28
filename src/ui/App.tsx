@@ -1,7 +1,7 @@
 // App shell: settings load + persist banner, screen routing (spec 11.4).
 // No external state/router library (spec 3): plain useState-based routing.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { DEFAULT_SETTINGS, type Settings } from "../model";
 import type { StorageAdapter } from "./storageTypes";
 import { Library } from "./screens/Library";
@@ -11,12 +11,16 @@ import { Exercises } from "./screens/Exercises";
 import { SettingsScreen } from "./screens/Settings";
 import { CalibrationScreen } from "./screens/Calibration";
 import { TunerScreen } from "./screens/TunerScreen";
+import { ChordsScreen } from "./screens/ChordsScreen";
 import { MetronomeScreen } from "./screens/MetronomeScreen";
 import { RecorderScreen } from "./screens/RecorderScreen";
+import type { ClipRecord } from "../recording";
 import { SAMPLE_SONGS } from "../samples";
 import { ShellProvider, useShell } from "./shell/AppShellContext";
 import { Sidebar, type NavTarget } from "./shell/Sidebar";
 import { StatusChip } from "./shell/StatusChip";
+import { DriveSyncProvider, useDriveSync } from "../drive/useDriveSync";
+import { DriveChip, DriveDialogs } from "../drive/DriveUi";
 import shellStyles from "./shell/Shell.module.css";
 
 export interface AppProps {
@@ -29,6 +33,7 @@ type Screen =
   | { kind: "sample"; id: string }
   | { kind: "new-song" }
   | { kind: "exercises" }
+  | { kind: "chords" }
   | { kind: "tuner" }
   | { kind: "metronome" }
   | { kind: "recorder" }
@@ -216,11 +221,13 @@ export function App({ storage }: AppProps) {
         />
       )}
 
+      {screen.kind === "chords" && <ChordsScreen settings={settings} onChange={persistSettings} />}
+
       {screen.kind === "tuner" && <TunerScreen settings={settings} onChange={persistSettings} />}
 
       {screen.kind === "metronome" && <MetronomeScreen settings={settings} onChange={persistSettings} />}
 
-      {screen.kind === "recorder" && <RecorderScreen settings={settings} />}
+      {screen.kind === "recorder" && <RecorderWithDrive settings={settings} />}
 
       {screen.kind === "settings" && (
         <SettingsScreen
@@ -246,7 +253,9 @@ export function App({ storage }: AppProps) {
 
   return (
     <ShellProvider openCalibration={openCalibration}>
+      <DriveProviderWithToasts>
       <GlobalErrorToast error={globalError} onShown={() => setGlobalError(null)} />
+      <DriveDialogs />
       {focusMode ? (
         <div className={shellStyles.main}>{content}</div>
       ) : (
@@ -255,20 +264,24 @@ export function App({ storage }: AppProps) {
             active={activeNav}
             onNavigate={navigate}
             footer={
-              !persisted && !settings.persistBannerDismissed ? (
-                <StatusChip
-                  tone="warning"
-                  title="Your browser may clear the library to free space. Export it regularly from the Library."
-                  onClick={() => persistSettings({ ...settings, persistBannerDismissed: true })}
-                >
-                  Storage not persistent
-                </StatusChip>
-              ) : null
+              <>
+                {!persisted && !settings.persistBannerDismissed ? (
+                  <StatusChip
+                    tone="warning"
+                    title="Your browser may clear the library to free space. Export it regularly from the Library."
+                    onClick={() => persistSettings({ ...settings, persistBannerDismissed: true })}
+                  >
+                    Storage not persistent
+                  </StatusChip>
+                ) : null}
+                <DriveChip />
+              </>
             }
           />
           <main className={shellStyles.main}>{content}</main>
         </div>
       )}
+      </DriveProviderWithToasts>
     </ShellProvider>
   );
 }
@@ -282,4 +295,28 @@ function GlobalErrorToast({ error, onShown }: { error: string | null; onShown: (
     onShown();
   }, [error, toast, onShown]);
   return null;
+}
+
+/** Drive sync context; unexpected sync errors surface as error toasts. */
+function DriveProviderWithToasts({ children }: { children: ReactNode }) {
+  const { toast } = useShell();
+  const onError = useCallback((m: string) => toast(`Drive: ${m}`, "error"), [toast]);
+  return <DriveSyncProvider onError={onError}>{children}</DriveSyncProvider>;
+}
+
+/** Recorder with Drive-backed media download (progress shown in the clip badge). */
+function RecorderWithDrive({ settings }: { settings: Settings }) {
+  const { toast } = useShell();
+  const drive = useDriveSync();
+  const connected = drive.status.state !== "disconnected";
+  const onNeedMedia = useCallback(
+    async (clip: ClipRecord, onProgress?: (fraction: number) => void) => {
+      if (!clip.driveFileId) return null;
+      const blob = await drive.downloadClipMedia(clip.id, onProgress);
+      toast("Downloaded.");
+      return blob;
+    },
+    [drive, toast],
+  );
+  return <RecorderScreen settings={settings} onNeedMedia={connected ? onNeedMedia : undefined} />;
 }

@@ -5,6 +5,7 @@
 
 import type { Song, SongRecord } from "../model/index.js";
 import { parse, serialize } from "../songFormat/index.js";
+import { emitStorageChange, type WriteOptions } from "./changes.js";
 import { SONGS_STORE, openDb, reqToPromise, txDone } from "./db.js";
 
 function denormalize(song: Song): { title: string; bpm: number; hasVideo: boolean } {
@@ -51,7 +52,7 @@ export async function getSong(id: string): Promise<SongRecord | undefined> {
  * in place, preserving its original `createdAt`; otherwise a new record is
  * created with a fresh `crypto.randomUUID()`.
  */
-export async function saveSong(text: string, id?: string): Promise<SongRecord> {
+export async function saveSong(text: string, id?: string, opts?: WriteOptions): Promise<SongRecord> {
   const result = parse(text);
   if (!result.ok) {
     const first = result.errors[0];
@@ -93,12 +94,14 @@ export async function saveSong(text: string, id?: string): Promise<SongRecord> {
 
   store.put(record);
   await txDone(tx);
+  emitStorageChange({ kind: "song", id: record.id, op: "upsert" }, opts);
   return record;
 }
 
-export async function deleteSong(id: string): Promise<void> {
+export async function deleteSong(id: string, opts?: WriteOptions): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(SONGS_STORE, "readwrite");
   tx.objectStore(SONGS_STORE).delete(id);
   await txDone(tx);
+  emitStorageChange({ kind: "song", id, op: "delete" }, opts);
 }

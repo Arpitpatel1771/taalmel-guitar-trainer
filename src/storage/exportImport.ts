@@ -12,6 +12,7 @@ import type { Settings, SongRecord } from "../model/index.js";
 import { DEFAULT_SETTINGS } from "../model/index.js";
 import { parse, serialize } from "../songFormat/index.js";
 import { SONGS_STORE, openDb, txDone } from "./db.js";
+import { emitStorageChange } from "./changes.js";
 import { loadSettings, saveSettings } from "./settings.js";
 import { listSongs } from "./songs.js";
 
@@ -207,6 +208,7 @@ async function putSongEntry(entry: LibrarySongEntry): Promise<void> {
   const tx = db.transaction(SONGS_STORE, "readwrite");
   tx.objectStore(SONGS_STORE).put(record);
   await txDone(tx);
+  emitStorageChange({ kind: "song", id: record.id, op: "upsert" });
 }
 
 function mergeSettings(base: Settings): Settings {

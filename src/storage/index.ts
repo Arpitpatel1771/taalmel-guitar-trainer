@@ -3,6 +3,7 @@
 
 export { openDb } from "./db.js";
 export { listSongs, getSong, saveSong, deleteSong } from "./songs.js";
+export { onStorageChange, emitStorageChange, type StorageChange, type WriteOptions } from "./changes.js";
 export { loadSettings, saveSettings, requestPersist } from "./settings.js";
 export {
   LIBRARY_FORMAT_VERSION,

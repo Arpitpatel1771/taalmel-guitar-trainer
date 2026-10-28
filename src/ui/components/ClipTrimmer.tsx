@@ -70,13 +70,16 @@ function TimeInput({ value, onCommit, label }: { value: number; onCommit: (sec: 
   );
 }
 
+/** A clip whose media is on this device: the trimmer never receives a null blob. */
+export type PlayableClip = ClipRecord & { blob: Blob };
+
 export function ClipTrimmer({
   clip,
   onClose,
   onSavedAsClip,
   onFlagsChanged,
 }: {
-  clip: ClipRecord;
+  clip: PlayableClip;
   onClose: () => void;
   onSavedAsClip: () => void;
   onFlagsChanged?: () => void;

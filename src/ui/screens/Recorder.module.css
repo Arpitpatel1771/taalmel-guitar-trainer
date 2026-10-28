@@ -183,3 +183,7 @@
 .flagTime { font-family: var(--font-mono); font-size: var(--text-xs); min-width: 52px; }
 .flagLabel { flex: 1 1 120px; min-width: 0; }
 .padInput { width: 56px; text-align: center; }
+
+.clipGrey {
+  opacity: 0.55;
+}

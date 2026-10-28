@@ -1,8 +1,11 @@
 // Settings screen (spec 11.4). Storage-agnostic: parent owns persistence.
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { LaneId, PracticeMode, Settings } from "../../model";
 import { Field, Segmented, Stepper } from "../components/Controls";
+import { useDriveSync } from "../../drive/useDriveSync";
+import { relativeTime } from "../../drive/syncUi";
+import { useShell } from "../shell/AppShellContext";
 import st from "./Settings.module.css";
 
 export interface SettingsScreenProps {
@@ -16,7 +19,7 @@ const LANE_LABELS: Record<LaneId, string> = { tab: "Tab", letter: "Letters", tea
 
 // Defined at module level (not inside SettingsScreen) so React keeps the same
 // component identity across renders; otherwise sliders remount mid-drag.
-function Row({ label, help, children }: { label: string; help?: string; children: ReactNode }) {
+function Row({ label, help, children }: { label: string; help?: ReactNode; children: ReactNode }) {
   return (
     <div className={st.row}>
       <div className={st.text}>
@@ -30,6 +33,89 @@ function Row({ label, help, children }: { label: string; help?: string; children
 
 function Toggle({ checked, onToggle, label }: { checked: boolean; onToggle: (v: boolean) => void; label: string }) {
   return <input type="checkbox" aria-label={label} checked={checked} onChange={(e) => onToggle(e.target.checked)} />;
+}
+
+function DriveSection() {
+  const drive = useDriveSync();
+  const { toast } = useShell();
+  const [busy, setBusy] = useState(false);
+  async function run(fn: () => Promise<unknown>, okText?: string) {
+    setBusy(true);
+    try {
+      await fn();
+      if (okText) toast(okText);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err), "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const connected = drive.status.state !== "disconnected";
+  return (
+    <section className={st.group}>
+      <div className={st.groupTitle}>Google Drive</div>
+      {!drive.configured ? (
+        <Row label="Not configured" help="Google Drive sync needs VITE_GOOGLE_CLIENT_ID, VITE_GOOGLE_API_KEY and VITE_GOOGLE_APP_ID." >
+          {null}
+        </Row>
+      ) : !connected ? (
+        <Row
+          label="Back up and sync"
+          help={
+            <>
+              Keeps songs, settings and recordings in a Taalmel folder in your Drive. See the{" "}
+              <a href="/privacy.html" target="_blank" rel="noopener">
+                privacy policy
+              </a>
+              .
+            </>
+          }
+        >
+          <button className="btn-primary" disabled={busy} onClick={() => void run(drive.connect)}>
+            {busy ? "Connecting…" : "Connect"}
+          </button>
+        </Row>
+      ) : (
+        <>
+          <Row label="Connected" help={drive.status.email ?? "Google account"}>
+            <button disabled={busy} onClick={() => void run(drive.disconnect)}>
+              Disconnect
+            </button>
+          </Row>
+          <Row label="Upload recordings to Drive" help="Clips that are not uploaded stay on this device only.">
+            <Segmented
+              label="Upload recordings to Drive"
+              value={drive.uploadSetting}
+              options={[
+                { value: "off" as const, label: "Off" },
+                { value: "audio" as const, label: "Audio only" },
+                { value: "all" as const, label: "Everything" },
+              ]}
+              onChange={(v) => void run(() => drive.setUploadSetting(v))}
+            />
+          </Row>
+          <Row label="Import from Drive" help="Pick .txt songs, audio or video files from your Drive.">
+            <button
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  const r = await drive.importFromDrive();
+                  if (r) toast(`Imported ${r.songs} song(s) and ${r.clips} recording(s).`);
+                })
+              }
+            >
+              Import from Drive
+            </button>
+          </Row>
+          <Row label="Sync" help={drive.status.lastSyncAt ? `Last synced ${relativeTime(drive.status.lastSyncAt)}` : "Not synced yet"}>
+            <button disabled={busy} onClick={() => void run(drive.syncNow)}>
+              Sync now
+            </button>
+          </Row>
+        </>
+      )}
+    </section>
+  );
 }
 
 export function SettingsScreen({ settings, onChange, onOpenCalibration, onBack }: SettingsScreenProps) {
@@ -78,6 +164,9 @@ export function SettingsScreen({ settings, onChange, onOpenCalibration, onBack }
           </Row>
           <Row label="Metronome muted by default">
             <Toggle label="Metronome muted by default" checked={settings.metronomeMuted} onToggle={(v) => patch({ metronomeMuted: v })} />
+          </Row>
+          <Row label="Left-handed" help="Mirrors chord diagrams.">
+            <Toggle label="Left-handed" checked={settings.leftHanded} onToggle={(v) => patch({ leftHanded: v })} />
           </Row>
           <Row label="Subdivision clicks" help="Quieter clicks on every grid slot.">
             <Toggle label="Subdivision clicks" checked={settings.subdivisionClicks} onToggle={(v) => patch({ subdivisionClicks: v })} />
@@ -145,6 +234,8 @@ export function SettingsScreen({ settings, onChange, onOpenCalibration, onBack }
             <span className={st.value}>{settings.zoom}px</span>
           </Row>
         </section>
+
+        <DriveSection />
       </div>
     </div>
   );

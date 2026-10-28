@@ -5,6 +5,7 @@
 import type { Settings } from "../model/index.js";
 import { DEFAULT_SETTINGS } from "../model/index.js";
 import { SETTINGS_KEY, SETTINGS_STORE, openDb, reqToPromise, txDone } from "./db.js";
+import { emitStorageChange, type WriteOptions } from "./changes.js";
 
 function mergeWithDefaults(stored: Partial<Settings> | undefined): Settings {
   if (!stored) return { ...DEFAULT_SETTINGS };
@@ -19,6 +20,9 @@ function mergeWithDefaults(stored: Partial<Settings> | undefined): Settings {
     ...rest,
     lanes: { ...DEFAULT_SETTINGS.lanes, ...(rest.lanes ?? {}) },
     tiers: { ...DEFAULT_SETTINGS.tiers, ...(rest.tiers ?? {}) },
+    chordMarks: { ...(rest.chordMarks ?? {}) },
+    chordView: { ...DEFAULT_SETTINGS.chordView, ...(rest.chordView ?? {}) },
+    chordStats: { changes: { ...(rest.chordStats?.changes ?? {}) }, quiz: { ...(rest.chordStats?.quiz ?? {}) } },
   };
 }
 
@@ -31,11 +35,12 @@ export async function loadSettings(): Promise<Settings> {
   return mergeWithDefaults(stored);
 }
 
-export async function saveSettings(settings: Settings): Promise<void> {
+export async function saveSettings(settings: Settings, opts?: WriteOptions): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(SETTINGS_STORE, "readwrite");
   tx.objectStore(SETTINGS_STORE).put(settings, SETTINGS_KEY);
   await txDone(tx);
+  emitStorageChange({ kind: "settings", op: "upsert" }, opts);
 }
 
 /** Requests persistent storage (spec 11.4: called on first run). Returns

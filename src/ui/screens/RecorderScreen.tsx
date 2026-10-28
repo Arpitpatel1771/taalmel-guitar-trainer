@@ -3,7 +3,7 @@
 // metronome plays along; it is only mixed into the recording if asked.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Circle, Download, Flag, Metronome as MetronomeIcon, Scissors, Square, Trash2, Video } from "lucide-react";
+import { Circle, CloudUpload, Download, Flag, HardDriveDownload, Metronome as MetronomeIcon, Scissors, Square, Trash2, Video } from "lucide-react";
 import type { Settings } from "../../model";
 import { FreeMetronome, FREE_MAX_BPM, FREE_MIN_BPM, MAX_BEATS_PER_BAR, getAudioContext, resumeAudio } from "../../audio";
 import {
@@ -18,6 +18,7 @@ import {
   safeFileName,
   saveBlobToDisk,
   saveClip,
+  setClipBlob,
   trimClip,
   stopStream,
   type ClipFlag,
@@ -26,6 +27,8 @@ import {
 import { Field, Segmented, Stepper } from "../components/Controls";
 import { ClipTrimmer, isFlagHotkey } from "../components/ClipTrimmer";
 import { LiveWaveform } from "../components/LiveWaveform";
+import { useDriveSync } from "../../drive/useDriveSync";
+import { clipBadge } from "../../drive/syncUi";
 import { useShell } from "../shell/AppShellContext";
 import st from "./Recorder.module.css";
 
@@ -35,8 +38,20 @@ function formatSize(bytes: number): string {
   return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(2)} GB` : `${(bytes / 1e6).toFixed(1)} MB`;
 }
 
-export function RecorderScreen({ settings }: { settings: Settings }) {
+const NOT_UPLOADED_TITLE = "Media is on another device and hasn't been uploaded";
+const NO_MEDIA_TITLE = "This clip's media isn't on this device";
+
+export function RecorderScreen({
+  settings,
+  onNeedMedia,
+}: {
+  settings: Settings;
+  /** Fetches a clip's media from Drive when it isn't on this device. */
+  onNeedMedia?: (clip: ClipRecord, onProgress?: (fraction: number) => void) => Promise<Blob | null>;
+}) {
   const { toast } = useShell();
+  const drive = useDriveSync();
+  const driveOn = drive.status.state !== "disconnected";
   const [mode, setMode] = useState<InputMode>("video");
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [inputError, setInputError] = useState<string | null>(null);
@@ -69,6 +84,10 @@ export function RecorderScreen({ settings }: { settings: Settings }) {
   }, [toast]);
 
   useEffect(() => void refresh(), [refresh]);
+  // Uploads finishing, pulls and other Drive changes update clips behind our back.
+  useEffect(() => {
+    if (driveOn) void refresh();
+  }, [driveOn, drive.status.lastSyncAt, drive.status.state, refresh]);
   useEffect(() => metro().setBpm(bpm), [bpm]);
   useEffect(() => metro().setBeatsPerBar(beatsPerBar), [beatsPerBar]);
   useEffect(() => metro().setVolume(settings.metronomeVolume), [settings.metronomeVolume]);
@@ -225,10 +244,21 @@ export function RecorderScreen({ settings }: { settings: Settings }) {
     }
   }
 
+  async function driveAction(fn: () => Promise<unknown>, okText: string) {
+    try {
+      await fn();
+      await refresh();
+      toast(okText);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err), "error");
+    }
+  }
+
   const [convertingId, setConvertingId] = useState<string | null>(null);
 
   /** Converts the whole (untrimmed) audio clip to MP3, then saves it. */
   async function downloadMp3(clip: ClipRecord) {
+    if (!clip.blob) return;
     setConvertingId(clip.id);
     try {
       const out = await trimClip(clip.blob, { sourceMime: clip.mimeType, hasVideo: false, mode: "exact", audioFormat: "mp3" });
@@ -240,7 +270,39 @@ export function RecorderScreen({ settings }: { settings: Settings }) {
     }
   }
 
+  const [downloading, setDownloading] = useState<Record<string, number>>({});
+
+  /** Makes sure the clip's media is local, fetching it via `onNeedMedia` if not. */
+  async function ensureMedia(clip: ClipRecord): Promise<boolean> {
+    if (clip.blob) return true;
+    try {
+      setDownloading((d) => ({ ...d, [clip.id]: 0 }));
+      const blob = (await onNeedMedia?.(clip, (f) => setDownloading((d) => ({ ...d, [clip.id]: f })))) ?? null;
+      if (!blob) {
+        toast("This clip's media isn't on this device.", "error");
+        return false;
+      }
+      await setClipBlob(clip.id, blob);
+      await refresh();
+      return true;
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err), "error");
+      return false;
+    } finally {
+      setDownloading((d) => {
+        const { [clip.id]: _gone, ...rest } = d;
+        return rest;
+      });
+    }
+  }
+
+  async function openTrim(clip: ClipRecord) {
+    if (trimId === clip.id) return setTrimId(null);
+    if (await ensureMedia(clip)) setTrimId(clip.id);
+  }
+
   async function download(clip: ClipRecord) {
+    if (!clip.blob) return;
     try {
       await saveBlobToDisk(clip.blob, `${safeFileName(clip.name)}.${extensionFor(clip.mimeType, clip.hasVideo)}`);
     } catch (err) {
@@ -349,8 +411,14 @@ export function RecorderScreen({ settings }: { settings: Settings }) {
             <p className={st.empty}>No recordings yet.</p>
           ) : (
             <ul className={st.clipList}>
-              {clips.map((c) => (
-                <li key={c.id} className={`${st.clip}${trimId === c.id ? ` ${st.clipActive}` : ""}`}>
+              {clips.map((c) => {
+                const unavailable = !c.blob && !c.driveFileId;
+                return (
+                <li
+                  key={c.id}
+                  className={`${st.clip}${trimId === c.id ? ` ${st.clipActive}` : ""}${unavailable ? ` ${st.clipGrey}` : ""}`}
+                  title={unavailable ? NOT_UPLOADED_TITLE : undefined}
+                >
                   <div className={st.clipInfo}>
                     <input
                       className={st.clipName}
@@ -364,11 +432,19 @@ export function RecorderScreen({ settings }: { settings: Settings }) {
                       {c.hasVideo ? "Video" : "Audio"} · {formatClipTime(c.durationSec)} · {formatSize(c.size)} ·{" "}
                       {extensionFor(c.mimeType, c.hasVideo).toUpperCase()}
                       {c.flags && c.flags.length > 0 && ` · ${c.flags.length} ${c.flags.length === 1 ? "flag" : "flags"}`}
+                      {!c.blob && !driveOn && " · Not on this device"}
                     </span>
+                    {driveOn && (
+                      <span className={st.clipMeta} data-testid="drive-badge">
+                        {c.id in downloading ? `Downloading ${Math.round(downloading[c.id] * 100)}%` : clipBadge(c, drive.status.uploads).text}
+                      </span>
+                    )}
                   </div>
                   {confirmDeleteId === c.id ? (
                     <div className={st.clipActions}>
-                      <span className={st.clipMeta}>Delete?</span>
+                      <span className={st.clipMeta}>
+                        {driveOn && c.driveFileId ? "Delete here and in Drive (moved to Drive trash)?" : "Delete?"}
+                      </span>
                       <button className="btn-danger" onClick={() => void handleDelete(c.id)}>
                         Delete
                       </button>
@@ -378,20 +454,44 @@ export function RecorderScreen({ settings }: { settings: Settings }) {
                     </div>
                   ) : (
                     <div className={st.clipActions}>
-                      <button className="btn-ghost" onClick={() => setTrimId(trimId === c.id ? null : c.id)} title="Play / trim">
+                      <button className="btn-ghost" onClick={() => void openTrim(c)}
+                        disabled={unavailable}
+                        title={unavailable ? NOT_UPLOADED_TITLE : "Play / trim"}>
                         <Scissors size={15} />
                       </button>
-                      <button className="btn-ghost" onClick={() => void download(c)} title="Save to computer">
+                      <button className="btn-ghost" onClick={() => void download(c)}
+                        disabled={!c.blob}
+                        title={unavailable ? NOT_UPLOADED_TITLE : c.blob ? "Save to computer" : NO_MEDIA_TITLE}>
                         <Download size={15} />
                       </button>
                       {!c.hasVideo && (
                         <button
                           className={`btn-ghost ${st.mp3Btn}`}
                           onClick={() => void downloadMp3(c)}
-                          disabled={convertingId !== null}
-                          title="Save as MP3"
+                          disabled={convertingId !== null || !c.blob}
+                          title={unavailable ? NOT_UPLOADED_TITLE : c.blob ? "Save as MP3" : NO_MEDIA_TITLE}
                         >
                           {convertingId === c.id ? "…" : "MP3"}
+                        </button>
+                      )}
+                      {driveOn && !c.driveFileId && c.blob && !(c.id in drive.status.uploads) && (
+                        <button
+                          className="btn-ghost"
+                          onClick={() => void driveAction(() => drive.uploadClip(c.id), "Uploaded to Drive.")}
+                          title="Upload to Drive"
+                          aria-label="Upload to Drive"
+                        >
+                          <CloudUpload size={15} />
+                        </button>
+                      )}
+                      {driveOn && c.driveFileId && c.blob && (
+                        <button
+                          className="btn-ghost"
+                          onClick={() => void driveAction(() => drive.removeLocalMedia(c.id), "Removed from this device.")}
+                          title="Remove from this device"
+                          aria-label="Remove from this device"
+                        >
+                          <HardDriveDownload size={15} />
                         </button>
                       )}
                       <button className="btn-ghost" onClick={() => setConfirmDeleteId(c.id)} title="Delete">
@@ -400,16 +500,17 @@ export function RecorderScreen({ settings }: { settings: Settings }) {
                     </div>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </section>
 
-        {trimClipRecord && (
+        {trimClipRecord?.blob && (
           <section className={`${st.card} ${st.wide}`}>
             <ClipTrimmer
               key={trimClipRecord.id}
-              clip={trimClipRecord}
+              clip={{ ...trimClipRecord, blob: trimClipRecord.blob }}
               onClose={() => setTrimId(null)}
               onSavedAsClip={() => void refresh()}
               onFlagsChanged={() => void refresh()}

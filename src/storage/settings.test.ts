@@ -35,6 +35,20 @@ describe("loadSettings", () => {
     expect(loaded.countIn).toBe(DEFAULT_SETTINGS.countIn);
   });
 
+  it("fills chord fields (incl. nested chordView) for records saved before they existed", async () => {
+    const old = { ...DEFAULT_SETTINGS, zoom: 310, chordView: { orientation: "horizontal" } } as unknown as typeof DEFAULT_SETTINGS;
+    // @ts-expect-error simulate pre-chord record
+    delete old.chordMarks;
+    // @ts-expect-error simulate pre-chord record
+    delete old.leftHanded;
+    await saveSettings(old);
+    const loaded = await loadSettings();
+    expect(loaded.zoom).toBe(310);
+    expect(loaded.chordMarks).toEqual({});
+    expect(loaded.leftHanded).toBe(false);
+    expect(loaded.chordView).toEqual({ orientation: "horizontal", labels: "fingers", noteNames: false });
+  });
+
   it("drops a stale accidentals field from a previously saved record", async () => {
     // Simulate a settings record saved before `accidentals` was removed from
     // Settings in favor of per-note flat metadata.
