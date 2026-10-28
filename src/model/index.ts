@@ -114,6 +114,22 @@ export interface Settings {
   /** "Play notes": synthetic guitar plays the song. */
   playNotes: boolean;
   playNotesVolume: number; // 0..1
+  chordMarks: Record<string, "learning" | "known">;
+  chordView: {
+    orientation: "vertical" | "horizontal";
+    labels: "fingers" | "intervals";
+    noteNames: boolean;
+  };
+  leftHanded: boolean;
+  /** Chord practice results (chord practice spec "Shared"). */
+  chordStats: ChordStats;
+}
+
+export interface ChordStats {
+  /** Keyed by the two chord keys, sorted and joined with "|". */
+  changes: Record<string, { best: number; history: { at: string; count: number; seconds: number }[] }>;
+  /** Keyed by chordKey. */
+  quiz: Record<string, { seen: number; correct: number }>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -131,6 +147,10 @@ export const DEFAULT_SETTINGS: Settings = {
   a4Hz: 440,
   playNotes: false,
   playNotesVolume: 0.6,
+  chordMarks: {},
+  chordView: { orientation: "vertical", labels: "fingers", noteNames: false },
+  leftHanded: false,
+  chordStats: { changes: {}, quiz: {} },
 };
 
 export interface SongRecord {

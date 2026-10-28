@@ -1,0 +1,19 @@
+/* Chord practice modes (chord practice spec). Shared pieces; each mode adds its own module. */
+.wrap { display: flex; flex-direction: column; gap: var(--space-4); }
+.modeBar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.picker { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.pickerLabel { color: var(--text-secondary); font-size: var(--text-sm); }
+.pickerRow { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.chip { height: 26px; padding: 0 var(--space-2); font-size: var(--text-xs); border-radius: var(--radius-pill); }
+.chipOn { border-color: var(--accent); color: var(--accent); }
+.placeholder { color: var(--text-muted); font-size: var(--text-sm); }

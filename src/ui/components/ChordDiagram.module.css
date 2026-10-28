@@ -1,0 +1,19 @@
+/* Chord diagrams: colours come from tokens only. */
+.svg { display: block; max-width: 100%; height: auto; }
+.string { stroke: var(--text-muted); stroke-width: 1.2; }
+.fret { stroke: var(--border-strong); stroke-width: 1; }
+.nut { stroke: var(--text-primary); stroke-width: 4; stroke-linecap: butt; }
+.dot { fill: var(--text-secondary); }
+.dotRoot { fill: var(--accent); }
+.dotOutline { fill: none; stroke: var(--text-primary); stroke-width: 2; }
+.dotDim { fill: var(--surface-3); }
+.barre { fill: var(--text-secondary); }
+.label { fill: var(--surface-0); font-family: var(--font-ui); font-weight: var(--weight-semibold); text-anchor: middle; dominant-baseline: central; }
+.labelRoot { fill: var(--text-on-accent); }
+.labelDim { fill: var(--text-secondary); }
+.mark { stroke: var(--text-muted); stroke-width: 1.6; fill: none; stroke-linecap: round; }
+.markRoot { stroke: var(--accent); stroke-width: 2.4; }
+.text { fill: var(--text-secondary); font-family: var(--font-ui); text-anchor: middle; dominant-baseline: central; }
+.textEnd { text-anchor: end; }
+.noteName { fill: var(--text-primary); font-family: var(--font-mono); text-anchor: middle; dominant-baseline: central; }
+.fretNum { fill: var(--text-muted); font-family: var(--font-mono); text-anchor: middle; dominant-baseline: central; }
