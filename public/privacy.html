@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy · Taalmel</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<style>
+  :root { --bg: #111214; --surface: #1a1b1e; --text: #ececec; --muted: #a3a3a8; --accent: #f2a93b; --border: #2a2b2f; }
+  @media (prefers-color-scheme: light) { :root { --bg: #fafaf9; --surface: #ffffff; --text: #1a1a1a; --muted: #5c5c62; --accent: #b4720f; --border: #e4e4e7; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 Inter, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+  .mark { width: 32px; height: 32px; border-radius: 7px; background: #f2a93b; color: #1a1204; display: grid; place-items: center; font-size: 18px; }
+  header a { color: var(--text); text-decoration: none; font-weight: 600; font-size: 18px; }
+  h1 { font-size: 32px; line-height: 1.2; margin: 0 0 8px; }
+  h2 { font-size: 20px; margin: 36px 0 8px; }
+  .updated { color: var(--muted); margin: 0 0 24px; }
+  a { color: var(--accent); }
+  ul { padding-left: 22px; }
+  li { margin: 6px 0; }
+  .callout { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: 14px 16px; margin: 16px 0; }
+  code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.9em; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <header><span class="mark" aria-hidden="true">♪</span><a href="/">Taalmel</a></header>
+
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: October 28, 2026</p>
+
+  <p>Taalmel is a guitar practice app that runs in your web browser at <a href="https://taalmel-khaki.vercel.app">taalmel-khaki.vercel.app</a>. This policy explains what data Taalmel handles, where it is kept, and what control you have over it.</p>
+
+  <div class="callout"><strong>In short:</strong> Taalmel has no servers that store your data, no accounts of its own, no analytics, no ads, and it never sells or shares your data. Your songs, settings and recordings live in your browser and, only if you connect it, in your own Google Drive.</div>
+
+  <h2>Data stored on your device</h2>
+  <p>Everything you create in Taalmel is saved in your browser's local storage (IndexedDB) on your own device:</p>
+  <ul>
+    <li>Songs you write or import, and your practice settings.</li>
+    <li>Chord marks and practice results, such as quiz scores and chord-change counts.</li>
+    <li>Audio and video recordings you make in the Recorder, plus their flags and waveforms.</li>
+  </ul>
+  <p>This data never leaves your device unless you connect Google Drive (below) or export it yourself.</p>
+
+  <h2>Microphone and camera</h2>
+  <p>Taalmel asks for microphone access to tune your guitar, check your timing and pitch, and record. It asks for camera access only when you record video. Audio and video are processed on your device in real time. Recordings are saved only when you press Record, and only to your device (and your Drive, if you choose to sync them). Nothing is sent to Taalmel or any third party.</p>
+
+  <h2>Google Drive (optional)</h2>
+  <p>If you choose <strong>Connect</strong> under Settings → Google Drive, Taalmel uses Google sign-in to back up and sync your data to your own Google Drive. Taalmel requests only these permissions:</p>
+  <ul>
+    <li><code>drive.file</code>: access only to files and folders that Taalmel itself creates in your Drive (a <em>Taalmel</em> folder with your songs, recordings and settings), and to files you explicitly choose with the "Import from Drive" picker. Taalmel cannot see, read or change any other files in your Drive.</li>
+    <li><code>email</code>: your Google account's email address, used only to show which account is connected.</li>
+  </ul>
+  <p>All communication with Google happens directly between your browser and Google's servers. Taalmel's sign-in token is kept in memory only and is never stored or sent anywhere else. Taalmel does not use your Google data for advertising, does not transfer it to anyone, and does not let humans read it.</p>
+
+  <h2>Google API Services User Data Policy</h2>
+  <p>Taalmel's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+
+  <h2>YouTube videos</h2>
+  <p>Songs can link to a YouTube video to play along with. These videos are played through YouTube's embedded player, which is operated by Google and subject to <a href="https://policies.google.com/privacy">Google's Privacy Policy</a>.</p>
+
+  <h2>Hosting</h2>
+  <p>Taalmel's web files are served by Vercel. Like any website host, Vercel may process standard technical request data, such as IP addresses, to deliver the site and protect it from abuse. See <a href="https://vercel.com/legal/privacy-policy">Vercel's Privacy Policy</a>. Taalmel itself adds no tracking or analytics.</p>
+
+  <h2>Your control and deleting your data</h2>
+  <ul>
+    <li><strong>Disconnect Drive</strong> at any time in Settings → Google Drive. Syncing stops immediately.</li>
+    <li><strong>Revoke access</strong> completely at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+    <li><strong>Delete Drive data</strong> by deleting the <em>Taalmel</em> folder in your Google Drive.</li>
+    <li><strong>Delete local data</strong> by deleting songs and clips in the app, or by clearing this site's data in your browser settings.</li>
+  </ul>
+
+  <h2>Children</h2>
+  <p>Taalmel is not directed to children under 13 and does not knowingly collect personal information from them.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy changes, the updated version will be posted on this page with a new "Last updated" date.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about privacy? Email <a href="mailto:arpitpatel1771@gmail.com">arpitpatel1771@gmail.com</a>.</p>
+
+  <footer><a href="/">Open Taalmel</a> · <a href="/terms.html">Terms of Service</a></footer>
+</main>
+</body>
+</html>

@@ -226,3 +226,8 @@ button.chip:hover:not(:disabled) {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
 }
+
+/* Privacy / terms links (needed for Google OAuth verification). */
+.legalLinks { display: flex; gap: var(--space-1); padding: 0 var(--space-3); font-size: var(--text-xs); color: var(--text-muted); }
+.legalLinks a { color: var(--text-muted); text-decoration: none; }
+.legalLinks a:hover { color: var(--text-secondary); text-decoration: underline; }
