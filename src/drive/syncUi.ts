@@ -49,3 +49,33 @@ export function relativeTime(then: number, now: number = Date.now()): string {
   if (h < 24) return `${h} h ago`;
   return `${Math.round(h / 24)} d ago`;
 }
+
+export type DotTone = "ok" | "accent" | "warning" | "error" | "neutral";
+
+/** Status dot colour on the account avatar. */
+export function dotTone(status: SyncStatus): DotTone {
+  const chip = chipFor(status);
+  if (!chip) return "neutral";
+  switch (chip.tone) {
+    case "ok":
+      return "ok";
+    case "info":
+    case "accent":
+      return "accent";
+    case "warning":
+      return "warning";
+    case "error":
+      return "error";
+    default:
+      return "neutral";
+  }
+}
+
+/** Up to two initials from a name, else the first letter of the email. */
+export function initialsFor(name: string | null, email: string | null): string {
+  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  const e = (email ?? "").trim();
+  return e ? e[0].toUpperCase() : "?";
+}

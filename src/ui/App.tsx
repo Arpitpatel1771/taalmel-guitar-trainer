@@ -19,8 +19,9 @@ import { SAMPLE_SONGS } from "../samples";
 import { ShellProvider, useShell } from "./shell/AppShellContext";
 import { Sidebar, type NavTarget } from "./shell/Sidebar";
 import { StatusChip } from "./shell/StatusChip";
+import { AccountChip } from "../drive/AccountChip";
 import { DriveSyncProvider, useDriveSync } from "../drive/useDriveSync";
-import { DriveChip, DriveDialogs } from "../drive/DriveUi";
+import { DriveDialogs } from "../drive/DriveUi";
 import shellStyles from "./shell/Shell.module.css";
 
 export interface AppProps {
@@ -263,6 +264,7 @@ export function App({ storage }: AppProps) {
           <Sidebar
             active={activeNav}
             onNavigate={navigate}
+            account={(collapsed) => <AccountChip collapsed={collapsed} onOpenSettings={() => setScreen({ kind: "settings" })} />}
             footer={
               <>
                 {!persisted && !settings.persistBannerDismissed ? (
@@ -274,7 +276,6 @@ export function App({ storage }: AppProps) {
                     Storage not persistent
                   </StatusChip>
                 ) : null}
-                <DriveChip />
               </>
             }
           />

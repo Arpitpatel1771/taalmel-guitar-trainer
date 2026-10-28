@@ -70,6 +70,7 @@ function fakeAuth() {
     }),
     onChange: () => () => undefined,
     email: () => "me@example.com",
+    profile: () => ({ email: "me@example.com", name: "Me", picture: null }),
     signOut: vi.fn(),
   };
   return { auth, state };

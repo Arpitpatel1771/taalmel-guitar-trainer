@@ -30,10 +30,13 @@ export function Sidebar({
   active,
   onNavigate,
   footer,
+  account,
 }: {
   active: NavTarget | null;
   onNavigate: (target: NavTarget) => void;
   footer?: ReactNode;
+  /** Account chip slot, rendered right under the brand. */
+  account?: (collapsed: boolean) => ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
 
@@ -55,6 +58,7 @@ export function Sidebar({
         </span>
         <span className={styles.brandName}>Taalmel</span>
       </div>
+      {account?.(collapsed)}
       {NAV.map((item) => (
         <button
           key={item.target}

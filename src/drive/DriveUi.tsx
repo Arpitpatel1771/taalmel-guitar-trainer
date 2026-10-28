@@ -1,36 +1,11 @@
-// Drive UI pieces that live outside Settings: sidebar chip, song conflict dialog
+// Drive UI pieces that live outside Settings: song conflict dialog
 // and remote-delete confirmation.
 
 import { useEffect } from "react";
 import { useShell } from "../ui/shell/AppShellContext";
-import { StatusChip } from "../ui/shell/StatusChip";
 import type { SongConflict } from "./engine";
-import { chipFor } from "./syncUi";
 import { useDriveSync } from "./useDriveSync";
 import st from "./DriveUi.module.css";
-
-/** Sidebar chip; renders nothing when Drive is disconnected. */
-export function DriveChip() {
-  const { status, connect, syncNow, setConflictsOpen } = useDriveSync();
-  const { toast } = useShell();
-  const chip = chipFor(status);
-  if (!chip) return null;
-  const run = (p: Promise<void>) => p.catch((err) => toast(err instanceof Error ? err.message : String(err), "error"));
-  return (
-    <StatusChip
-      tone={chip.tone}
-      pulse={chip.pulse}
-      title={status.lastSyncAt ? `Last synced ${new Date(status.lastSyncAt).toLocaleTimeString()}` : "Google Drive sync"}
-      onClick={() => {
-        if (chip.action === "connect") void run(connect());
-        else if (chip.action === "conflicts") setConflictsOpen(true);
-        else void run(syncNow());
-      }}
-    >
-      {chip.text}
-    </StatusChip>
-  );
-}
 
 function when(ms: number): string {
   return ms ? new Date(ms).toLocaleString() : "unknown";

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { SyncStatus } from "./engine";
-import { chipFor, clipBadge, relativeTime } from "./syncUi";
+import { chipFor, clipBadge, dotTone, initialsFor, relativeTime } from "./syncUi";
 
-const base: SyncStatus = { state: "idle", email: null, lastSyncAt: null, conflicts: [], pendingRemoteDeletes: [], uploads: {}, error: null };
+const base: SyncStatus = { state: "idle", email: null, name: null, picture: null, lastSyncAt: null, conflicts: [], pendingRemoteDeletes: [], uploads: {}, error: null };
 const blob = new Blob(["x"]);
 
 describe("chipFor", () => {
@@ -37,5 +37,26 @@ describe("relativeTime", () => {
     expect(relativeTime(1000, 5000)).toBe("just now");
     expect(relativeTime(0, 5 * 60000)).toBe("5 min ago");
     expect(relativeTime(0, 3 * 3600000)).toBe("3 h ago");
+  });
+});
+
+describe("dotTone", () => {
+  it("maps status to a dot tone", () => {
+    expect(dotTone(base)).toBe("ok");
+    expect(dotTone({ ...base, state: "syncing" })).toBe("accent");
+    expect(dotTone({ ...base, state: "authRequired" })).toBe("warning");
+    expect(dotTone({ ...base, state: "retrying" })).toBe("warning");
+    expect(dotTone({ ...base, conflicts: [{} as never] })).toBe("warning");
+    expect(dotTone({ ...base, state: "driveFull" })).toBe("error");
+    expect(dotTone({ ...base, state: "offline" })).toBe("neutral");
+  });
+});
+
+describe("initialsFor", () => {
+  it("uses name, else email", () => {
+    expect(initialsFor("Ann Marie Lee", null)).toBe("AL");
+    expect(initialsFor("ann", "x@y.z")).toBe("AN");
+    expect(initialsFor(null, "zed@y.z")).toBe("Z");
+    expect(initialsFor(null, null)).toBe("?");
   });
 });

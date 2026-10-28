@@ -13,6 +13,8 @@ import type { SyncStore } from "./engine";
 const EMPTY_STATUS: SyncStatus = {
   state: "disconnected",
   email: null,
+  name: null,
+  picture: null,
   lastSyncAt: null,
   conflicts: [],
   pendingRemoteDeletes: [],
@@ -133,6 +135,7 @@ async function createEngine(): Promise<Created | null> {
         return () => listeners.delete(cb);
       },
       email: () => "dev@example.com",
+      profile: () => ({ email: "dev@example.com", name: "Dev User", picture: null }),
       signOut: () => listeners.forEach((cb) => cb()),
     };
     const store = memorySyncStore();

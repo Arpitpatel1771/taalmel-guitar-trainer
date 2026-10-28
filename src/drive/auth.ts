@@ -4,7 +4,7 @@
 
 import { getDriveConfig } from "./config";
 
-export const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file email";
+export const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file email profile";
 const GIS_SRC = "https://accounts.google.com/gsi/client";
 const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 /** Refresh when the token is within this long of expiring. */
@@ -18,12 +18,50 @@ export class AuthRequiredError extends Error {
   }
 }
 
+export interface DriveProfile {
+  email: string;
+  name: string | null;
+  picture: string | null;
+}
+
+export const PROFILE_KEY = "taalmel.driveProfile";
+
+/** Parses a userinfo response; null when it has no email. */
+export function parseProfile(data: unknown): DriveProfile | null {
+  if (!data || typeof data !== "object") return null;
+  const d = data as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const email = str(d.email);
+  if (!email) return null;
+  return { email, name: str(d.name) ?? str(d.given_name), picture: str(d.picture) };
+}
+
+/** Per-device display cache so the chip can render before the network answers. */
+export function loadCachedProfile(): DriveProfile | null {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    return raw ? parseProfile(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedProfile(p: DriveProfile | null): void {
+  try {
+    if (p) localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+    else localStorage.removeItem(PROFILE_KEY);
+  } catch {
+    // Display cache only.
+  }
+}
+
 export interface DriveAuth {
   /** Resolves with a valid access token. Interactive requests must run inside a user gesture. */
   getToken(opts: { interactive: boolean }): Promise<string>;
   /** Called when the connected state (token / email) changes. Returns an unsubscribe function. */
   onChange(cb: () => void): () => void;
   email(): string | null;
+  profile(): DriveProfile | null;
   signOut(): void;
 }
 
@@ -85,7 +123,7 @@ function loadGis(): Promise<GoogleGlobal> {
 export class GisDriveAuth implements DriveAuth {
   private token: string | null = null;
   private expiresAt = 0;
-  private emailAddr: string | null = null;
+  private prof: DriveProfile | null = loadCachedProfile();
   private consented = false;
   private client: GisTokenClient | null = null;
   private pending: { resolve: (t: string) => void; reject: (e: Error) => void; interactive: boolean } | null = null;
@@ -99,14 +137,19 @@ export class GisDriveAuth implements DriveAuth {
   }
 
   email(): string | null {
-    return this.emailAddr;
+    return this.prof?.email ?? null;
+  }
+
+  profile(): DriveProfile | null {
+    return this.prof;
   }
 
   signOut(): void {
     const token = this.token;
     this.token = null;
     this.expiresAt = 0;
-    this.emailAddr = null;
+    this.prof = null;
+    saveCachedProfile(null);
     this.consented = false;
     if (token) window.google?.accounts.oauth2.revoke(token);
     this.emit();
@@ -151,7 +194,7 @@ export class GisDriveAuth implements DriveAuth {
     const pending = this.pending;
     this.pending = null;
     pending?.resolve(resp.access_token);
-    void this.fetchEmail(resp.access_token);
+    void this.fetchProfile(resp.access_token);
     this.emit();
   }
 
@@ -164,17 +207,18 @@ export class GisDriveAuth implements DriveAuth {
     else pending.reject(new Error(message ?? `Google sign-in failed (${code}).`));
   }
 
-  private async fetchEmail(token: string): Promise<void> {
+  private async fetchProfile(token: string): Promise<void> {
     try {
       const res = await fetch(USERINFO_URL, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) return;
-      const data = (await res.json()) as { email?: string };
-      if (data.email && data.email !== this.emailAddr) {
-        this.emailAddr = data.email;
+      const next = parseProfile(await res.json());
+      if (next && JSON.stringify(next) !== JSON.stringify(this.prof)) {
+        this.prof = next;
+        saveCachedProfile(next);
         this.emit();
       }
     } catch {
-      // The email is cosmetic; ignore failures.
+      // The profile is cosmetic; ignore failures.
     }
   }
 }

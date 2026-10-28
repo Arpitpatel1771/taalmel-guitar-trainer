@@ -42,6 +42,9 @@ export interface PendingRemoteDelete {
 export interface SyncStatus {
   state: SyncState;
   email: string | null;
+  /** Google display name and picture URL (cosmetic; null until known). */
+  name: string | null;
+  picture: string | null;
   lastSyncAt: number | null;
   conflicts: SongConflict[];
   pendingRemoteDeletes: PendingRemoteDelete[];
@@ -343,6 +346,8 @@ export class SyncEngine {
     return {
       state,
       email: this.auth.email() ?? this.conn?.email ?? null,
+      name: this.auth.profile()?.name ?? null,
+      picture: this.auth.profile()?.picture ?? null,
       lastSyncAt: this.lastSyncAt,
       conflicts: this.conflicts.map((c) => ({ ...c })),
       pendingRemoteDeletes: this.pendingDeletes.map((d) => ({ ...d })),

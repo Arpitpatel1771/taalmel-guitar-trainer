@@ -19,8 +19,8 @@ The browser's local storage (IndexedDB) stays the primary copy. The app keeps wo
   - `VITE_GOOGLE_CLIENT_ID`
   - `VITE_GOOGLE_API_KEY` (Picker)
   - `VITE_GOOGLE_APP_ID` (project number, Picker)
-- **Where they live:** locally in `.env.local` (git-ignored via `.env.*`). In production, in the Vercel project settings, deployed at `https://taalmel-khaki.vercel.app`.
-- **Registered JavaScript origins:** `http://localhost:5173`, `https://taalmel-khaki.vercel.app`.
+- **Where they live:** locally in `.env.local` (git-ignored via `.env.*`). In production, in the Vercel project settings, deployed at `https://taalmel.patel1771.com`.
+- **Registered JavaScript origins:** `http://localhost:5173`, `https://taalmel.patel1771.com`.
 - **If the env vars are missing**, the Drive section in Settings shows "Not configured" and nothing else changes.
 - **Script loading:** Google scripts load on demand from `https://accounts.google.com/gsi/client` and `https://apis.google.com/js/api.js` (Picker), never at app start.
 

@@ -11,6 +11,9 @@ export function Popover({
   placement = "up",
   iconOnly = false,
   width,
+  trigger,
+  triggerClassName,
+  align = "right",
 }: {
   label: string;
   icon?: ReactNode;
@@ -20,6 +23,11 @@ export function Popover({
   /** Show only the icon (label becomes the accessible name / tooltip). */
   iconOnly?: boolean;
   width?: number;
+  /** Custom trigger content (replaces icon and label) rendered in an unstyled button. */
+  trigger?: ReactNode;
+  triggerClassName?: string;
+  /** Which edge of the trigger the panel lines up with. */
+  align?: "left" | "right";
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -43,22 +51,26 @@ export function Popover({
   return (
     <div className={styles.popoverRoot} ref={rootRef}>
       <button
-        className={`${styles.ghostBtn}${open ? ` ${styles.on}` : ""}`}
+        className={trigger ? triggerClassName : `${styles.ghostBtn}${open ? ` ${styles.on}` : ""}`}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label={iconOnly ? label : undefined}
-        title={iconOnly ? label : undefined}
+        title={iconOnly || trigger ? label : undefined}
+        aria-label={iconOnly || trigger ? label : undefined}
       >
-        {icon}
-        {!iconOnly && label}
+        {trigger ?? (
+          <>
+            {icon}
+            {!iconOnly && label}
+          </>
+        )}
       </button>
       {open && (
         <div
           className={`${styles.popover}${placement === "down" ? ` ${styles.popoverDown}` : ""}`}
           role="dialog"
           aria-label={label}
-          style={width ? { width } : undefined}
+          style={{ ...(width ? { width } : null), ...(align === "left" ? { left: 0, right: "auto" } : null) }}
         >
           {typeof children === "function" ? children(() => setOpen(false)) : children}
         </div>
