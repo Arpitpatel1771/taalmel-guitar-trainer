@@ -11,3 +11,7 @@ Do NOT start any work — no file edits, no code changes, no subagents, no build
 Nothing else counts as permission: not answering a question, not choosing an option, not describing a problem, not saying what they want changed. Reading files to answer a question is allowed; changing anything is not.
 
 **Subagents:** this rule is enforced by the main Claude session only. A subagent dispatched by the main session is already covered by the user's approval given there; it must not ask again and should start the work it was given right away.
+
+## Pushing (hard rule)
+
+Never run `git push` to `master` without the user's explicit approval for that specific push. Pushing deploys production (taalmel.patel1771.com). Approval of a plan that mentions pushing doesn't count: ask again once the work is done and verified.
