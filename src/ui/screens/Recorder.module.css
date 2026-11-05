@@ -187,3 +187,6 @@
 .clipGrey {
   opacity: 0.55;
 }
+
+/* Leave a little room above the trimmer when it is scrolled into view. */
+.trimmerSection { scroll-margin-top: var(--space-4); }

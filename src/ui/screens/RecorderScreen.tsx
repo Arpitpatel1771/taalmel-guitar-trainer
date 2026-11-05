@@ -65,6 +65,11 @@ export function RecorderScreen({
 
   const [clips, setClips] = useState<ClipRecord[]>([]);
   const [trimId, setTrimId] = useState<string | null>(null);
+  const trimmerRef = useRef<HTMLElement | null>(null);
+  // Opening a clip's trimmer brings the panel (it renders below the clip list) into view.
+  useEffect(() => {
+    if (trimId) trimmerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [trimId]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Practice metronome.
@@ -507,7 +512,7 @@ export function RecorderScreen({
         </section>
 
         {trimClipRecord?.blob && (
-          <section className={`${st.card} ${st.wide}`}>
+          <section ref={trimmerRef} className={`${st.card} ${st.wide} ${st.trimmerSection}`}>
             <ClipTrimmer
               key={trimClipRecord.id}
               clip={{ ...trimClipRecord, blob: trimClipRecord.blob }}

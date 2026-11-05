@@ -39,6 +39,16 @@ export function isFlagHotkey(e: KeyboardEvent): boolean {
   const t = e.target as HTMLElement | null;
   return !(t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable));
 }
+/** Space toggles playback unless typing in a field or focused on the player itself (which handles Space natively). */
+export function isSpaceToggle(e: KeyboardEvent, media: HTMLMediaElement | null): boolean {
+  if (e.code !== "Space" || e.ctrlKey || e.metaKey || e.altKey) return false;
+  const t = e.target as HTMLElement | null;
+  if (!t || t === media) return false;
+  // Sliders (the trim handles) still let Space play; typing fields and checkboxes keep Space.
+  if (t instanceof HTMLInputElement && t.type !== "range") return false;
+  if (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable) return false;
+  return true;
+}
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
 /** Typed m:ss time field: free typing, parsed on blur/Enter, Escape reverts. */
@@ -133,6 +143,8 @@ export function ClipTrimmer({
   }, [clip.id]);
   const [padSec, setPadSec] = useState(10);
   const [busy, setBusy] = useState<{ stage: TrimStage; fraction: number | null } | null>(null);
+  /** Last trim failure, shown inline with Retry (e.g. the 32 MB engine download stalled). */
+  const [trimError, setTrimError] = useState<{ message: string; retry: () => void } | null>(null);
   /** True while playing the selection (Preview): stop or loop at the end handle. */
   const inSelectionRef = useRef(false);
   const fixingDurationRef = useRef(false);
@@ -234,6 +246,21 @@ export function ClipTrimmer({
     void el.play().catch((err) => toast(`Can't play this clip: ${err instanceof Error ? err.message : String(err)}`, "error"));
   }
 
+  /** Space: pause if playing; otherwise resume (within the selection if Play selection was last used). */
+  function togglePlay() {
+    const el = mediaRef.current;
+    if (!el) return;
+    if (!el.paused) {
+      el.pause();
+      return;
+    }
+    if (inSelectionRef.current) {
+      playSelection();
+      return;
+    }
+    void el.play().catch((err) => toast(`Can't play this clip: ${err instanceof Error ? err.message : String(err)}`, "error"));
+  }
+
   /** Click (or drag) on the bar, outside the handles, moves the playhead. */
   function onTrackPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).tagName === "INPUT") return; // a handle
@@ -282,18 +309,36 @@ export function ClipTrimmer({
   // The M hotkey drops a flag at the playhead (latest handler via ref, listener added once).
   const addFlagRef = useRef(addFlagAtPlayhead);
   addFlagRef.current = addFlagAtPlayhead;
+  const togglePlayRef = useRef(togglePlay);
+  togglePlayRef.current = togglePlay;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (isFlagHotkey(e)) {
         e.preventDefault();
         addFlagRef.current();
+        return;
+      }
+      if (isSpaceToggle(e, mediaRef.current)) {
+        // Also stops Space from re-pressing a focused button, e.g. "Play / trim",
+        // which would close this panel.
+        e.preventDefault();
+        if (!e.repeat) togglePlayRef.current();
       }
     };
+    // Browsers press a focused button on Space *keyup*; swallow that too.
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (isSpaceToggle(e, mediaRef.current)) e.preventDefault();
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKeyUp);
+    };
   }, []);
 
-  async function runTrim(): Promise<{ blob: Blob; mimeType: string } | null> {
+  async function runTrim(retry: () => void): Promise<{ blob: Blob; mimeType: string } | null> {
+    setTrimError(null);
     try {
       return await trimClip(
         clip.blob,
@@ -301,7 +346,7 @@ export function ClipTrimmer({
         (stage, fraction) => setBusy({ stage, fraction })
       );
     } catch (err) {
-      toast(`Trim failed: ${err instanceof Error ? err.message : String(err)}`, "error");
+      setTrimError({ message: err instanceof Error ? err.message : String(err), retry });
       return null;
     } finally {
       setBusy(null);
@@ -309,7 +354,7 @@ export function ClipTrimmer({
   }
 
   async function trimAndDownload() {
-    const out = await runTrim();
+    const out = await runTrim(() => void trimAndDownload());
     if (!out) return;
     try {
       await saveBlobToDisk(out.blob, `${safeFileName(clip.name)} (trimmed).${extensionFor(out.mimeType, clip.hasVideo)}`);
@@ -319,7 +364,7 @@ export function ClipTrimmer({
   }
 
   async function trimAndKeep() {
-    const out = await runTrim();
+    const out = await runTrim(() => void trimAndKeep());
     if (!out) return;
     try {
       await saveClip({
@@ -342,7 +387,7 @@ export function ClipTrimmer({
   const at = (t: number) => `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * ${duration > 0 ? t / duration : 0})`;
   const busyLabel =
     busy?.stage === "loading"
-      ? "Loading trimmer…"
+      ? `Loading trimmer…${busy.fraction !== null ? ` ${Math.round(busy.fraction * 100)}%` : ""}`
       : busy
         ? `Trimming… ${busy.fraction !== null ? `${Math.round(busy.fraction * 100)}%` : ""}`
         : null;
@@ -560,6 +605,14 @@ export function ClipTrimmer({
         </button>
         {busyLabel && <span className={st.hint}>{busyLabel}</span>}
       </div>
+      {trimError && (
+        <div className="notice notice-error">
+          Trim failed: {trimError.message}{" "}
+          <button onClick={trimError.retry} disabled={!!busy}>
+            Retry
+          </button>
+        </div>
+      )}
     </div>
   );
 }
