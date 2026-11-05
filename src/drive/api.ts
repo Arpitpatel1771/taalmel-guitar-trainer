@@ -233,7 +233,9 @@ export class RestDriveApi implements DriveApi {
         "X-Upload-Content-Type": meta.mimeType,
         "X-Upload-Content-Length": String(totalSize),
       },
-      body: JSON.stringify(meta),
+      // An update (replacing an existing file's media) may not set `parents`: Drive rejects it
+      // ("The parents field is not directly writable in update requests"). The file stays where it is.
+      body: JSON.stringify(existingFileId ? { ...meta, parents: undefined } : meta),
     });
     const location = res.headers.get("Location");
     if (!location) throw new DriveError(res.status, "noUploadUrl", "Drive did not return an upload URL.");

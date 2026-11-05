@@ -132,9 +132,14 @@ describe("RestDriveApi requests", () => {
     expect(call.headers.get("X-Upload-Content-Type")).toBe("audio/webm");
     expect(call.headers.get("X-Upload-Content-Length")).toBe("1234");
 
-    await api().startResumableUpload({ name: "c.webm", mimeType: "audio/webm" }, 5, "f9");
+    await api().startResumableUpload({ name: "c.webm", mimeType: "audio/webm", parents: ["rec"] }, 5, "f9");
     expect(lastCall().init.method).toBe("PATCH");
     expect(lastCall().url.pathname).toBe("/upload/drive/v3/files/f9");
+    // Regression: Drive rejects `parents` in an update ("not directly writable"), e.g. on Make it permanent.
+    expect(JSON.parse(String(lastCall().init.body))).toEqual({ name: "c.webm", mimeType: "audio/webm" });
+
+    await api().startResumableUpload({ name: "c.webm", mimeType: "audio/webm", parents: ["rec"] }, 5);
+    expect(JSON.parse(String(lastCall().init.body)).parents).toEqual(["rec"]);
   });
 
   it("uploads chunks with Content-Range and parses 308 / final responses", async () => {
