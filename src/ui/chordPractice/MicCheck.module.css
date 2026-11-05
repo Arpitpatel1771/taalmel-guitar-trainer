@@ -1,25 +1,26 @@
 /* Mic check mode (chord practice spec section 4). */
 .voicing { display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; }
-.body { display: flex; gap: var(--space-4); flex-wrap: wrap; align-items: flex-start; }
+.body { display: flex; gap: var(--space-5); flex-wrap: wrap; align-items: flex-start; }
 .side { display: flex; flex-direction: column; gap: var(--space-3); min-width: 220px; flex: 1; }
-.strings { display: flex; gap: var(--space-1); list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
+.strings { display: flex; gap: var(--space-2); list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
 .pill {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 44px;
+  min-width: 48px;
   padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: var(--text-xs);
 }
-.num { font-weight: 600; font-size: var(--text-sm); }
+.num { font-weight: var(--weight-semibold); font-size: var(--text-sm); }
 .mark { white-space: nowrap; }
-.current { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 2px var(--accent); font-weight: 600; }
-.ok { color: var(--success, var(--accent)); }
-.wrong { color: var(--danger, var(--text-primary)); }
+.current { border-color: var(--text); color: var(--text); font-weight: var(--weight-semibold); }
+.ok { color: var(--ok); }
+.wrong { color: var(--record); }
 .skipped, .muted { color: var(--text-muted); }
-.prompt { margin: 0; font-size: var(--text-lg, 1.1rem); font-weight: 600; }
+.prompt { margin: 0; font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-semibold); }
 .row { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
-.summary { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
+.summary { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-md); }

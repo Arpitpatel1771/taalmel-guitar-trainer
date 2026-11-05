@@ -142,7 +142,7 @@ export function ChordQuiz({ settings, onChange }: PracticeModeProps) {
             {usingFallback ? " You have no marked chords yet, so open chords are used." : ""}
           </p>
           <div>
-            <button type="button" className="primary" onClick={start}>
+            <button type="button" className="btn-primary" onClick={start}>
               Start (10 questions)
             </button>
           </div>
@@ -189,7 +189,7 @@ export function ChordQuiz({ settings, onChange }: PracticeModeProps) {
           </>
         )}
         <div className={st.actions}>
-          <button type="button" className="primary" onClick={start}>
+          <button type="button" className="btn-primary" onClick={start}>
             Play again
           </button>
           <button type="button" onClick={() => setPhase({ kind: "setup" })}>
@@ -261,7 +261,7 @@ export function ChordQuiz({ settings, onChange }: PracticeModeProps) {
             {picked === q.correctIndex ? "Correct" : `Not quite: it is ${pretty(quizName(q.answer))}`}
           </p>
           <div className={st.actions}>
-            <button type="button" className="primary" data-own-enter autoFocus onClick={next}>
+            <button type="button" className="btn-primary" data-own-enter autoFocus onClick={next}>
               {isLast ? "Finish" : "Next"}
             </button>
           </div>

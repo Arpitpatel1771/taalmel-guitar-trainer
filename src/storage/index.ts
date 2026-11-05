@@ -2,7 +2,7 @@
 // songs and settings, plus library and single-song export/import.
 
 export { openDb } from "./db.js";
-export { listSongs, getSong, saveSong, deleteSong } from "./songs.js";
+export { listSongs, getSong, saveSong, deleteSong, linkSongToLibrary } from "./songs.js";
 export { onStorageChange, emitStorageChange, type StorageChange, type WriteOptions } from "./changes.js";
 export { loadSettings, saveSettings, requestPersist } from "./settings.js";
 export {
@@ -22,3 +22,4 @@ export type {
   LibrarySongEntry,
   LibraryExportFile,
 } from "./exportImport.js";
+export * from "./recent.js";

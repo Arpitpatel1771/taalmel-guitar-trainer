@@ -14,6 +14,7 @@ import {
   type CheckState,
   type StringResult,
 } from "../../chords/practice/micCheck";
+import { useShellMic } from "../shell/AppShellContext";
 import { ChordDiagram } from "../components/ChordDiagram";
 import type { PracticeModeProps } from "./ChordPractice";
 import { ChordPicker } from "./ChordPicker";
@@ -51,6 +52,8 @@ export function MicCheck({ settings, initial }: PracticeModeProps) {
   const [error, setError] = useState<string | null>(null);
   const checkRef = useRef<CheckState | null>(null);
   const inputRef = useRef<TunerInput | null>(null);
+  const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  useShellMic("micCheck", micStream);
   const a4Ref = useRef(settings.a4Hz);
   a4Ref.current = settings.a4Hz;
 
@@ -67,6 +70,7 @@ export function MicCheck({ settings, initial }: PracticeModeProps) {
   function stopMic() {
     inputRef.current?.stop();
     inputRef.current = null;
+    setMicStream(null);
     setRunning(false);
   }
 
@@ -86,6 +90,7 @@ export function MicCheck({ settings, initial }: PracticeModeProps) {
     try {
       await resumeAudio();
       inputRef.current = await TunerInput.start(getAudioContext(), (f) => onSample(f));
+      setMicStream(inputRef.current.mediaStream);
       setRunning(true);
       if (checkRef.current?.done) stopMic();
     } catch (err) {

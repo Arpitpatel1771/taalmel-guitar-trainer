@@ -89,7 +89,7 @@ References: Ableton Live transport, Soundslice player controls, Songsterr player
 - **Render each row as SVG** instead of absolutely positioned DOM: crisper lines, same coordinates as the `layout` module, easy theming. The live waveform stays on a **_canvas overlay_** behind it. Search: **_SVG vs canvas rendering_**, **_layered canvas_**.
 - **Bigger strings:** 18–22px string gap at default zoom, string lines heavier than grid lines.
 - **Grid hierarchy:** strong bar lines, medium beat lines, faint subdivisions, like a DAW **_piano roll_** grid.
-- **Notes as pills:** fret number inside a rounded bar whose length is the duration (**_piano roll note blocks_**). Uncertain notes: dashed outline + **_SVG hatch pattern_** fill.
+- **Notes as pills:** fret number inside a rounded bar whose length is the duration (**_piano roll note blocks_**).
 - **Techniques as drawn marks:** **_slur arcs_** for hammer/pull, angled lines for slides, bend arrows, like standard **_guitar tablature notation_** in Songsterr / Guitar Pro.
 - **Letter lane** aligned under each note, stacked for chords, spelled as the song spells it.
 - **Active-row emphasis:** current row full opacity, others dimmed ~60% (**_focus + context_**). Cursor: thick accent line with soft glow and small bar:beat flag.

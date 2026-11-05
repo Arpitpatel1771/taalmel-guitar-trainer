@@ -1,0 +1,23 @@
+# Happy Birthday (public domain). Key of C, melody on the top three strings.
+# Bar 1 is a pickup: the song starts on beat 3.
+title: Happy Birthday
+time: 3/4
+bpm: 100
+unit: 12
+
+[Line 1]
+Bar 1: {9} 3S0[3] {12} 3S0
+Bar 2: {1} 3S2[4] {5} 3S0[4] {9} 2S1[4]
+Bar 3: {1} 2S0[8] {9} 3S0[3] {12} 3S0
+
+[Line 2]
+Bar 4: {1} 3S2[4] {5} 3S0[4] {9} 2S3[4]
+Bar 5: {1} 2S1[8] {9} 3S0[3] {12} 3S0
+
+[Line 3]
+Bar 6: {1} 1S3[4] {5} 1S0[4] {9} 2S1[4]
+Bar 7: {1} 2S0[4] {5} 3S2[4] {9} 1S1[3] {12} 1S1
+
+[Line 4]
+Bar 8: {1} 1S0[4] {5} 2S1[4] {9} 2S3[4]
+Bar 9: {1} 2S1[12]

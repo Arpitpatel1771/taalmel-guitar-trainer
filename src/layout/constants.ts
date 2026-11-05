@@ -11,18 +11,17 @@ export const DEFAULT_ZOOM = 240;
 export const STRING_COUNT = 6;
 
 /** Vertical gap between adjacent string lines in the tab lane. */
-export const TAB_STRING_GAP = 18;
+export const TAB_STRING_GAP = 28;
 /** Padding below the bottom string line. */
-export const TAB_LANE_PADDING = 10;
+export const TAB_LANE_PADDING = 18;
 /** Band above the top string line holding bar numbers, section names, strum
- * arrows and technique labels. */
-export const TAB_LANE_TOP = 36;
+ * arrows, played-note chips and technique labels (22px frets on 28px string spacing). */
+export const TAB_LANE_TOP = 50;
 export const TAB_LANE_HEIGHT = TAB_LANE_TOP + TAB_STRING_GAP * (STRING_COUNT - 1) + TAB_LANE_PADDING;
 
 /** Line height of one letter; a chord slot stacks up to six letters. */
 export const LETTER_LINE_HEIGHT = 14;
 export const LETTER_LANE_HEIGHT = 4 + LETTER_LINE_HEIGHT * STRING_COUNT;
-export const TEACHER_LANE_HEIGHT = 40;
 
 /** Left padding reserved for string/lane labels; included in every row's x0. */
 export const ROW_LEFT_PADDING = 32;
@@ -30,10 +29,9 @@ export const ROW_LEFT_PADDING = 32;
 /** Vertical gap between consecutive rows. */
 export const ROW_GAP = 12;
 
-export const LANE_ORDER: LaneId[] = ["tab", "letter", "teacher"];
+export const LANE_ORDER: LaneId[] = ["tab", "letter"];
 
 export const LANE_HEIGHTS: Record<LaneId, number> = {
   tab: TAB_LANE_HEIGHT,
   letter: LETTER_LANE_HEIGHT,
-  teacher: TEACHER_LANE_HEIGHT,
 };

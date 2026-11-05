@@ -276,7 +276,7 @@ export function Progressions({ settings, initial }: PracticeModeProps) {
               <Square size={14} /> Stop
             </button>
           ) : (
-            <button type="button" onClick={() => void start()} disabled={chords.length === 0}>
+            <button type="button" className="btn-primary" onClick={() => void start()} disabled={chords.length === 0}>
               <Play size={14} /> Start
             </button>
           )}

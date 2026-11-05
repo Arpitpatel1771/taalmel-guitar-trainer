@@ -6,23 +6,27 @@
 <title>Privacy Policy · Taalmel</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <style>
-  :root { --bg: #111214; --surface: #1a1b1e; --text: #ececec; --muted: #a3a3a8; --accent: #f2a93b; --border: #2a2b2f; }
-  @media (prefers-color-scheme: light) { :root { --bg: #fafaf9; --surface: #ffffff; --text: #1a1a1a; --muted: #5c5c62; --accent: #b4720f; --border: #e4e4e7; } }
+  @font-face { font-family: "Space Grotesk"; font-weight: 600; font-display: swap; src: url(/fonts/space-grotesk-latin-600-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Space Grotesk"; font-weight: 700; font-display: swap; src: url(/fonts/space-grotesk-latin-700-normal.woff2) format("woff2"); }
+  :root { color-scheme: dark; --bg: #15130f; --surface: #1e1b16; --text: #f2ede4; --muted: #b8b0a3; --accent: #f2a93b; --link: #f2a93b; --tint: #2e2717; --border: #2a261f; --line: #3a352c; }
+  @media (prefers-color-scheme: light) { :root { color-scheme: light; --bg: #f7f4ee; --surface: #ffffff; --text: #1f1b14; --muted: #5e574b; --accent: #f2a93b; --link: #985a00; --tint: #fbebd0; --border: #e2dacb; --line: #e8e1d4; } }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 Inter, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 Inter, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
   main { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
   header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
-  .mark { width: 32px; height: 32px; border-radius: 7px; background: #f2a93b; color: #1a1204; display: grid; place-items: center; font-size: 18px; }
-  header a { color: var(--text); text-decoration: none; font-weight: 600; font-size: 18px; }
-  h1 { font-size: 32px; line-height: 1.2; margin: 0 0 8px; }
-  h2 { font-size: 20px; margin: 36px 0 8px; }
+  .mark { width: 36px; height: 36px; border-radius: 10px; background: #f2a93b; color: #1a1408; display: grid; place-items: center; font-size: 20px; }
+  header a { color: var(--text); text-decoration: none; font-family: "Space Grotesk", Inter, -apple-system, "Segoe UI", sans-serif; font-weight: 700; font-size: 20px; }
+  h1, h2 { font-family: "Space Grotesk", Inter, -apple-system, "Segoe UI", sans-serif; letter-spacing: -0.01em; }
+  h1 { font-size: 40px; line-height: 1.1; font-weight: 700; margin: 0 0 8px; }
+  h2 { font-size: 22px; font-weight: 600; margin: 40px 0 8px; }
   .updated { color: var(--muted); margin: 0 0 24px; }
-  a { color: var(--accent); }
+  a { color: var(--link); }
   ul { padding-left: 22px; }
   li { margin: 6px 0; }
-  .callout { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: 14px 16px; margin: 16px 0; }
-  code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.9em; }
+  .callout { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 20px; margin: 20px 0; }
+  code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.9em; background: var(--tint); border-radius: 6px; padding: 1px 6px; }
   footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+  @media (max-width: 560px) { h1 { font-size: 32px; } }
 </style>
 </head>
 <body>
@@ -62,6 +66,16 @@
 
   <h2>YouTube videos</h2>
   <p>Songs can link to a YouTube video to play along with. These videos are played through YouTube's embedded player, which is operated by Google and subject to <a href="https://policies.google.com/privacy">Google's Privacy Policy</a>.</p>
+
+  <h2>Song requests, replies and share links</h2>
+  <p>The <strong>Library</strong> section has an optional song-request feature. It uses Google Forms and Google Sheets that belong to the owner of Taalmel, not a server of Taalmel's own.</p>
+  <ul>
+    <li><strong>What a request stores:</strong> the song title, artist, part, an optional YouTube link and note, an optional display name (only if you tick "Show my name"), and a public key made on your device. <strong>Requests are public:</strong> anyone can read them on the board. No email address or account is collected.</li>
+    <li><strong>What a reply stores:</strong> the request it answers, the recipient's key id, and encrypted data. Replies are end-to-end encrypted for each requester, so nobody else, including the owner, can read the song. The private key never leaves your device, except in your own Google Drive settings if you connected Drive.</li>
+    <li><strong>Reports</strong> you send about a request (the request id and your reason) are visible only to the owner.</li>
+    <li><strong>Share links</strong> carry the song inside the part of the link after the <code>#</code>. Browsers do not send that part to any server, and nothing is uploaded.</li>
+    <li>Names are shown only with your consent, for both requesters and people who share a song.</li>
+  </ul>
 
   <h2>Hosting</h2>
   <p>Taalmel's web files are served by Vercel. Like any website host, Vercel may process standard technical request data, such as IP addresses, to deliver the site and protect it from abuse. See <a href="https://vercel.com/legal/privacy-policy">Vercel's Privacy Policy</a>. Taalmel itself adds no tracking or analytics.</p>

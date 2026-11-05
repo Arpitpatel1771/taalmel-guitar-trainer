@@ -1,0 +1,19 @@
+title: Capo Song
+time: 4/4
+bpm: 90
+unit: 8
+capo: 2
+
+[Verse]
+Bar 1: {1} 3S0 {3} 2S1
+
+[Solo]
+capo: 0
+Bar 2: {1} 1S12
+
+[Outro]
+capo: 4
+Bar 3: {1} 1S0
+
+[End]
+Bar 4: {1} 1S0

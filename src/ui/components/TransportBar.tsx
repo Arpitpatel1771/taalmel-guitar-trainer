@@ -1,15 +1,17 @@
-// Transport dock (spec 10.1, 10.3, 12.2; UI revamp 5.1). Pure controlled
-// component: all state lives in usePlaybackEngine. Always-visible controls are
-// playback, loop, tempo, mic/metronome and the bar:beat readout; everything
-// else sits in the Practice and View popovers.
+// Transport pill (specs/5-11-ui-redesign.md 5; spec 10.1, 10.3, 12.2). Pure
+// controlled component: all state lives in usePlaybackEngine. The pill holds
+// Play, Stop, the loop button, practice tempo, song BPM, mic and the bar:beat readout; the
+// "..." popover holds everything else (loop bars, count-in, metronome, play
+// notes, lanes, zoom). The tuner lives in the pocket.
 
-import { useState, type ReactNode, type RefObject } from "react";
-import { Gauge, Guitar, Metronome, Mic, MicOff, Pause, Play, Repeat, SlidersHorizontal, Square, Eye, X } from "lucide-react";
+import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { BarChart3, MoreHorizontal, Pause, Play, Mic, MicOff, Repeat, Square, X } from "lucide-react";
 import type { LaneId, PracticeMode } from "../../model";
 import { MAX_BPM, MIN_BPM, type RestBars } from "../usePlaybackEngine";
 import { NumberInput } from "./Controls";
 import { Popover } from "./Popover";
-import { TunerPanel } from "./TunerPanel";
+import { Slider } from "./kit";
+import { factorBpmLabel, practiceBpmRange } from "../tempoLabels";
 import styles from "./TransportDock.module.css";
 
 export interface TransportBarProps {
@@ -23,9 +25,10 @@ export interface TransportBarProps {
 
   baseBpm: number;
   currentBpm: number;
-  speedPercent: number;
-  onSpeedPercentChange: (percent: number) => void;
-  onBpmFieldChange: (bpm: number) => void;
+  /** Practice tempo in bpm; starts at the song's tempo, the song is not changed. */
+  onPracticeBpmChange: (bpm: number) => void;
+  /** Commits a new tempo for the song itself (saved with the song). */
+  onSongBpmChange: (bpm: number) => void;
 
   videoRate: number;
   availableVideoRates: number[];
@@ -71,27 +74,33 @@ export interface TransportBarProps {
   bpmRampActive: boolean;
   /** Bar:beat readout, written per frame by PlaybackController (not React). */
   positionRef?: RefObject<HTMLSpanElement | null>;
+  /** Opens the last take's summary; absent until a take has been scored. */
+  onShowSummary?: () => void;
   /** Extra content for the Practice popover (e.g. the BPM ramp panel). */
   practiceExtras?: ReactNode;
-  /** Tuner reference pitch and its setter (dock tuner popover). */
-  a4Hz?: number;
-  onA4Change?: (hz: number) => void;
 }
 
-const LANE_LABELS: Record<LaneId, string> = { tab: "Tab", letter: "Letters", teacher: "Teacher notation" };
+const LANE_LABELS: Record<LaneId, string> = { tab: "Tab", letter: "Letters" };
 const REST_BARS_OPTIONS: RestBars[] = [0, 1, 2, 4];
 
-/** Absolute BPM field. Typing edits a local draft; the value is applied on
+/** The song's tempo in BPM. Typing edits a local draft; the value is applied on
  * Enter or blur (clamped to MIN_BPM..MAX_BPM), and Escape reverts, so partial
- * input like "1" on the way to "112" never reaches the clock. */
+ * input like "1" on the way to "112" never reaches the song. */
 function BpmInput({ value, onCommit }: { value: number; onCommit: (bpm: number) => void }) {
-  const [draft, setDraft] = useState<string | null>(null);
+  const [draft, setDraftState] = useState<string | null>(null);
+  // Enter commits and then blurs, which commits again: the ref makes the second call a no-op.
+  const draftRef = useRef<string | null>(null);
+  const setDraft = (d: string | null) => {
+    draftRef.current = d;
+    setDraftState(d);
+  };
 
   function commit() {
-    if (draft === null) return;
-    const n = Number(draft);
-    if (draft.trim() !== "" && Number.isFinite(n) && n > 0) onCommit(n);
+    const d = draftRef.current;
+    if (d === null) return;
     setDraft(null);
+    const n = Number(d);
+    if (d.trim() !== "" && Number.isFinite(n) && n > 0 && Math.round(n) !== value) onCommit(Math.min(MAX_BPM, Math.max(MIN_BPM, Math.round(n))));
   }
 
   return (
@@ -99,8 +108,8 @@ function BpmInput({ value, onCommit }: { value: number; onCommit: (bpm: number) 
       className={styles.bpmInput}
       type="text"
       inputMode="numeric"
-      aria-label="BPM"
-      title={`BPM (${MIN_BPM}-${MAX_BPM}; Enter to apply, [ and ] change speed)`}
+      aria-label="Song BPM"
+      title={`Song tempo in BPM (${MIN_BPM}-${MAX_BPM}; Enter saves it to the song)`}
       value={draft ?? String(value)}
       onFocus={(e) => e.currentTarget.select()}
       onChange={(e) => setDraft(e.target.value.replace(/[^0-9.]/g, ""))}
@@ -122,160 +131,182 @@ export function TransportBar(props: TransportBarProps) {
   const rangeFrom = props.loopRange?.start ?? props.firstBarNumber;
   const rangeTo = props.loopRange?.end ?? props.lastBarNumber;
   const grid = props.mode === "grid";
+  const range = practiceBpmRange(props.baseBpm);
+  const practiceBpm = Math.round(props.currentBpm);
+  const loopLabel =
+    props.loopRange && props.loopRange.start !== props.loopRange.end
+      ? `Loop bars ${props.loopRange.start}\u2013${props.loopRange.end}`
+      : props.loopRange
+        ? `Loop bar ${props.loopRange.start}`
+        : "Loop";
 
   return (
-    <div className={styles.dock}>
-      <div className={styles.group}>
-        <button
-          className={styles.playBtn}
-          onClick={props.onPlayPause}
-          aria-label={props.playing ? "Pause" : "Play"}
-          title={props.playing ? "Pause (Space)" : "Play (Space)"}
-        >
-          {props.playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
-        </button>
-        <button className={styles.iconBtn} onClick={props.onStop} aria-label="Stop" title="Stop (Esc)">
-          <Square size={16} />
-        </button>
-      </div>
+    <div className={styles.pill}>
+      <button
+        className={styles.playBtn}
+        onClick={props.onPlayPause}
+        aria-label={props.playing ? "Pause" : "Play"}
+        title={props.playing ? "Pause (Space)" : "Play (Space)"}
+      >
+        {props.playing ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
+      </button>
+      <button className={styles.iconBtn} onClick={props.onStop} aria-label="Stop" title="Stop (Esc)">
+        <Square size={16} />
+      </button>
 
-      <div className={styles.group}>
-        <button
-          className={`${styles.iconBtn}${props.loopEnabled ? ` ${styles.on}` : ""}`}
-          onClick={() => props.onLoopEnabledChange(!props.loopEnabled)}
-          aria-pressed={props.loopEnabled}
-          title="Loop (L). Drag across bar numbers on the sheet to pick a range."
-        >
-          <Repeat size={16} />
-        </button>
-        {props.loopEnabled && (
-          <div className={styles.loopRange}>
-            <NumberInput
-              aria-label="Loop from bar"
-              integer
-              min={props.firstBarNumber}
-              max={props.lastBarNumber}
-              value={rangeFrom}
-              onCommit={(v) => v !== null && props.onLoopRangeFromChange(v)}
-            />
-            <span className={styles.dim}>to</span>
-            <NumberInput
-              aria-label="Loop to bar"
-              integer
-              min={props.firstBarNumber}
-              max={props.lastBarNumber}
-              value={rangeTo}
-              onCommit={(v) => v !== null && props.onLoopRangeToChange(v)}
-            />
-            {props.loopRange && (
-              <button className={styles.clearBtn} onClick={props.onLoopRangeClear} aria-label="Loop whole song" title="Loop whole song">
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+      <button
+        className={`${styles.loopBtn}${props.loopEnabled ? ` ${styles.on}` : ""}`}
+        onClick={() => props.onLoopEnabledChange(!props.loopEnabled)}
+        aria-pressed={props.loopEnabled}
+        title="Loop (L). Drag across bar numbers on the sheet to pick a range."
+      >
+        <Repeat size={16} />
+        {loopLabel}
+      </button>
 
-      <div className={styles.tempo}>
+      <div className={styles.speed}>
         {grid ? (
           <>
-            <BpmInput value={Math.round(props.currentBpm)} onCommit={props.onBpmFieldChange} />
-            <span className={styles.tempoMeta}>
-              BPM · {props.speedPercent}%{props.bpmRampActive ? " · ramping" : ""}
+            <span className={styles.tempoMeta}>Practice at</span>
+            <Slider
+              label="Practice at (bpm)"
+              min={range.min}
+              max={range.max}
+              step={1}
+              value={Math.min(range.max, Math.max(range.min, practiceBpm))}
+              onChange={props.onPracticeBpmChange}
+              className={styles.speedSlider}
+            />
+            <span className={styles.speedValue} title="Practice tempo ([ and ] change it by 5 bpm)">
+              {practiceBpm} bpm{props.bpmRampActive ? " \u00b7 ramping" : ""}
             </span>
+            {practiceBpm !== props.baseBpm && (
+              <button className={styles.ghostBtn} onClick={() => props.onPracticeBpmChange(props.baseBpm)}>
+                Back to {props.baseBpm} bpm
+              </button>
+            )}
           </>
         ) : (
           <>
-            <select value={props.videoRate} onChange={(e) => props.onVideoRateChange(Number(e.target.value))} aria-label="Playback rate">
+            <select value={props.videoRate} onChange={(e) => props.onVideoRateChange(Number(e.target.value))} aria-label="Video tempo">
               {props.availableVideoRates.map((r) => (
                 <option key={r} value={r}>
-                  {r}x
+                  {factorBpmLabel(props.baseBpm, r)}
                 </option>
               ))}
             </select>
-            <span className={styles.tempoMeta}>video rate</span>
+            <span className={styles.tempoMeta}>video tempo</span>
           </>
         )}
       </div>
 
-      <div className={styles.group}>
-        <button
-          className={`${styles.iconBtn}${props.micOn ? ` ${styles.on}` : ""}`}
-          onClick={props.onMicToggle}
-          disabled={!props.micAvailable}
-          aria-pressed={props.micOn}
-          title="Microphone feedback (M)"
-        >
-          {props.micOn ? <Mic size={16} /> : <MicOff size={16} />}
+      {grid && (
+        <div className={styles.tempo}>
+          <BpmInput value={props.baseBpm} onCommit={props.onSongBpmChange} />
+          <span className={styles.tempoMeta}>BPM</span>
+        </div>
+      )}
+
+      <button
+        className={`${styles.iconBtn}${props.micOn ? ` ${styles.on}` : ""}`}
+        onClick={props.onMicToggle}
+        disabled={!props.micAvailable}
+        aria-pressed={props.micOn}
+        aria-label="Microphone feedback"
+        title="Microphone feedback (M)"
+      >
+        {props.micOn ? <Mic size={16} /> : <MicOff size={16} />}
+      </button>
+
+      {props.onShowSummary && (
+        <button className={styles.iconBtn} onClick={props.onShowSummary} aria-label="Last take summary" title="Last take summary">
+          <BarChart3 size={16} />
         </button>
-        <button
-          className={`${styles.iconBtn}${!props.metronomeMuted ? ` ${styles.on}` : ""}`}
-          onClick={() => props.onMuteChange(!props.metronomeMuted)}
-          aria-pressed={!props.metronomeMuted}
-          title="Metronome"
-        >
-          <Metronome size={16} />
-        </button>
-        <button
-          className={`${styles.iconBtn}${props.playNotes ? ` ${styles.on}` : ""}`}
-          onClick={() => props.onPlayNotesChange(!props.playNotes)}
-          aria-pressed={props.playNotes}
-          title="Play notes: a synthetic guitar plays the song"
-        >
-          <Guitar size={16} />
-        </button>
-      </div>
+      )}
 
       <div className={styles.position} title="Bar : beat">
         <span ref={props.positionRef}>1:1</span>
       </div>
 
-      <div className={styles.spacer} />
-
-      {props.a4Hz !== undefined && props.onA4Change && (
-        <Popover label="Tuner" icon={<Gauge size={15} />} width={400}>
-          <TunerPanel compact autoStart a4Hz={props.a4Hz} onA4Change={props.onA4Change} />
-        </Popover>
-      )}
-
-      <Popover label="Practice" icon={<SlidersHorizontal size={15} />}>
+      <Popover
+        label="More controls"
+        width={340}
+        trigger={<MoreHorizontal size={20} />}
+        triggerClassName={styles.moreBtn}
+      >
         <div className={styles.panelSection}>
-          <div className={styles.panelTitle}>Tempo</div>
-          {grid ? (
-            <>
+          <div className={styles.panelTitle}>Loop</div>
+          <div className={styles.row}>
+            Bars
+            <span className={styles.loopRange}>
+              <NumberInput
+                aria-label="Loop from bar"
+                integer
+                min={props.firstBarNumber}
+                max={props.lastBarNumber}
+                value={rangeFrom}
+                onCommit={(v) => v !== null && props.onLoopRangeFromChange(v)}
+              />
+              <span className={styles.dim}>to</span>
+              <NumberInput
+                aria-label="Loop to bar"
+                integer
+                min={props.firstBarNumber}
+                max={props.lastBarNumber}
+                value={rangeTo}
+                onCommit={(v) => v !== null && props.onLoopRangeToChange(v)}
+              />
+              {props.loopRange && (
+                <button className={styles.clearBtn} onClick={props.onLoopRangeClear} aria-label="Loop whole song" title="Loop whole song">
+                  <X size={12} />
+                </button>
+              )}
+            </span>
+          </div>
+          {grid && (
             <label className={styles.row}>
-              BPM
+              Rest between loops
+              <select value={props.restBars} onChange={(e) => props.onRestBarsChange(Number(e.target.value) as RestBars)}>
+                {REST_BARS_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n === 0 ? "None" : `${n} bar${n > 1 ? "s" : ""}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {grid && props.practiceExtras}
+        </div>
+        {grid && (
+          <div className={styles.panelSection}>
+            <div className={styles.panelTitle}>Tempo</div>
+            <label className={styles.row}>
+              Practice at
               <input
                 type="range"
-                min={MIN_BPM}
-                max={MAX_BPM}
+                min={range.min}
+                max={range.max}
                 step={1}
-                value={Math.round(props.currentBpm)}
-                onChange={(e) => props.onBpmFieldChange(Number(e.target.value))}
+                value={Math.min(range.max, Math.max(range.min, practiceBpm))}
+                onChange={(e) => props.onPracticeBpmChange(Number(e.target.value))}
               />
-              <span className={styles.value}>{Math.round(props.currentBpm)}</span>
+              <span className={styles.value}>{practiceBpm} bpm</span>
             </label>
-            <button className={styles.ghostBtn} onClick={() => props.onBpmFieldChange(props.baseBpm)}>
-              Reset to song tempo ({props.baseBpm} BPM)
+            <button className={styles.ghostBtn} onClick={() => props.onPracticeBpmChange(props.baseBpm)} disabled={practiceBpm === props.baseBpm}>
+              Back to song tempo ({props.baseBpm} bpm)
             </button>
-            </>
-          ) : null}
-          <label className={styles.row}>
-            Clock
-            <select value={props.mode} onChange={(e) => props.onModeChange(e.target.value as PracticeMode)} disabled={!props.hasVideo}>
-              <option value="grid">Grid (metronome)</option>
-              <option value="video">Video</option>
-            </select>
-          </label>
-          {grid && (
             <label className={styles.row}>
               <input type="checkbox" checked={props.countIn} onChange={(e) => props.onCountInChange(e.target.checked)} />
               Count-in bar
             </label>
-          )}
-        </div>
+          </div>
+        )}
         <div className={styles.panelSection}>
           <div className={styles.panelTitle}>Metronome</div>
+          <label className={styles.row}>
+            <input type="checkbox" checked={!props.metronomeMuted} onChange={(e) => props.onMuteChange(!e.target.checked)} />
+            Click on
+          </label>
           <label className={styles.row}>
             Volume
             <input
@@ -312,27 +343,8 @@ export function TransportBar(props: TransportBarProps) {
             />
           </label>
         </div>
-        {grid && (
-          <div className={styles.panelSection}>
-            <div className={styles.panelTitle}>Loop</div>
-            <label className={styles.row}>
-              Rest between loops
-              <select value={props.restBars} onChange={(e) => props.onRestBarsChange(Number(e.target.value) as RestBars)}>
-                {REST_BARS_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    {n === 0 ? "None" : `${n} bar${n > 1 ? "s" : ""}`}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {props.practiceExtras}
-          </div>
-        )}
-      </Popover>
-
-      <Popover label="View" icon={<Eye size={15} />}>
         <div className={styles.panelSection}>
-          <div className={styles.panelTitle}>Lanes</div>
+          <div className={styles.panelTitle}>View</div>
           {(Object.keys(LANE_LABELS) as LaneId[]).map((lane) => (
             <label key={lane} className={styles.row}>
               <input
@@ -340,21 +352,12 @@ export function TransportBar(props: TransportBarProps) {
                 checked={props.lanes[lane]}
                 onChange={(e) => props.onLanesChange({ ...props.lanes, [lane]: e.target.checked })}
               />
-              {LANE_LABELS[lane]}
+              {LANE_LABELS[lane]} lane
             </label>
           ))}
-        </div>
-        <div className={styles.panelSection}>
-          <div className={styles.panelTitle}>Zoom</div>
           <label className={styles.row}>
-            <input
-              type="range"
-              min={120}
-              max={800}
-              step={10}
-              value={props.zoom}
-              onChange={(e) => props.onZoomChange(Number(e.target.value))}
-            />
+            Zoom
+            <input type="range" min={120} max={800} step={10} value={props.zoom} onChange={(e) => props.onZoomChange(Number(e.target.value))} />
             <span className={styles.value}>{props.zoom}px/bar</span>
           </label>
         </div>

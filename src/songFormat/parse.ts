@@ -18,11 +18,11 @@ import type {
   TimeSignature,
 } from "../model/index.js";
 import { WHOLE_NOTE_TICKS } from "../model/index.js";
-import { pitchOf } from "../notation/index.js";
+import { soundingMidi } from "../notation/index.js";
 import { mkError, mkWarning } from "./errors.js";
 import { parseYouTubeId } from "./youtube.js";
 
-const KNOWN_HEADER_KEYS = ["title", "time", "bpm", "unit", "youtube", "offset"] as const;
+const KNOWN_HEADER_KEYS = ["title", "artist", "time", "bpm", "unit", "capo", "youtube", "offset"] as const;
 const VALID_DENOMINATORS = [1, 2, 4, 8, 16, 32];
 const KNOWN_META_KEYS = new Set([
   "hammer",
@@ -52,7 +52,6 @@ interface RawLength {
   a?: number;
   b?: number;
   offsetMs?: number;
-  uncertain: boolean;
 }
 
 interface RawMetaEntry {
@@ -154,14 +153,11 @@ function parseLengthContent(content: string): RawLength | null {
     offsetMs = parseInt(offsetMatch[1]!, 10);
   }
 
-  let uncertain = false;
-  if (rest.startsWith("?")) {
-    uncertain = true;
-    rest = rest.slice(1);
-  }
+  // Old songs may still carry a "?" (guessed rhythm) marker; it is accepted and ignored.
+  if (rest.startsWith("?")) rest = rest.slice(1);
 
   if (rest.length > 0) return null;
-  return { raw: content, kind, k, a, b, offsetMs, uncertain };
+  return { raw: content, kind, k, a, b, offsetMs };
 }
 
 function parseNoteToken(
@@ -342,6 +338,10 @@ function parseBarLine(raw: string, line: number, errors: ParseError[]): RawBar |
 // Header validation (stage 1: syntax)
 // ---------------------------------------------------------------------------
 
+function isValidCapo(v: string): boolean {
+  return /^\d+$/.test(v) && parseInt(v, 10) <= 12;
+}
+
 function validateHeader(fields: RawHeaderField[], errors: ParseError[]): SongHeader | null {
   const seen = new Map<string, RawHeaderField>();
   for (const f of fields) {
@@ -384,6 +384,20 @@ function validateHeader(fields: RawHeaderField[], errors: ParseError[]): SongHea
       );
     } else {
       title = titleField.value;
+    }
+  }
+
+  let artist: string | undefined;
+  const artistField = seen.get("artist");
+  if (artistField) {
+    if (artistField.value.trim() === "") {
+      errors.push(
+        mkError(artistField.line, "MALFORMED_HEADER_LINE", "artist must not be empty (leave the line out instead)", {
+          token: "artist",
+        }),
+      );
+    } else {
+      artist = artistField.value;
     }
   }
 
@@ -437,6 +451,21 @@ function validateHeader(fields: RawHeaderField[], errors: ParseError[]): SongHea
     }
   }
 
+  let capo: number | undefined;
+  const capoField = seen.get("capo");
+  if (capoField) {
+    const v = capoField.value.trim();
+    if (!isValidCapo(v)) {
+      errors.push(
+        mkError(capoField.line, "INVALID_CAPO", `Invalid capo '${capoField.value}' (0-12)`, {
+          token: capoField.value,
+        }),
+      );
+    } else {
+      capo = parseInt(v, 10);
+    }
+  }
+
   let youtube: SongHeader["youtube"];
   const youtubeField = seen.get("youtube");
   const offsetField = seen.get("offset");
@@ -480,7 +509,10 @@ function validateHeader(fields: RawHeaderField[], errors: ParseError[]): SongHea
   if (title === undefined || time === undefined || bpm === undefined || unit === undefined) {
     return null;
   }
-  return { title, time, bpm, unit, youtube };
+  const header: SongHeader = { title, time, bpm, unit, youtube };
+  if (artist !== undefined) header.artist = artist;
+  if (capo !== undefined) header.capo = capo;
+  return header;
 }
 
 // ---------------------------------------------------------------------------
@@ -554,7 +586,7 @@ export function parse(text: string): ParseResult {
 
     if (!currentSection) {
       headerFields.push({ key, value, line: lineNo });
-    } else if (key === "bpm" || key === "unit") {
+    } else if (key === "bpm" || key === "unit" || key === "capo") {
       if (barsStartedInCurrentSection) {
         errors.push(
           mkError(
@@ -563,6 +595,13 @@ export function parse(text: string): ParseResult {
             `Section field '${key}' must appear before the section's first bar`,
             { column: leadingWs + 1, token: key },
           ),
+        );
+      } else if (key === "capo" && currentSection.fields.some((f) => f.key === "capo")) {
+        errors.push(
+          mkError(lineNo, "DUPLICATE_HEADER_KEY", `Duplicate section field 'capo'`, {
+            column: leadingWs + 1,
+            token: key,
+          }),
         );
       } else {
         currentSection.fields.push({ key, value, line: lineNo });
@@ -603,6 +642,10 @@ export function parse(text: string): ParseResult {
         if (f.value.trim() === "" || !Number.isFinite(v) || v <= 0 || v > 999) {
           errors.push(mkError(f.line, "INVALID_BPM", `Invalid bpm '${f.value}'`, { token: f.value }));
         }
+      } else if (f.key === "capo") {
+        if (!isValidCapo(f.value.trim())) {
+          errors.push(mkError(f.line, "INVALID_CAPO", `Invalid capo '${f.value}' (0-12)`, { token: f.value }));
+        }
       } else {
         const v = f.value.trim();
         if (!/^\d+$/.test(v) || parseInt(v, 10) < 1) {
@@ -625,17 +668,20 @@ export function parse(text: string): ParseResult {
     nameLine: number;
     bpm: number;
     unit: number;
+    capo: number;
     bars: RawBar[];
   }
 
   const resolvedSections: ResolvedSection[] = rawSections.map((s) => {
     let bpm = resolvedHeader.bpm;
     let unit = resolvedHeader.unit;
+    let capo = resolvedHeader.capo ?? 0;
     for (const f of s.fields) {
       if (f.key === "bpm") bpm = Number(f.value.trim());
+      else if (f.key === "capo") capo = parseInt(f.value.trim(), 10);
       else unit = parseInt(f.value.trim(), 10);
     }
-    return { name: s.name, nameLine: s.nameLine, bpm, unit, bars: s.bars };
+    return { name: s.name, nameLine: s.nameLine, bpm, unit, capo, bars: s.bars };
   });
 
   for (const s of resolvedSections) {
@@ -765,17 +811,24 @@ export function parse(text: string): ParseResult {
                 token: rn.token,
               }),
             );
+          } else if (s.capo + rn.fret > 24) {
+            errors.push(
+              mkError(
+                rn.line,
+                "FRET_EXCEEDS_WITH_CAPO",
+                `Capo ${s.capo} + fret ${rn.fret} is above fret 24`,
+                { bar: b.barNumber, slot: g.slot, column: rn.column, token: rn.token },
+              ),
+            );
           }
 
           let durationTicks: number;
           let offsetMs = 0;
-          let uncertain = false;
 
           if (rn.length === null) {
             durationTicks = slotTicks;
           } else {
             offsetMs = rn.length.offsetMs ?? 0;
-            uncertain = rn.length.uncertain;
 
             if (rn.length.kind === "units") {
               const k = rn.length.k!;
@@ -837,17 +890,6 @@ export function parse(text: string): ParseResult {
               );
               offsetMs = Math.max(-500, Math.min(500, offsetMs));
             }
-          }
-
-          if (slotStartTick - barStartTick + durationTicks > barTicks) {
-            errors.push(
-              mkError(rn.line, "NOTE_EXCEEDS_BAR", `Note extends past the end of bar ${b.barNumber}`, {
-                bar: b.barNumber,
-                slot: g.slot,
-                column: rn.column,
-                token: rn.token,
-              }),
-            );
           }
 
           const meta: NoteMeta = {};
@@ -927,7 +969,7 @@ export function parse(text: string): ParseResult {
           }
 
           if (meta.flat) {
-            const pitchClass = ((pitchOf(rn.stringNum as StringNumber, rn.fret) % 12) + 12) % 12;
+            const pitchClass = ((soundingMidi(rn.stringNum as StringNumber, rn.fret, s.capo) % 12) + 12) % 12;
             if (NATURAL_PITCH_CLASSES.has(pitchClass)) {
               errors.push(
                 mkError(
@@ -989,7 +1031,6 @@ export function parse(text: string): ParseResult {
             startTick: slotStartTick,
             durationTicks,
             offsetMs,
-            uncertain,
             meta,
             source: { line: rn.line, column: rn.column },
           };
@@ -1005,13 +1046,14 @@ export function parse(text: string): ParseResult {
         startTick: barStartTick,
         lengthTicks: barTicks,
         slots: n,
+        capo: s.capo,
         notes: barNotes,
       });
 
       tickCursor += barTicks;
     }
 
-    sections.push({ name: s.name, bpm: s.bpm, unit: s.unit, bars });
+    sections.push({ name: s.name, bpm: s.bpm, unit: s.unit, capo: s.capo, bars });
   }
 
   if (errors.length > 0) {

@@ -1,0 +1,8 @@
+title: capo
+time: 4/4
+bpm: 90
+unit: 8
+capo: 3
+
+[Song]
+Bar 1: {2} 1S0 2S1 3S0 4S2 5S3 {5} 1S3 2S0 3S0 4S0 5S2 {7} 1S0 2S1 3S0 4S2 5S3

@@ -1,0 +1,12 @@
+.panel.panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-1);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+}
+.panel label { margin-right: 0; color: var(--text-muted); font-size: var(--text-md); }
+.panel input:not([type="checkbox"]) { width: 64px; }

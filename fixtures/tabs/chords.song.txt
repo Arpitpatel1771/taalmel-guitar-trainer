@@ -1,0 +1,7 @@
+title: chords
+time: 4/4
+bpm: 90
+unit: 8
+
+[Song]
+Bar 1: {2} 1S0 2S1 3S0 4S2 5S3 {6} 1S3 2S0 3S0 4S0 5S2 6S3

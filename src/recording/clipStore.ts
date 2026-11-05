@@ -32,6 +32,12 @@ export interface ClipRecord {
   flags?: ClipFlag[];
   /** Waveform peaks (0..1), computed the first time the clip is opened in the trimmer. */
   peaks?: number[];
+  /** Measured volume boost in dB (0..24). Absent = not measured yet. */
+  gainDb?: number;
+  /** Whether to play with `gainDb` applied. Absent (older clips) = off. */
+  boost?: boolean;
+  /** Counts media replacements; absent = 0. Sync re-uploads the media when it grows. */
+  mediaRev?: number;
 }
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -78,7 +84,13 @@ export async function saveClip(
   clip: Omit<ClipRecord, "id" | "size"> & { id?: string; size?: number },
   opts?: WriteOptions
 ): Promise<ClipRecord> {
-  const record: ClipRecord = { ...clip, id: clip.id ?? crypto.randomUUID(), size: clip.blob ? clip.blob.size : (clip.size ?? 0) };
+  const record: ClipRecord = {
+    ...clip,
+    id: clip.id ?? crypto.randomUUID(),
+    size: clip.blob ? clip.blob.size : (clip.size ?? 0),
+    // New clips boost by default; a record passed with an id keeps what it has (older ones stay off).
+    ...(clip.id === undefined && clip.boost === undefined ? { boost: true } : {}),
+  };
   await run("readwrite", (s) => s.put(record));
   emitStorageChange({ kind: "clip", id: record.id, op: "upsert" }, opts);
   return record;
@@ -115,6 +127,41 @@ export async function setClipBlob(id: string, blob: Blob | null, opts?: WriteOpt
   const clip = await run("readonly", (s) => s.get(id) as IDBRequest<ClipRecord | undefined>);
   if (!clip) throw new Error(`Clip ${id} was not found.`);
   const next: ClipRecord = { ...clip, blob, size: blob ? blob.size : clip.size };
+  await run("readwrite", (s) => s.put(next));
+  emitStorageChange({ kind: "clip", id, op: "upsert" }, opts);
+  return next;
+}
+
+/** Stores a measured boost (and optionally the on/off choice). */
+export async function updateClipGain(id: string, gainDb: number, boost?: boolean, opts?: WriteOptions): Promise<void> {
+  const clip = await run("readonly", (s) => s.get(id) as IDBRequest<ClipRecord | undefined>);
+  if (!clip) throw new Error(`Clip ${id} was not found.`);
+  await run("readwrite", (s) => s.put({ ...clip, gainDb, ...(boost === undefined ? {} : { boost }) }));
+  emitStorageChange({ kind: "clip", id, op: "upsert" }, opts);
+}
+
+/** Sets just the boost on/off choice. */
+export async function setClipBoost(id: string, boost: boolean, opts?: WriteOptions): Promise<void> {
+  const clip = await run("readonly", (s) => s.get(id) as IDBRequest<ClipRecord | undefined>);
+  if (!clip) throw new Error(`Clip ${id} was not found.`);
+  await run("readwrite", (s) => s.put({ ...clip, boost }));
+  emitStorageChange({ kind: "clip", id, op: "upsert" }, opts);
+}
+
+/**
+ * Swaps the media for a changed file (trim in place, permanent boost): stores
+ * the new blob and size, bumps `mediaRev` so sync updates the Drive file, and
+ * applies `patch` in the same write.
+ */
+export async function replaceClipMedia(
+  id: string,
+  blob: Blob,
+  patch: Partial<Pick<ClipRecord, "gainDb" | "boost" | "peaks" | "mimeType" | "durationSec">> = {},
+  opts?: WriteOptions
+): Promise<ClipRecord> {
+  const clip = await run("readonly", (s) => s.get(id) as IDBRequest<ClipRecord | undefined>);
+  if (!clip) throw new Error(`Clip ${id} was not found.`);
+  const next: ClipRecord = { ...clip, ...patch, blob, size: blob.size, mediaRev: (clip.mediaRev ?? 0) + 1 };
   await run("readwrite", (s) => s.put(next));
   emitStorageChange({ kind: "clip", id, op: "upsert" }, opts);
   return next;

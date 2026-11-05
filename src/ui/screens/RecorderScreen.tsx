@@ -10,6 +10,7 @@ import {
   ClipRecorder,
   defaultClipName,
   deleteClip,
+  ensureClipGain,
   extensionFor,
   formatClipTime,
   listClips,
@@ -24,12 +25,14 @@ import {
   type ClipFlag,
   type ClipRecord,
 } from "../../recording";
-import { Field, Segmented, Stepper } from "../components/Controls";
+import { Field, Stepper } from "../components/Controls";
 import { ClipTrimmer, isFlagHotkey } from "../components/ClipTrimmer";
+import { RecorderLevel } from "../components/RecorderLevel";
+import { Button, SegmentedControl } from "../components/kit";
 import { LiveWaveform } from "../components/LiveWaveform";
 import { useDriveSync } from "../../drive/useDriveSync";
 import { clipBadge } from "../../drive/syncUi";
-import { useShell } from "../shell/AppShellContext";
+import { useShell, useShellMic } from "../shell/AppShellContext";
 import st from "./Recorder.module.css";
 
 type InputMode = "video" | "audio";
@@ -97,6 +100,7 @@ export function RecorderScreen({
   useEffect(() => metro().setBeatsPerBar(beatsPerBar), [beatsPerBar]);
   useEffect(() => metro().setVolume(settings.metronomeVolume), [settings.metronomeVolume]);
 
+  useShellMic("recorder", stream);
   useEffect(() => {
     if (previewRef.current) previewRef.current.srcObject = stream;
   }, [stream]);
@@ -113,7 +117,7 @@ export function RecorderScreen({
       const finish = rec
         ? rec
             .stop()
-            .then((r) => (r.blob.size > 0 ? saveClip({ name: defaultClipName(new Date()), createdAt: Date.now(), ...r, flags }) : null))
+            .then((r) => (r.blob.size > 0 ? saveClip({ name: defaultClipName(new Date()), createdAt: Date.now(), ...r, flags }).then((c) => ensureClipGain(c).catch(() => null)) : null))
             .catch((err) => toast(err instanceof Error ? err.message : String(err), "error"))
         : Promise.resolve();
       void finish.finally(() => stopStream(input));
@@ -219,7 +223,8 @@ export function RecorderScreen({
     try {
       const result = await rec.stop();
       if (result.blob.size === 0) throw new Error("The recording was empty.");
-      await saveClip({ name: defaultClipName(new Date()), createdAt: Date.now(), ...result, flags });
+      const saved = await saveClip({ name: defaultClipName(new Date()), createdAt: Date.now(), ...result, flags });
+      await ensureClipGain(saved).catch(() => null); // measures the volume boost; a failure just leaves it unmeasured
       await refresh();
       toast("Recording saved.");
     } catch (err) {
@@ -326,7 +331,7 @@ export function RecorderScreen({
       <div className={st.layout}>
         <section className={st.card}>
           <div className={st.cardHeader}>
-            <Segmented
+            <SegmentedControl
               label="Input"
               value={mode}
               options={[
@@ -357,29 +362,31 @@ export function RecorderScreen({
 
           {inputError && <div className="notice notice-error">{inputError}</div>}
 
+          {stream && <RecorderLevel stream={stream} />}
+
           <div className={st.actions}>
             {!stream ? (
-              <button className="btn-primary" onClick={() => void enableInput(mode)}>
+              <Button variant="primary" size="lg" onClick={() => void enableInput(mode)}>
                 Enable {mode === "video" ? "camera & mic" : "mic"}
-              </button>
+              </Button>
             ) : recording ? (
               <>
-                <button className={`btn-danger ${st.iconBtn}`} onClick={() => void stopRecording()}>
-                  <Square size={14} fill="currentColor" /> Stop
-                </button>
-                <button className={st.iconBtn} onClick={addFlag}>
-                  <Flag size={14} /> Flag{flagCount > 0 && ` (${flagCount})`} <kbd className={st.kbd}>M</kbd>
-                </button>
+                <Button size="lg" className={st.recordBtn} icon={<Square size={14} fill="currentColor" />} onClick={() => void stopRecording()}>
+                  Stop
+                </Button>
+                <Button size="lg" icon={<Flag size={14} />} onClick={addFlag}>
+                  Flag{flagCount > 0 && ` (${flagCount})`} <kbd className={st.kbd}>M</kbd>
+                </Button>
               </>
             ) : (
-              <button className={`btn-primary ${st.iconBtn}`} onClick={() => void startRecording()}>
-                <Circle size={14} fill="currentColor" /> Record
-              </button>
+              <Button size="lg" className={st.recordBtn} icon={<Circle size={14} fill="currentColor" />} onClick={() => void startRecording()}>
+                Record
+              </Button>
             )}
             {stream && !recording && (
-              <button className="btn-ghost" onClick={() => { stopStream(stream); setStream(null); }}>
+              <Button variant="ghost" size="lg" onClick={() => { stopStream(stream); setStream(null); }}>
                 Turn off {mode === "video" ? "camera" : "mic"}
-              </button>
+              </Button>
             )}
           </div>
 
@@ -395,9 +402,9 @@ export function RecorderScreen({
             <Field label="Beats per bar">
               <Stepper label="Beats per bar" value={beatsPerBar} onChange={setBeatsPerBar} min={1} max={MAX_BEATS_PER_BAR} />
             </Field>
-            <button className={clickOn ? "btn-primary" : undefined} onClick={() => void toggleClick()}>
+            <Button variant={clickOn ? "primary" : "secondary"} onClick={() => void toggleClick()}>
               {clickOn ? "Click on" : "Click off"}
-            </button>
+            </Button>
             <label className={st.check} title={recording ? "Can't change while recording" : undefined}>
               <input
                 type="checkbox"

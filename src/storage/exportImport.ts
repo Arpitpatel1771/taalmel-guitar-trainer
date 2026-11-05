@@ -13,7 +13,7 @@ import { DEFAULT_SETTINGS } from "../model/index.js";
 import { parse, serialize } from "../songFormat/index.js";
 import { SONGS_STORE, openDb, txDone } from "./db.js";
 import { emitStorageChange } from "./changes.js";
-import { loadSettings, saveSettings } from "./settings.js";
+import { loadSettings, normalizeLanes, saveSettings } from "./settings.js";
 import { listSongs } from "./songs.js";
 
 export const LIBRARY_FORMAT_VERSION = 1;
@@ -215,7 +215,7 @@ function mergeSettings(base: Settings): Settings {
   return {
     ...DEFAULT_SETTINGS,
     ...base,
-    lanes: { ...DEFAULT_SETTINGS.lanes, ...(base.lanes ?? {}) },
+    lanes: normalizeLanes(base.lanes),
     tiers: { ...DEFAULT_SETTINGS.tiers, ...(base.tiers ?? {}) },
   };
 }

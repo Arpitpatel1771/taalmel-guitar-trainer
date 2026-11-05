@@ -66,6 +66,11 @@ export class MicInput {
     return this.ctx.sampleRate;
   }
 
+  /** The mic source node, for read-only taps (level meter). Never connect it to the speakers. */
+  get inputNode(): AudioNode {
+    return this.source;
+  }
+
   static async start(ctx: AudioContext): Promise<MicInput> {
     let stream: MediaStream;
     try {

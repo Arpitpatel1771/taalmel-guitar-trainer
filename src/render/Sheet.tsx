@@ -1,15 +1,14 @@
 // Renders a song's sheet from a precomputed Layout (spec 8.1-8.3; UI revamp
 // phase 2, specs/26-9-ui-revamp.md 5.2). One SVG per row draws the grid, loop
 // band, tab lane (strings, note pills, technique curves) and letter lane in
-// the layout's absolute x coordinates. The live waveform canvas sits behind it
-// and the teacher lane stays HTML (dot/zone glyph layout). Re-rendered only
-// when layout/song/lanes change; per-frame work lives in PlaybackController.
+// the layout's absolute x coordinates. The live waveform canvas sits behind it.
+// Re-rendered only when layout/song/lanes change; per-frame work lives in PlaybackController.
 
 import { useEffect, useRef, type ReactNode } from "react";
 import type { LaneId, Note, Song, TimeSignature } from "../model";
 import type { BarBox, Layout, NoteBox, Row } from "../layout";
 import { LETTER_LINE_HEIGHT, STRING_COUNT, TAB_LANE_TOP, TAB_STRING_GAP } from "../layout";
-import { letterOfNote, tabGlyph, teacherGlyph } from "../notation";
+import { letterOfNote, tabGlyph } from "../notation";
 import type { SongIndex } from "./songIndex";
 
 export interface SheetHandle {
@@ -30,11 +29,17 @@ export interface SheetProps {
    * click-and-drag across bar headers to pick a loop range (spec 10.2). */
   onBarMouseDown?: (barNumber: number, shiftKey: boolean) => void;
   onBarMouseEnter?: (barNumber: number) => void;
+  /** Drawn on top of the rows in sheet coordinates (the rhythm editor's selection and drag handles). */
+  overlay?: ReactNode;
+  /** A chip that floats above the cursor's row and follows it (the capo-change warning). */
+  cursorChip?: ReactNode;
 }
 
 /** Width of a note's head (the part holding the fret number). */
-const HEAD_W = 18;
-const HEAD_H = 16;
+const HEAD_W = 22;
+const HEAD_H = 26;
+/** Advance of one 22px JetBrains Mono glyph. */
+const GLYPH_W = 13.2;
 
 function stringY(laneTop: number, stringIndex: number): number {
   return laneTop + TAB_LANE_TOP + stringIndex * TAB_STRING_GAP;
@@ -121,11 +126,14 @@ function TechniqueMark({ note, prev, x, prevX, sy, rowX0 }: { note: Note; prev: 
 function NotePill({ nb, sy }: { nb: NoteBox; sy: number }) {
   const { note } = nb;
   const glyph = tabGlyph(note, undefined);
-  const headW = Math.max(HEAD_W, glyph.text.length * 8 + 6);
+  const headW = Math.max(HEAD_W, Math.ceil(glyph.text.length * GLYPH_W) + 6);
   const w = Math.max(headW, nb.width - 2);
   return (
-    <g className={`note-pill${note.uncertain ? " uncertain" : ""}${note.meta.muted ? " muted" : ""}`}>
-      <rect className="note-tail" x={nb.x} y={sy - 3} width={w} height={6} rx={3} />
+    <g
+      className={`note-pill${note.meta.muted ? " muted" : ""}`}
+      data-nk={`${note.string}:${note.startTick}`}
+    >
+      <rect className="note-tail" x={nb.x} y={sy - 2} width={w} height={4} rx={2} />
       <rect className="note-head" x={nb.x} y={sy - HEAD_H / 2} width={headW} height={HEAD_H} rx={HEAD_H / 2} />
       <text className="note-fret" x={nb.x + headW / 2} y={sy + 0.5} textAnchor="middle" dominantBaseline="central">
         {glyph.text}
@@ -142,7 +150,7 @@ function TabLane({ row, songIndex, laneTop }: { row: Row; songIndex: SongIndex; 
     if (nb.note.meta.strum && !strummed.has(nb.note.startTick)) {
       strummed.add(nb.note.startTick);
       strumMarks.push(
-        <text key={`strum-${nb.note.startTick}`} x={nb.x + HEAD_W / 2} y={laneTop + 26} className="strum-mark" textAnchor="middle">
+        <text key={`strum-${nb.note.startTick}`} x={nb.x + HEAD_W / 2} y={laneTop + 30} className="strum-mark" textAnchor="middle">
           {nb.note.meta.strum === "up" ? "↑" : "↓"}
         </text>,
       );
@@ -188,32 +196,13 @@ function LetterLane({ row, laneTop }: { row: Row; laneTop: number }) {
             x={nb.x + HEAD_W / 2}
             y={laneTop + 12 + rank * LETTER_LINE_HEIGHT}
             textAnchor="middle"
-            className={`letter-glyph${nb.note.uncertain ? " uncertain" : ""}`}
+            className={"letter-glyph"}
           >
-            {letterOfNote(nb.note)}
+            {letterOfNote(nb.note, nb.capo)}
           </text>
         );
       })}
     </g>
-  );
-}
-
-function TeacherNote({ note, x }: { note: Note; x: number }) {
-  const glyph = teacherGlyph(note);
-  if (glyph.kind === "fallback") {
-    return (
-      <div className={`teacher-note fallback${note.uncertain ? " uncertain" : ""}`} style={{ left: x }}>
-        {glyph.text}
-      </div>
-    );
-  }
-  return (
-    <div className={`teacher-note${note.uncertain ? " uncertain" : ""}`} style={{ left: x }}>
-      <span className="teacher-zone">{glyph.zone}</span>
-      {glyph.register === "above" && <span className="teacher-dot teacher-dot-above" />}
-      <span className="teacher-letter">{glyph.letter}</span>
-      {glyph.register === "below" && <span className="teacher-dot teacher-dot-below" />}
-    </div>
   );
 }
 
@@ -242,6 +231,7 @@ function RowView({
   const barsEnd = lastBar ? lastBar.x + lastBar.width : row.x0;
   const barsWidth = barsEnd - row.x0;
   const loopBars = loopRange ? row.bars.filter((b) => b.barNumber >= loopRange.start && b.barNumber <= loopRange.end) : [];
+  const loopW = loopBars.length > 0 ? loopBars[loopBars.length - 1].x + loopBars[loopBars.length - 1].width - loopBars[0].x : 0;
 
   return (
     <div className="sheet-row" data-row={row.index} style={{ top: row.y, height: row.height }}>
@@ -256,18 +246,15 @@ function RowView({
 
       <svg className="row-svg" width={width} height={row.height} aria-hidden="true">
         {loopBars.length > 0 && (
-          <rect
-            className="loop-band"
-            x={loopBars[0].x}
-            y={0}
-            width={loopBars[loopBars.length - 1].x + loopBars[loopBars.length - 1].width - loopBars[0].x}
-            height={row.height}
-          />
+          <>
+            <rect className="loop-band" x={loopBars[0].x} y={0} width={loopW} height={row.height} />
+            <line className="loop-edge" x1={loopBars[0].x} x2={loopBars[0].x + loopW} y1={1} y2={1} />
+          </>
         )}
         {row.bars.map((bar) => (
-          <GridLines key={bar.barNumber} bar={bar} time={time} y0={18} y1={row.height} />
+          <GridLines key={bar.barNumber} bar={bar} time={time} y0={22} y1={row.height} />
         ))}
-        <line x1={barsEnd} x2={barsEnd} y1={18} y2={row.height} className="grid-bar" />
+        <line x1={barsEnd} x2={barsEnd} y1={22} y2={row.height} className="grid-bar" />
         {lanes.tab && <TabLane row={row} songIndex={songIndex} laneTop={row.laneOffsets.tab ?? 0} />}
         {lanes.letter && <LetterLane row={row} laneTop={row.laneOffsets.letter ?? 0} />}
       </svg>
@@ -275,6 +262,7 @@ function RowView({
       {row.bars.map((bar) => {
         const inLoop = !!loopRange && bar.barNumber >= loopRange.start && bar.barNumber <= loopRange.end;
         const section = songIndex.sectionStartBars.has(bar.barNumber) ? songIndex.sectionNameForBar.get(bar.barNumber) : undefined;
+        const capoBadge = songIndex.capoBadgeForBar.get(bar.barNumber);
         return (
           <div
             key={bar.barNumber}
@@ -287,22 +275,15 @@ function RowView({
           >
             <span className="bar-number">{bar.barNumber}</span>
             {section && <span className="section-name">{section}</span>}
+            {capoBadge !== undefined && <span className="capo-badge">{capoBadge > 0 ? `Capo ${capoBadge}` : "No capo"}</span>}
           </div>
         );
       })}
-
-      {lanes.teacher && (
-        <div className="lane lane-teacher" style={{ top: row.laneOffsets.teacher ?? 0, left: row.x0 }}>
-          {row.notes.map((nb) => (
-            <TeacherNote key={`${nb.note.string}-${nb.note.startTick}`} note={nb.note} x={nb.x - row.x0} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
-export function Sheet({ song, layout, songIndex, lanes, onReady, loopRange, onBarMouseDown, onBarMouseEnter }: SheetProps) {
+export function Sheet({ song, layout, songIndex, lanes, onReady, loopRange, onBarMouseDown, onBarMouseEnter, overlay, cursorChip }: SheetProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cursorRef = useRef<HTMLDivElement | null>(null);
   const canvasesRef = useRef<Map<number, HTMLCanvasElement>>(new Map());
@@ -340,7 +321,8 @@ export function Sheet({ song, layout, songIndex, lanes, onReady, loopRange, onBa
             onBarMouseEnter={onBarMouseEnter}
           />
         ))}
-        <div ref={cursorRef} className="playback-cursor" />
+        {overlay}
+        <div ref={cursorRef} className="playback-cursor">{cursorChip ? <div className="cursor-chip" role="status">{cursorChip}</div> : null}</div>
       </div>
     </div>
   );

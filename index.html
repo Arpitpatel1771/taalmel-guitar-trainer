@@ -6,6 +6,23 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="description" content="Taalmel is a free guitar practice app: songs with tab, a tuner, metronome, recorder and a chord library with practice modes. Optional Google Drive backup and sync." />
     <title>Taalmel</title>
+    <script>
+      // Set theme and accent before first paint (cached by src/ui/theme.ts).
+      (function () {
+        var theme = "system", accent = "saffron";
+        try {
+          var c = JSON.parse(localStorage.getItem("taalmel.theme") || "{}");
+          if (c.theme === "dark" || c.theme === "light") theme = c.theme;
+          if (c.accent === "teal" || c.accent === "violet") accent = c.accent;
+        } catch (e) {}
+        if (theme === "system") {
+          theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        var r = document.documentElement;
+        r.setAttribute("data-theme", theme);
+        r.setAttribute("data-accent", accent);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,5 +1,5 @@
-// Session summary panel, spec 9.6. Shown when playback stops after at least
-// 4 expected events. Not persisted.
+// Session summary panel, spec 9.6. Opened from the transport's summary button once a take with at
+// least 4 expected events has been scored (never pops up by itself). Not persisted.
 
 import { Fragment } from "react";
 import { X } from "lucide-react";
@@ -56,11 +56,16 @@ function SummaryTable({ title, summary }: { title: string; summary: SessionSumma
         ))}
         <dt>Extra plucks</dt>
         <dd>{summary.extra}</dd>
-        <dt>Pitch right / wrong / unknown</dt>
+        <dt>Wrong notes</dt>
+        <dd className={ss.wrong}>{summary.pitch.wrong}</dd>
+        <dt>Pitch right / unknown</dt>
         <dd>
-          {summary.pitch.right} / {summary.pitch.wrong} / {summary.pitch.unknown}
+          {summary.pitch.right} / {summary.pitch.unknown}
         </dd>
       </dl>
+      <p className={ss.hint}>
+        Blue is on time, pink is clearly early or late (underlined). A small tick marks which way. A wrong note shows the note you played above the fret.
+      </p>
     </section>
   );
 }

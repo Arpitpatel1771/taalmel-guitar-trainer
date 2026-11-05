@@ -30,6 +30,69 @@ export interface PitchEstimate {
   confidence: number;
 }
 
+/** Cumulative mean normalized difference function d'(lag) for lags up to maxLag. */
+function computeCmnd(samples: Float32Array, minLag: number, maxLag: number): Float64Array {
+  const n = samples.length;
+  const diff = new Float64Array(maxLag + 1);
+  for (let lag = minLag; lag <= maxLag; lag++) {
+    let sum = 0;
+    const limit = n - lag;
+    for (let i = 0; i < limit; i++) {
+      const d = samples[i] - samples[i + lag];
+      sum += d * d;
+    }
+    diff[lag] = sum;
+  }
+  const cmnd = new Float64Array(maxLag + 1);
+  cmnd[0] = 1;
+  let runningSum = 0;
+  for (let lag = 1; lag <= maxLag; lag++) {
+    runningSum += diff[lag];
+    cmnd[lag] = runningSum > 0 ? (diff[lag] * lag) / runningSum : 1;
+  }
+  return cmnd;
+}
+
+/** Octave re-check values (spec 5-11-ui-redesign 6.2): d' at two candidate periods of the same slice. */
+export interface OctaveCheck {
+  dExpected: number;
+  dDetected: number;
+}
+
+/** d' near the (fractional) period of `freq`: the minimum over +-1 lag, since the true dip may sit between integer lags. */
+function dAtFreq(cmnd: Float64Array, minLag: number, sampleRate: number, freq: number): number {
+  const center = Math.round(sampleRate / freq);
+  let best = 1;
+  for (let lag = center - 1; lag <= center + 1; lag++) {
+    if (lag >= minLag && lag < cmnd.length && cmnd[lag] < best) best = cmnd[lag];
+  }
+  return best;
+}
+
+/**
+ * YIN plus the d' values at the expected and detected periods, for the
+ * matcher's octave check. `check` is null when there is no estimate.
+ */
+export function yinWithCheck(
+  samples: Float32Array,
+  sampleRate: number,
+  expectedFreq: number,
+  opts: YinOptions = DEFAULT_YIN_OPTIONS
+): { result: PitchEstimate | null; check: OctaveCheck | null } {
+  const result = yin(samples, sampleRate, opts);
+  if (!result) return { result, check: null };
+  const minLag = Math.max(1, Math.floor(sampleRate / opts.maxFreq));
+  const maxLag = Math.min(samples.length - 1, Math.floor(sampleRate / opts.minFreq));
+  const cmnd = computeCmnd(samples, minLag, maxLag);
+  return {
+    result,
+    check: {
+      dExpected: dAtFreq(cmnd, minLag, sampleRate, expectedFreq),
+      dDetected: dAtFreq(cmnd, minLag, sampleRate, result.freq),
+    },
+  };
+}
+
 /**
  * Estimates the fundamental frequency of `samples` using YIN. Returns null
  * for silence or when no candidate period passes the threshold search.
@@ -47,26 +110,7 @@ export function yin(
   const maxLag = Math.min(n - 1, Math.floor(sampleRate / opts.minFreq));
   if (maxLag <= minLag) return null;
 
-  // Difference function d(lag) = sum_i (x[i] - x[i+lag])^2
-  const diff = new Float64Array(maxLag + 1);
-  for (let lag = minLag; lag <= maxLag; lag++) {
-    let sum = 0;
-    const limit = n - lag;
-    for (let i = 0; i < limit; i++) {
-      const d = samples[i] - samples[i + lag];
-      sum += d * d;
-    }
-    diff[lag] = sum;
-  }
-
-  // Cumulative mean normalized difference function (CMNDF).
-  const cmnd = new Float64Array(maxLag + 1);
-  cmnd[0] = 1;
-  let runningSum = 0;
-  for (let lag = 1; lag <= maxLag; lag++) {
-    runningSum += diff[lag];
-    cmnd[lag] = runningSum > 0 ? (diff[lag] * lag) / runningSum : 1;
-  }
+  const cmnd = computeCmnd(samples, minLag, maxLag);
 
   // Absolute threshold: first local minimum below the threshold, searching
   // from minLag upward.

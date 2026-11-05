@@ -17,7 +17,7 @@ export interface PracticeModeProps {
   settings: Settings;
   onChange: (next: Settings) => void;
   /** Chord (and voicing) to start with, e.g. from "Check with mic" in the library. */
-  initial?: { chord: PickedChord; voicingId?: string };
+  initial?: { chord: PickedChord; voicingId?: string; chordB?: PickedChord };
 }
 
 const MODE_KEY = "taalmel.chordPracticeMode";
@@ -40,7 +40,7 @@ export function ChordPractice({
   settings: Settings;
   onChange: (next: Settings) => void;
   /** Opens a mode directly with a chord (changes whenever the caller sends a new request). */
-  start?: { mode: PracticeMode; chord: PickedChord; voicingId?: string; nonce: number };
+  start?: { mode: PracticeMode; chord: PickedChord; voicingId?: string; chordB?: PickedChord; nonce: number };
 }) {
   const [mode, setModeState] = useState<PracticeMode>(start?.mode ?? readMode);
   const [lastNonce, setLastNonce] = useState(start?.nonce);
@@ -58,7 +58,7 @@ export function ChordPractice({
     }
   }
 
-  const initial = start && start.mode === mode ? { chord: start.chord, voicingId: start.voicingId } : undefined;
+  const initial = start && start.mode === mode ? { chord: start.chord, voicingId: start.voicingId, chordB: start.chordB } : undefined;
   const props: PracticeModeProps = { settings, onChange, initial };
 
   return (

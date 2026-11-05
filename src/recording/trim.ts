@@ -1,7 +1,7 @@
 // Trimming with ffmpeg.wasm. The ~30 MB core is fetched only on the first
 // trim (dynamic import + lazy load), never on app start.
 
-import { buildTrimPlan, extensionFor } from "./media";
+import { buildTrimPlan, extensionFor, type TrimPlan } from "./media";
 import type { FFmpeg } from "@ffmpeg/ffmpeg";
 
 let ffmpegPromise: Promise<FFmpeg> | null = null;
@@ -96,9 +96,17 @@ export async function trimClip(
   opts: Parameters<typeof buildTrimPlan>[0],
   onProgress?: (stage: TrimStage, fraction: number | null) => void
 ): Promise<{ blob: Blob; mimeType: string }> {
+  return runFfmpegPlan(source, buildTrimPlan(opts), onProgress);
+}
+
+/** Loads ffmpeg (reporting download progress) and runs a prepared plan; shared by trimming and boosting. */
+export async function runFfmpegPlan(
+  source: Blob,
+  plan: TrimPlan,
+  onProgress?: (stage: TrimStage, fraction: number | null) => void
+): Promise<{ blob: Blob; mimeType: string }> {
   onProgress?.("loading", null);
   const ffmpeg = await loadFfmpeg((f) => onProgress?.("loading", f));
-  const plan = buildTrimPlan(opts);
   const progress = ({ progress }: { progress: number }) =>
     onProgress?.("trimming", Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : null);
   ffmpeg.on("progress", progress);
@@ -108,7 +116,7 @@ export async function trimClip(
     const code = await ffmpeg.exec(plan.args);
     if (code !== 0) throw new Error(`ffmpeg exited with code ${code}`);
     const data = await ffmpeg.readFile(plan.outputName);
-    if (typeof data === "string" || data.byteLength === 0) throw new Error("Trim produced an empty file");
+    if (typeof data === "string" || data.byteLength === 0) throw new Error("ffmpeg produced an empty file");
     return { blob: new Blob([data as Uint8Array<ArrayBuffer>], { type: plan.outputMime }), mimeType: plan.outputMime };
   } finally {
     ffmpeg.off("progress", progress);

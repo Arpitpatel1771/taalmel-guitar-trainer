@@ -20,6 +20,7 @@ export interface StorageAdapter {
   getSong(id: string): Promise<SongRecord | undefined>;
   saveSong(text: string, id?: string): Promise<SongRecord>;
   deleteSong(id: string): Promise<void>;
+  linkSongToLibrary(id: string, libraryId: string, libraryVersion: string): Promise<void>;
 
   loadSettings(): Promise<Settings>;
   saveSettings(s: Settings): Promise<void>;

@@ -6,100 +6,13 @@
 }
 
 .main {
+  position: relative;
   flex: 1;
   height: 100%;
   min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-/* ---- Sidebar ---- */
-
-.sidebar {
-  width: var(--sidebar-width);
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-2);
-  background: var(--surface-1);
-  border-right: 1px solid var(--border-subtle);
-  transition: width var(--duration-base) var(--ease-out);
-}
-
-.sidebarCollapsed {
-  width: var(--sidebar-width-collapsed);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  height: 40px;
-  padding: 0 var(--space-2);
-  margin-bottom: var(--space-3);
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.brandMark {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
-  color: var(--text-on-accent);
-}
-
-.navItem {
-  width: 100%;
-  justify-content: flex-start;
-  height: 36px;
-  padding: 0 var(--space-3);
-  background: transparent;
-  border-color: transparent;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.navItem:hover:not(:disabled) {
-  background: var(--surface-2);
-  border-color: transparent;
-  color: var(--text-primary);
-}
-
-.navItemActive,
-.navItemActive:hover:not(:disabled) {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.navIcon {
-  flex-shrink: 0;
-}
-
-.sidebarCollapsed .navLabel,
-.sidebarCollapsed .brandName {
-  display: none;
-}
-
-.sidebarCollapsed .navItem {
-  justify-content: center;
-  padding: 0;
-}
-
-.sidebarFooter {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
 }
 
 /* ---- Focus-mode top bar ---- */
@@ -136,8 +49,14 @@
 .chips {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--space-2);
 }
+.chips:empty { display: none; }
+
+/* Top-right of every screen (spec 3.3). */
+.statusSlot { flex-shrink: 0; padding: 0 var(--space-6); }
+.statusSlot:has(.chips:not(:empty)) { padding-top: var(--space-3); }
 
 .chip {
   height: 26px;
@@ -167,7 +86,7 @@ button.chip:hover:not(:disabled) {
 .chipInfo { color: var(--info); background: var(--info-soft); border-color: transparent; }
 .chipWarning { color: var(--warning); background: var(--warning-soft); border-color: transparent; }
 .chipError { color: var(--danger); background: var(--danger-soft); border-color: transparent; }
-.chipAccent { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
+.chipAccent { color: var(--accent-text); background: var(--accent-soft); border-color: transparent; }
 
 .pulse .chipDot {
   animation: pulse 1s ease-in-out infinite;
@@ -182,7 +101,7 @@ button.chip:hover:not(:disabled) {
 .toasts {
   position: fixed;
   right: var(--space-4);
-  bottom: var(--space-4);
+  bottom: var(--pocket-clearance);
   z-index: 1000;
   display: flex;
   flex-direction: column;
@@ -201,7 +120,7 @@ button.chip:hover:not(:disabled) {
   border-radius: var(--radius-md);
   background: var(--surface-3);
   border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-popover);
+  box-shadow: var(--shadow-float);
   font-size: var(--text-md);
   animation: toastIn var(--duration-base) var(--ease-out);
 }

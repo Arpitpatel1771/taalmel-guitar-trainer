@@ -1,0 +1,191 @@
+{
+  "events": [
+    {
+      "column": 2,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 3
+        },
+        {
+          "string": 6,
+          "fret": 0,
+          "technique": {
+            "muted": true
+          }
+        }
+      ]
+    },
+    {
+      "column": 4,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 5,
+          "technique": {
+            "connection": {
+              "kind": "hammer"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "column": 6,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 3,
+          "technique": {
+            "connection": {
+              "kind": "pull"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "column": 9,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 5
+        }
+      ]
+    },
+    {
+      "column": 11,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 7,
+          "technique": {
+            "connection": {
+              "kind": "slide"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "column": 13,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 5,
+          "technique": {
+            "connection": {
+              "kind": "slide"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "column": 18,
+      "bar": 1,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 7
+        }
+      ]
+    },
+    {
+      "column": 20,
+      "bar": 1,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 7,
+          "technique": {
+            "connection": {
+              "kind": "bend",
+              "semitones": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "column": 22,
+      "bar": 1,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 7,
+          "technique": {
+            "connection": {
+              "kind": "bend",
+              "semitones": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "column": 28,
+      "bar": 1,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 9,
+          "technique": {
+            "vibrato": true
+          }
+        }
+      ]
+    }
+  ],
+  "bars": [
+    {
+      "index": 0,
+      "block": 0,
+      "startColumn": 1,
+      "endColumn": 16,
+      "explicit": true
+    },
+    {
+      "index": 1,
+      "block": 0,
+      "startColumn": 17,
+      "endColumn": 32,
+      "explicit": true
+    }
+  ],
+  "sectionNames": [],
+  "warnings": [
+    {
+      "line": 6,
+      "code": "TAB_DEAD_NOTE",
+      "message": "1 dead note(s) (x) were read as muted open strings; check the fret"
+    }
+  ],
+  "errors": []
+}

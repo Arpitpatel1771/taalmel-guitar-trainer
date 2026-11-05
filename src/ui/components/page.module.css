@@ -1,0 +1,9 @@
+/* Page header and section titles shared by the restyled screens (match Home). */
+.head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; padding: var(--space-4) 0 var(--space-2); }
+.headText { min-width: 0; }
+.title { margin: 0; font-family: var(--font-display); font-size: 40px; line-height: 1.1; font-weight: var(--weight-bold); letter-spacing: -0.02em; color: var(--text); overflow-wrap: anywhere; }
+.sub { margin: var(--space-2) 0 0; max-width: 60ch; color: var(--text-muted); font-size: var(--text-md); }
+.actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.section { margin: var(--space-5) 0 var(--space-1); font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-semibold); color: var(--text); }
+.stepperRow { margin: 0 0 var(--space-2); overflow-x: auto; }
+@media (max-width: 900px) { .title { font-size: 32px; } }

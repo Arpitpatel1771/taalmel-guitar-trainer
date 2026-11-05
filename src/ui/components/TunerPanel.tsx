@@ -7,6 +7,8 @@ import { Mic, MicOff } from "lucide-react";
 import type { StringNumber } from "../../model";
 import { getAudioContext, IN_TUNE_CENTS, MicError, readTuner, resumeAudio, TunerInput, type TunerReading } from "../../audio";
 import { Segmented, Stepper } from "./Controls";
+import { Button } from "./kit";
+import { useShellMic } from "../shell/AppShellContext";
 import styles from "./Tuner.module.css";
 
 type Lock = "auto" | StringNumber;
@@ -16,11 +18,14 @@ export function TunerPanel({
   onA4Change,
   compact = false,
   autoStart = false,
+  onReading,
 }: {
   a4Hz: number;
   onA4Change: (hz: number) => void;
   compact?: boolean;
   autoStart?: boolean;
+  /** Reports the note being heard (null when silent or stopped), e.g. for the pocket chip. */
+  onReading?: (r: { name: string; inTune: boolean } | null) => void;
 }) {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +33,8 @@ export function TunerPanel({
   const [level, setLevel] = useState(0);
   const [lock, setLock] = useState<Lock>("auto");
   const inputRef = useRef<TunerInput | null>(null);
+  const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  useShellMic("tuner", micStream);
 
   async function start() {
     setError(null);
@@ -37,6 +44,7 @@ export function TunerPanel({
         setFreq(f);
         setLevel(l);
       });
+      setMicStream(inputRef.current.mediaStream);
       setRunning(true);
     } catch (err) {
       setError(
@@ -56,6 +64,7 @@ export function TunerPanel({
   function stop() {
     inputRef.current?.stop();
     inputRef.current = null;
+    setMicStream(null);
     setRunning(false);
     setFreq(null);
     setLevel(0);
@@ -70,6 +79,12 @@ export function TunerPanel({
   const reading: TunerReading | null = freq ? readTuner(freq, a4Hz, lock === "auto" ? undefined : lock) : null;
   const cents = reading ? Math.max(-50, Math.min(50, reading.cents)) : 0;
   const inTune = !!reading && Math.abs(reading.cents) <= IN_TUNE_CENTS;
+
+  const readingName = reading?.targetName ?? null;
+  useEffect(() => {
+    onReading?.(readingName ? { name: readingName, inTune } : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readingName, inTune]);
 
   return (
     <div className={`${styles.tuner}${compact ? ` ${styles.compact}` : ""}`}>
@@ -122,13 +137,13 @@ export function TunerPanel({
         <Stepper label="A4 reference (Hz)" value={a4Hz} min={430} max={450} onChange={onA4Change} />
         <span className={styles.sub}>Hz</span>
         {running ? (
-          <button onClick={stop}>
-            <MicOff size={15} /> Stop
-          </button>
+          <Button onClick={stop} icon={<MicOff size={15} />}>
+            Stop
+          </Button>
         ) : (
-          <button className="btn-primary" onClick={() => void start()}>
-            <Mic size={15} /> Start tuner
-          </button>
+          <Button variant="primary" onClick={() => void start()} icon={<Mic size={15} />}>
+            Start tuner
+          </Button>
         )}
       </div>
       {error && <div className="notice notice-error">{error}</div>}

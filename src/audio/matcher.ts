@@ -2,10 +2,32 @@
 
 import type { ExpectedEvent, Note, PitchVerdict, Song, TimingTier, TimingTiers, Verdict } from "../model";
 import type { TempoMap } from "../tempo";
-import { midiOf, pitchClassesMatch } from "./pitchClass";
+import { capoByNote, soundingMidi } from "../notation";
+import { freqToMidi, pitchClassOfMidi } from "./pitchClass";
+import type { OctaveCheck } from "./yin";
 
 /** Below this YIN confidence a matched onset's pitch reads as "unknown". */
 const PITCH_CONFIDENCE_THRESHOLD = 0.5;
+/** Octave re-check (spec 5-11-ui-redesign 6.2): d' at the expected period must clear this (the YIN threshold)... */
+const OCTAVE_CHECK_ABS = 0.15;
+/** ...and sit within this of d' at the detected period. */
+const OCTAVE_CHECK_REL = 0.05;
+/**
+ * Tuned addition: when YIN reports a pitch an octave ABOVE the expected note,
+ * the expected (2x) period is also a clean dip of a genuine high note, so the
+ * spec rule alone cannot tell "played the octave up" from "YIN octave error on
+ * a strong 2nd harmonic". In the latter the detected period is clearly worse
+ * than the expected one; require it to be worse by this margin. On synthetic
+ * plucks: octave errors give >= 0.07, real octave-up notes give <= 0.04.
+ */
+const OCTAVE_UP_MARGIN = 0.06;
+
+export interface PitchOptions {
+  /** A4 reference in Hz from settings (default 440). */
+  a4Hz?: number;
+  /** d' values at the expected and detected periods, from the pitch worker. */
+  check?: OctaveCheck | null;
+}
 
 function isPicked(note: Note): boolean {
   return !note.meta.connection;
@@ -18,6 +40,7 @@ function isPicked(note: Note): boolean {
  * has only such notes, no event is produced for it.
  */
 export function buildExpectedEvents(song: Song, tempo: TempoMap): ExpectedEvent[] {
+  const capos = capoByNote(song);
   const groups = new Map<number, Note[]>();
   // A bend is a continuation (not picked) only when it follows a note on the
   // same string at the same fret; a bend "from nowhere" or on a new fret is
@@ -40,7 +63,7 @@ export function buildExpectedEvents(song: Song, tempo: TempoMap): ExpectedEvent[
   return ticks.map((tick) => {
     const notes = groups.get(tick)!.slice().sort((a, b) => a.string - b.string);
     const timeSec = tempo.ticksToSec(tick) + notes[0].offsetMs / 1000;
-    return { tick, timeSec, notes };
+    return { tick, timeSec, notes, capo: capos.get(notes[0]) ?? 0 };
   });
 }
 
@@ -131,7 +154,7 @@ export class Matcher {
    * 9.5). No-op for missed/extra verdicts. Chord slots (more than one picked
    * note at the expected tick) always read "skipped".
    */
-  attachPitch(verdict: Verdict, freq: number | null, confidence: number): void {
+  attachPitch(verdict: Verdict, freq: number | null, confidence: number, opts: PitchOptions = {}): void {
     if (verdict.kind !== "matched" || !verdict.expected) return;
 
     if (verdict.expected.notes.length > 1) {
@@ -145,8 +168,24 @@ export class Matcher {
     }
 
     const note = verdict.expected.notes[0];
-    const expectedMidi = midiOf(note.string, note.fret);
-    const result: PitchVerdict = pitchClassesMatch(freq, expectedMidi) ? "right" : "wrong";
+    const expectedMidi = soundingMidi(note.string, note.fret, verdict.expected.capo);
+    const playedMidi = Math.round(freqToMidi(freq, opts.a4Hz ?? 440));
+    delete verdict.playedMidi;
+
+    let result: PitchVerdict;
+    if (playedMidi === expectedMidi) {
+      result = "right";
+    } else if (pitchClassOfMidi(playedMidi) !== pitchClassOfMidi(expectedMidi)) {
+      result = "wrong";
+    } else {
+      // Same pitch class, other octave: YIN is unreliable here, so trust the
+      // expected octave only if its period is a clean dip of the same slice.
+      const c = opts.check;
+      const plausible = !!c && c.dExpected < OCTAVE_CHECK_ABS && c.dExpected - c.dDetected < OCTAVE_CHECK_REL;
+      const upOk = playedMidi < expectedMidi || (c !== undefined && c !== null && c.dDetected - c.dExpected >= OCTAVE_UP_MARGIN);
+      result = plausible && upOk ? "right" : "wrong";
+    }
+    if (result === "wrong") verdict.playedMidi = playedMidi;
     verdict.pitch = result;
   }
 

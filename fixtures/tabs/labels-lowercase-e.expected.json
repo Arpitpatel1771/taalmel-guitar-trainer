@@ -1,0 +1,167 @@
+{
+  "events": [
+    {
+      "column": 2,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 5,
+          "fret": 3
+        }
+      ]
+    },
+    {
+      "column": 4,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 4,
+          "fret": 2
+        }
+      ]
+    },
+    {
+      "column": 6,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 3,
+          "fret": 0
+        }
+      ]
+    },
+    {
+      "column": 8,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 2,
+          "fret": 1
+        }
+      ]
+    },
+    {
+      "column": 12,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 0
+        }
+      ]
+    },
+    {
+      "column": 16,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 2,
+          "fret": 1
+        }
+      ]
+    },
+    {
+      "column": 20,
+      "bar": 1,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 5,
+          "fret": 3
+        }
+      ]
+    },
+    {
+      "column": 22,
+      "bar": 1,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 4,
+          "fret": 2
+        }
+      ]
+    },
+    {
+      "column": 24,
+      "bar": 1,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 3,
+          "fret": 2
+        }
+      ]
+    },
+    {
+      "column": 26,
+      "bar": 1,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 2,
+          "fret": 1
+        }
+      ]
+    },
+    {
+      "column": 30,
+      "bar": 1,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 0
+        }
+      ]
+    },
+    {
+      "column": 34,
+      "bar": 1,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 2,
+          "fret": 1
+        }
+      ]
+    }
+  ],
+  "bars": [
+    {
+      "index": 0,
+      "block": 0,
+      "startColumn": 1,
+      "endColumn": 18,
+      "explicit": true
+    },
+    {
+      "index": 1,
+      "block": 0,
+      "startColumn": 19,
+      "endColumn": 36,
+      "explicit": true
+    }
+  ],
+  "sectionNames": [],
+  "warnings": [],
+  "errors": []
+}

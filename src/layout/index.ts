@@ -20,5 +20,4 @@ export {
   TAB_LANE_TOP,
   LETTER_LINE_HEIGHT,
   TAB_STRING_GAP,
-  TEACHER_LANE_HEIGHT,
 } from "./constants";

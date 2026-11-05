@@ -5,13 +5,12 @@ import {
   LETTER_LANE_HEIGHT,
   ROW_LEFT_PADDING,
   TAB_LANE_HEIGHT,
-  TEACHER_LANE_HEIGHT,
 } from "./constants";
 import type { LaneId } from "../model";
 
-const ALL_LANES_ON: Record<LaneId, boolean> = { tab: true, letter: true, teacher: true };
-const TAB_AND_LETTER: Record<LaneId, boolean> = { tab: true, letter: true, teacher: false };
-const NO_LANES: Record<LaneId, boolean> = { tab: false, letter: false, teacher: false };
+const ALL_LANES_ON: Record<LaneId, boolean> = { tab: true, letter: true };
+const TAB_AND_LETTER: Record<LaneId, boolean> = { tab: true, letter: true };
+const NO_LANES: Record<LaneId, boolean> = { tab: false, letter: false };
 
 describe("computeLayout: bars per row at various widths/zooms", () => {
   it("fits floor(availableWidth / pxPerBar) bars per row, minimum 1", () => {
@@ -79,14 +78,13 @@ describe("computeLayout: lanes (no reserved envelope strip -- the mic overlay dr
     const row = layout.rows[0];
     expect(row.laneOffsets.tab).toBe(0);
     expect(row.laneOffsets.letter).toBe(TAB_LANE_HEIGHT);
-    expect(row.laneOffsets.teacher).toBe(TAB_LANE_HEIGHT + LETTER_LANE_HEIGHT);
-    expect(row.height).toBe(TAB_LANE_HEIGHT + LETTER_LANE_HEIGHT + TEACHER_LANE_HEIGHT);
+    expect(row.height).toBe(TAB_LANE_HEIGHT + LETTER_LANE_HEIGHT);
   });
 
   it("omits offsets for disabled lanes", () => {
     const song = makeSong([{ bpm: 120, bars: 1 }]);
-    const layout = computeLayout(song, { viewportWidth: 1000, zoom: 240, lanes: TAB_AND_LETTER });
-    expect(layout.rows[0].laneOffsets.teacher).toBeUndefined();
+    const layout = computeLayout(song, { viewportWidth: 1000, zoom: 240, lanes: { tab: true, letter: false } });
+    expect(layout.rows[0].laneOffsets.letter).toBeUndefined();
   });
 
   it("has zero row height when every lane is disabled (nothing to overlay)", () => {
@@ -102,7 +100,6 @@ describe("computeLayout: lanes (no reserved envelope strip -- the mic overlay dr
     const layout = computeLayout(song, { viewportWidth: 1000, zoom: 240, lanes: NO_LANES });
     expect(layout.laneHeights.tab).toBe(TAB_LANE_HEIGHT);
     expect(layout.laneHeights.letter).toBe(LETTER_LANE_HEIGHT);
-    expect(layout.laneHeights.teacher).toBe(TEACHER_LANE_HEIGHT);
   });
 });
 
@@ -159,9 +156,9 @@ describe("computeLayout: note boxes", () => {
     expect(stringOneBox.width).toBeCloseTo((1920 / 3840) * 240, 6);
   });
 
-  it("clips a note's box at the end of its own bar as a defensive fallback", () => {
+  it("clips a note's box at the end of its own bar when the note rings on into the next bar", () => {
     const song = makeSong([{ bpm: 120, bars: 1, slots: 8 }]);
-    addNote(song, 1, { string: 1, fret: 3, startTickInBar: 3360, durationTicks: 4000 }); // would overrun the bar
+    addNote(song, 1, { string: 1, fret: 3, startTickInBar: 3360, durationTicks: 4000 }); // rings into the next bar
     const layout = computeLayout(song, { viewportWidth: 1000, zoom: 240, lanes: ALL_LANES_ON });
     const box = layout.rows[0].notes[0];
     expect(box.x + box.width).toBeCloseTo(ROW_LEFT_PADDING + 240, 6); // clipped to bar end
@@ -174,5 +171,29 @@ describe("computeLayout: note boxes", () => {
     const layout = computeLayout(song, { viewportWidth: 1000, zoom: 240, lanes: ALL_LANES_ON });
     const stringIndexes = layout.rows[0].notes.map((n) => n.stringIndex).sort();
     expect(stringIndexes).toEqual([0, 2]);
+  });
+});
+
+// Regression: a fast run (32 notes in a bar) was squeezed into the zoom width and the fret numbers
+// overlapped into an unreadable smear.
+describe("computeLayout: dense bars widen", () => {
+  it("gives every note start at least room for its fret number, and keeps plain bars at the zoom width", () => {
+    const song = makeSong([{ bpm: 120, bars: 3, slots: 32 }]);
+    const len = song.sections[0].bars[0].lengthTicks;
+    for (let i = 0; i < 32; i++) addNote(song, 2, { string: 1, fret: 10 + (i % 5), startTickInBar: (i * len) / 32, durationTicks: len / 32 });
+    addNote(song, 1, { string: 1, fret: 3, startTickInBar: 0, durationTicks: len / 4 });
+    const layout = computeLayout(song, { viewportWidth: 1400, zoom: 240, lanes: ALL_LANES_ON });
+    const bars = layout.rows.flatMap((r) => r.bars);
+    expect(bars[0].width).toBe(240);
+    expect(bars[2].width).toBe(240);
+    expect(bars[1].width).toBeGreaterThan(240);
+    const xs = layout.rows.flatMap((r) => r.notes).filter((n) => n.note.fret >= 10).map((n) => n.x);
+    for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeGreaterThanOrEqual(32);
+    // Bars never overlap and rows never exceed the layout width.
+    for (const r of layout.rows) {
+      for (let i = 1; i < r.bars.length; i++) expect(r.bars[i].x).toBeCloseTo(r.bars[i - 1].x + r.bars[i - 1].width, 6);
+      const last = r.bars[r.bars.length - 1];
+      expect(last.x + last.width).toBeLessThanOrEqual(layout.width + 1e-6);
+    }
   });
 });

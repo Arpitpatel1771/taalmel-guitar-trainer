@@ -1,0 +1,52 @@
+.pocket {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  background: var(--pocket);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-float);
+}
+
+.chip {
+  height: 40px;
+  padding: 0 var(--space-4);
+  gap: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+.chip:hover:not(:disabled) { background: var(--surface-2); border-color: transparent; color: var(--text); }
+.chipOn,
+.chipOn:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+
+.mono { font-family: var(--font-mono); font-weight: var(--weight-bold); color: var(--text); font-variant-numeric: tabular-nums; }
+.unit { font-size: var(--text-xs); color: var(--text-muted); }
+.ok { color: var(--ok); font-size: var(--text-sm); }
+.tone_ok { color: var(--ok); }
+.tone_warn { color: var(--warn); }
+.tone_off { color: var(--verdict-off); }
+.live { color: var(--accent-text); animation: tick 0.6s ease-in-out infinite alternate; }
+@keyframes tick { from { opacity: 1; } to { opacity: 0.45; } }
+
+.record { color: var(--text); }
+.record .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--record); }
+.recording,
+.recording:hover:not(:disabled) { background: var(--record-tint); color: var(--record); }
+.recording .mono { color: var(--record); }
+
+.panel { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); }
+.bpmRow { display: flex; align-items: center; justify-content: space-between; }
+.bigBpm { display: flex; align-items: baseline; justify-content: center; gap: var(--space-2); font-size: var(--text-3xl); }
+.actions { display: flex; gap: var(--space-2); }
+.actions > * { flex: 1; }
+.hint { margin: 0; color: var(--text-muted); font-size: var(--text-md); line-height: 1.5; }

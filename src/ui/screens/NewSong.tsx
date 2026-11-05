@@ -11,12 +11,16 @@ import { ProblemsPanel } from "../editor/ProblemsPanel";
 import { SyntaxReference } from "../editor/SyntaxReference";
 import { NumberInput } from "../components/Controls";
 import ed from "../editor/Editor.module.css";
+import pg from "../components/page.module.css";
+import { Button } from "../components/kit";
 import { ArrowLeft, ArrowRight, Check, Copy } from "lucide-react";
 import { copyToClipboard, useDebouncedValue } from "../utils";
 import { useElementWidth } from "../useElementWidth";
 
 export interface NewSongProps {
   settings: Settings;
+  /** "ai": details, prompt, paste the reply. "text": paste Taalmel song text straight into the editor. */
+  mode?: "ai" | "text";
   onSaveSong: (text: string) => Promise<{ ok: true; id: string } | { ok: false; message: string }>;
   onSaved: (id: string) => void;
   onCancel: () => void;
@@ -31,8 +35,8 @@ function parseTimeSig(value: string): TimeSignature | null {
 }
 
 
-export function NewSong({ settings, onSaveSong, onSaved, onCancel }: NewSongProps) {
-  const [stage, setStage] = useState<Stage>("form");
+export function NewSong({ settings, mode = "ai", onSaveSong, onSaved, onCancel }: NewSongProps) {
+  const [stage, setStage] = useState<Stage>(mode === "text" ? "review" : "form");
 
   const [title, setTitle] = useState("");
   const [timeStr, setTimeStr] = useState("4/4");
@@ -137,32 +141,39 @@ export function NewSong({ settings, onSaveSong, onSaved, onCancel }: NewSongProp
     else setSaveError(result.message);
   }
 
-  const steps: { id: Stage; label: string }[] = [
-    { id: "form", label: "Details" },
-    { id: "compose", label: "Ask your LLM" },
-    { id: "review", label: "Paste & fix" },
-  ];
+  const steps: { id: Stage; label: string }[] =
+    mode === "text"
+      ? [{ id: "review", label: "Paste & check" }]
+      : [
+          { id: "form", label: "Details" },
+          { id: "compose", label: "Ask your LLM" },
+          { id: "review", label: "Paste & fix" },
+        ];
   const stageIndex = steps.findIndex((st) => st.id === stage);
   const blockingErrors = errors.filter((e) => e.severity !== "warning");
 
   return (
     <div className="screen new-song-screen">
-      <div className="screen-header">
-        <h2>New song from notes</h2>
-        <div className={ed.stepper} aria-label="Progress">
-          {steps.map((st, i) => (
-            <Fragment key={st.id}>
-              {i > 0 && <span className={ed.stepLine} />}
-              <span className={`${ed.step}${i === stageIndex ? ` ${ed.stepActive}` : i < stageIndex ? ` ${ed.stepDone}` : ""}`}>
-                <span className={ed.stepNum}>{i < stageIndex ? <Check size={12} /> : i + 1}</span>
-                {st.label}
-              </span>
-            </Fragment>
-          ))}
+      <header className={pg.head}>
+        <div className={pg.headText}>
+          <h1 className={pg.title}>{mode === "text" ? "Add a song from Taalmel text" : "Add a song with an AI chat"}</h1>
         </div>
-        <button className="btn-ghost" onClick={onCancel}>
-          Cancel
-        </button>
+        <div className={pg.actions}>
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
+      </header>
+      <div className={`${ed.stepper} ${pg.stepperRow}`} aria-label="Progress">
+        {steps.map((st, i) => (
+          <Fragment key={st.id}>
+            {i > 0 && <span className={ed.stepLine} />}
+            <span className={`${ed.step}${i === stageIndex ? ` ${ed.stepActive}` : i < stageIndex ? ` ${ed.stepDone}` : ""}`}>
+              <span className={ed.stepNum}>{i < stageIndex ? <Check size={12} /> : i + 1}</span>
+              {st.label}
+            </span>
+          </Fragment>
+        ))}
       </div>
 
       {stage === "form" && (
@@ -199,9 +210,9 @@ export function NewSong({ settings, onSaveSong, onSaved, onCancel }: NewSongProp
           </div>
           {formError && <div className="notice notice-error">{formError}</div>}
           <div className={ed.actions}>
-            <button className={`btn-primary ${ed.actionsEnd}`} onClick={generatePrompt}>
-              Next: build prompt <ArrowRight size={15} />
-            </button>
+            <Button variant="primary" className={ed.actionsEnd} icon={<ArrowRight size={15} />} onClick={generatePrompt}>
+              Next: build prompt
+            </Button>
           </div>
         </div>
       )}
@@ -212,9 +223,9 @@ export function NewSong({ settings, onSaveSong, onSaved, onCancel }: NewSongProp
           <p className={ed.hint}>Paste it into any LLM together with a photo or transcription of the notes.</p>
           <pre className={ed.codeBlock}>{prompt}</pre>
           <div className={ed.actions}>
-            <button className="btn-primary" onClick={() => void doCopy("Prompt", prompt)}>
-              <Copy size={15} /> Copy prompt
-            </button>
+            <Button variant="primary" icon={<Copy size={15} />} onClick={() => void doCopy("Prompt", prompt)}>
+              Copy prompt
+            </Button>
           </div>
           <div className={ed.cardTitle}>2. Paste the LLM's reply</div>
           <textarea
@@ -226,12 +237,12 @@ export function NewSong({ settings, onSaveSong, onSaved, onCancel }: NewSongProp
           />
           {extractError && <div className="notice notice-error">{extractError}</div>}
           <div className={ed.actions}>
-            <button className="btn-ghost" onClick={() => setStage("form")}>
-              <ArrowLeft size={15} /> Back
-            </button>
-            <button className={`btn-primary ${ed.actionsEnd}`} onClick={extract} disabled={!reply.trim()}>
-              Next: check song <ArrowRight size={15} />
-            </button>
+            <Button variant="ghost" icon={<ArrowLeft size={15} />} onClick={() => setStage("form")}>
+              Back
+            </Button>
+            <Button variant="primary" className={ed.actionsEnd} icon={<ArrowRight size={15} />} onClick={extract} disabled={!reply.trim()}>
+              Next: check song
+            </Button>
           </div>
         </div>
       )}
@@ -239,27 +250,28 @@ export function NewSong({ settings, onSaveSong, onSaved, onCancel }: NewSongProp
       {stage === "review" && (
         <div className={ed.split}>
           <div className={ed.pane}>
+            {mode === "text" && <p className={ed.hint}>Paste your song text below. It is checked as you type.</p>}
             <SongEditor ref={editorRef} value={text} onChange={setText} errors={errors} className={ed.editorHost} />
             <ProblemsPanel
               errors={errors}
               onJump={jumpToLine}
               actions={
                 blockingErrors.length > 0 ? (
-                  <button onClick={() => void doCopy("Repair prompt", buildRepairPrompt(blockingErrors, text))}>
-                    <Copy size={14} /> Copy repair prompt
-                  </button>
+                  <Button icon={<Copy size={14} />} onClick={() => void doCopy("Repair prompt", buildRepairPrompt(blockingErrors, text))}>
+                    Copy repair prompt
+                  </Button>
                 ) : null
               }
             />
             <SyntaxReference />
             {saveError && <div className="notice notice-error">Could not save: {saveError}</div>}
             <div className={ed.actions}>
-              <button className="btn-ghost" onClick={() => setStage("compose")}>
-                <ArrowLeft size={15} /> Back to reply
-              </button>
-              <button className={`btn-primary ${ed.actionsEnd}`} disabled={!parseResult.ok || saving} onClick={() => void handleSave()}>
+              <Button variant="ghost" icon={<ArrowLeft size={15} />} onClick={() => (mode === "text" ? onCancel() : setStage("compose"))}>
+                {mode === "text" ? "Back" : "Back to reply"}
+              </Button>
+              <Button variant="primary" className={ed.actionsEnd} disabled={!parseResult.ok || saving} onClick={() => void handleSave()}>
                 {saving ? "Saving…" : "Save song"}
-              </button>
+              </Button>
             </div>
           </div>
           <div className={ed.pane}>

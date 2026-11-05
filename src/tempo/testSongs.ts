@@ -14,6 +14,8 @@ export interface SectionSpec {
   barTicks?: number;
   /** Slot count per bar (defaults to `unit`). */
   slots?: number;
+  /** Capo for this section (defaults to 0). */
+  capo?: number;
 }
 
 const DEFAULT_BAR_TICKS = 3840;
@@ -36,6 +38,7 @@ export function makeSong(specs: SectionSpec[]): Song {
         startTick: tick,
         lengthTicks: barTicks,
         slots,
+        capo: spec.capo ?? 0,
         notes: [],
       });
       tick += barTicks;
@@ -44,6 +47,7 @@ export function makeSong(specs: SectionSpec[]): Song {
       name: spec.name ?? `Section ${sections.length + 1}`,
       bpm: spec.bpm,
       unit,
+      capo: spec.capo ?? 0,
       bars,
     });
   }
@@ -79,7 +83,6 @@ export function addNote(
     startTickInBar: number;
     durationTicks: number;
     offsetMs?: number;
-    uncertain?: boolean;
     meta?: NoteMeta;
   },
 ): Note {
@@ -91,7 +94,6 @@ export function addNote(
     startTick: bar.startTick + opts.startTickInBar,
     durationTicks: opts.durationTicks,
     offsetMs: opts.offsetMs ?? 0,
-    uncertain: opts.uncertain ?? false,
     meta: opts.meta ?? {},
     source: { line: ++sourceCounter, column: 1 },
   };

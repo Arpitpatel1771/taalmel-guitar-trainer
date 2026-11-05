@@ -5,9 +5,11 @@ import type { Completion, CompletionContext, CompletionResult } from "@codemirro
 
 const HEADER_KEYS: Completion[] = [
   { label: "title: ", detail: "song title", type: "property" },
+  { label: "artist: ", detail: "performer or band (optional)", type: "property" },
   { label: "time: ", detail: "time signature, e.g. 4/4", type: "property" },
   { label: "bpm: ", detail: "tempo in quarter-note beats", type: "property" },
   { label: "unit: ", detail: "default slots per bar", type: "property" },
+  { label: "capo: ", detail: "capo fret 0-12 (header or section); frets count from it", type: "property" },
   { label: "youtube: ", detail: "reference video link", type: "property" },
   { label: "offset: ", detail: "video seconds where bar 1 starts", type: "property" },
   { label: "Bar ", detail: "Bar <n>: {slot} notes…", type: "keyword" },

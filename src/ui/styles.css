@@ -2,11 +2,10 @@
  * below are legacy aliases kept so older rules keep working. */
 
 :root {
-  --bg: var(--surface-0);
+  /* --bg, --border and --text are real tokens in tokens.css; aliasing them
+   * back here would make a var() cycle. */
   --bg-raised: var(--surface-1);
   --bg-raised-2: var(--surface-2);
-  --border: var(--border-subtle);
-  --text: var(--text-primary);
   --text-dim: var(--text-secondary);
   --accent-dim: var(--accent-active);
 }
@@ -122,7 +121,7 @@ h4 {
 .song-title {
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 14px;
   font-weight: 600;
   padding: 0;
@@ -413,7 +412,23 @@ h4 {
 .section-name {
   font-size: 11px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
+}
+
+.capo-badge {
+  margin-left: auto;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.capo-badge.song-capo {
+  margin-left: 0;
+  align-self: center;
 }
 
 .grid-lines {
@@ -477,11 +492,6 @@ h4 {
   z-index: 1;
 }
 
-.tab-note.uncertain .fret-number {
-  outline: 1px dashed var(--warning);
-  background: var(--uncertain-tint);
-}
-
 .tab-note .technique-label {
   position: absolute;
   left: -10px;
@@ -495,7 +505,7 @@ h4 {
   top: -14px;
   left: 0;
   font-size: 11px;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .lane-letter {
@@ -506,47 +516,6 @@ h4 {
   position: absolute;
   font-size: 11px;
   font-weight: 600;
-}
-
-.letter-note.uncertain {
-  color: var(--warning);
-  text-decoration: underline dashed;
-}
-
-.lane-teacher {
-  height: 40px;
-}
-
-.teacher-note {
-  position: absolute;
-  text-align: center;
-  font-size: 13px;
-}
-
-.teacher-note.fallback {
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 10px;
-}
-
-.teacher-note.uncertain {
-  background: var(--uncertain-tint);
-  outline: 1px dashed var(--warning);
-}
-
-.teacher-zone {
-  display: block;
-  font-size: 9px;
-  color: var(--text-dim);
-}
-
-.teacher-dot {
-  display: block;
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--text);
-  margin: 0 auto;
 }
 
 .envelope-canvas {
@@ -712,6 +681,8 @@ h4 {
 
 .screen {
   padding: var(--space-5) var(--space-6);
+  /* The pocket floats bottom-right; never let it cover the last content. */
+  padding-bottom: var(--pocket-clearance);
   gap: var(--space-4);
 }
 
@@ -726,6 +697,7 @@ h4 {
 /* Focus mode: the song view's header becomes the slim top bar. */
 .song-view {
   padding-top: 0;
+  padding-bottom: 160px;
 }
 
 .song-view > .screen-header {
@@ -772,7 +744,7 @@ h4 {
   padding: 2px 10px;
   border-radius: var(--radius-pill);
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
 }
@@ -784,18 +756,16 @@ h4 {
   box-shadow: var(--shadow-popover);
 }
 
-/* ---- UI revamp phase 2: SVG sheet (specs/26-9-ui-revamp.md 5.2) ---- */
+/* ---- Practice sheet (specs/5-11-ui-redesign.md 5, 6.1): tokens only ---- */
 
 :root {
-  --sheet-bg: var(--surface-1);
-  --string-line: #3a3c42;
-  --grid-bar: #55575e;
-  --grid-beat: #34363c;
-  --grid-slot: #25272b;
-  --note-head: #2c2f35;
-  --note-head-border: var(--accent);
-  --note-tail: rgba(242, 169, 59, 0.38);
-  --tech: #d8c7a6;
+  --sheet-bg: var(--sheet);
+  --string-line: var(--line);
+  --grid-bar: var(--barline);
+  --grid-beat: color-mix(in srgb, var(--line) 55%, transparent);
+  --grid-slot: color-mix(in srgb, var(--line) 25%, transparent);
+  --note-tail: color-mix(in srgb, var(--accent) 30%, transparent);
+  --tech: var(--text-muted);
 }
 
 .sheet-scroll {
@@ -814,27 +784,48 @@ h4 {
 .row-svg .grid-beat { stroke: var(--grid-beat); stroke-width: 1; }
 .row-svg .grid-slot { stroke: var(--grid-slot); stroke-width: 1; }
 .row-svg .string-line { stroke: var(--string-line); stroke-width: 1.25; }
-.row-svg .loop-band { fill: var(--accent-softer); }
+.row-svg .loop-band { fill: var(--accent-loop); }
+.row-svg .loop-edge { stroke: var(--accent-loop-edge); stroke-width: 2; }
 
 .note-pill .note-tail { fill: var(--note-tail); }
+/* The head masks the string line behind the fret number. */
 .note-pill .note-head {
-  fill: var(--note-head);
-  stroke: var(--note-head-border);
-  stroke-width: 1.25;
+  fill: var(--sheet-bg);
+  stroke: none;
 }
 .note-pill .note-fret {
-  fill: var(--text-primary);
+  fill: var(--text);
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 500;
+}
+.note-pill.muted .note-fret { fill: var(--text-muted); }
+
+/* Verdicts (6.1): colour is timing only; wrong pitch gets a label chip. */
+.note-pill[data-verdict="ontime"] .note-fret { fill: var(--verdict-ontime); }
+.note-pill[data-verdict="off"] .note-fret { fill: var(--verdict-off); }
+.note-pill[data-verdict="missed"] .note-fret { fill: var(--verdict-missed); }
+.note-pill[data-verdict="missed"] .note-tail { opacity: 0.4; }
+.v-ontime { fill: var(--verdict-ontime); stroke: var(--verdict-ontime); }
+.v-off { fill: var(--verdict-off); stroke: var(--verdict-off); }
+.v-underline { stroke-width: 2; fill: none; }
+.v-chip { fill: var(--surface-2); }
+.v-chip-text {
+  fill: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
+  stroke: none;
 }
-.note-pill.muted .note-head { stroke: var(--text-muted); }
-.note-pill.uncertain .note-head {
-  stroke: var(--warning);
-  stroke-dasharray: 3 2;
-  fill: var(--uncertain-tint);
+.extra-dot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: var(--verdict-off);
+  pointer-events: none;
 }
-.note-pill.uncertain .note-tail { fill: var(--warning-soft); }
 
 .tech-line {
   fill: none;
@@ -846,37 +837,37 @@ h4 {
 .tech-label {
   fill: var(--tech);
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 .strum-mark {
-  fill: var(--accent);
-  font-size: 13px;
+  fill: var(--accent-text);
+  font-size: 14px;
   font-weight: 700;
 }
 
 .letter-glyph {
-  fill: var(--text-secondary);
+  fill: var(--text-muted);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
-.letter-glyph.uncertain { fill: var(--warning); }
 
 .bar-labels {
-  height: 18px;
+  height: 22px;
   z-index: 2;
 }
 .bar-labels:hover { background: var(--accent-softer); }
-.bar-labels.in-loop { background: var(--accent-soft); }
-.bar-number { font-family: var(--font-mono); font-size: var(--text-xs); }
+.bar-labels.in-loop { background: transparent; }
+.bar-labels.in-loop .bar-number { color: var(--accent-text); }
+.bar-number { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-subtle); }
 .section-name {
-  padding: 0 6px;
+  padding: 0 8px;
   border-radius: var(--radius-pill);
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--accent-tint);
+  color: var(--accent-text);
   font-size: var(--text-xs);
-  line-height: 16px;
+  line-height: 18px;
 }
 
 /* Active-row emphasis while playing (focus + context). */
@@ -886,7 +877,8 @@ h4 {
 .playback-cursor {
   width: 3px;
   border-radius: 2px;
-  box-shadow: 0 0 10px 1px rgba(242, 169, 59, 0.55);
+  background: var(--accent);
+  box-shadow: 0 0 12px 2px var(--accent-glow);
 }
 
 /* Practice layout: sheet + optional video (docked right on wide screens). */
@@ -913,3 +905,20 @@ h4 {
 .practice-main.video-right .sheet-scroll {
   align-self: stretch;
 }
+
+/* Capo-change warning: rides on the cursor, in the empty header band above the strings. */
+.cursor-chip {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--warn);
+  background: color-mix(in srgb, var(--warn) 22%, var(--bg-raised));
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.playback-cursor.chip-left .cursor-chip { left: auto; right: 10px; }

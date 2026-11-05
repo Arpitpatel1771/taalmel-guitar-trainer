@@ -1,0 +1,139 @@
+/* Shared components of the redesign. Semantic tokens only. */
+
+.button {
+  height: 36px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  gap: var(--space-2);
+  justify-content: center;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+.lg { height: 44px; padding: 0 var(--space-5); font-size: var(--text-body); border-radius: var(--radius-md); }
+
+.primary,
+.primary:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+.primary:active:not(:disabled) { background: var(--accent-active); }
+
+.secondary {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+.ghost,
+.ghost:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+.pillBtn { cursor: pointer; }
+.pillBtn:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.segment {
+  height: 30px;
+  padding: 0 var(--space-3);
+  border-radius: calc(var(--radius-md) - 3px);
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-md);
+}
+.segment:hover:not(:disabled) { background: transparent; color: var(--text); }
+.segmentOn,
+.segmentOn:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+:root[data-theme="light"] .segmentOn { box-shadow: 0 0 0 1px var(--line); }
+
+.iconTile {
+  flex-shrink: 0;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--radius-tile);
+  background: var(--accent-tint);
+  color: var(--accent-text);
+}
+
+.chip {
+  height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: var(--text-md);
+}
+.chip:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+.chipOn,
+.chipOn:hover:not(:disabled) { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--accent) var(--fill, 0%), var(--surface-3) var(--fill, 0%));
+}
+.slider::-moz-range-track { height: 6px; border-radius: 3px; background: var(--surface-3); }
+.slider::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--accent); }
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); }
+
+.meter { display: inline-flex; align-items: flex-end; gap: 2px; height: 20px; color: var(--ok); }
+.meter_warn { color: var(--warn); }
+.meter_off { color: var(--verdict-off); }
+.meter_neutral { color: var(--text-subtle); }
+.bar { width: 4px; border-radius: 1px; background: var(--line); transition: background var(--duration-fast) var(--ease-out); }
+.barOn { background: currentColor; }

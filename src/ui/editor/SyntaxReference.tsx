@@ -12,8 +12,8 @@ const TOKENS: [string, string][] = [
   ["[2]", "length: 2 slots (default 1)"],
   ["[3X1/16]", "length: three sixteenths, any grid"],
   ["[>-15]", "nudge 15 ms early (>20 = late)"],
-  ["[?]", "rhythm is a guess (highlighted)"],
-  ["[2>-15?]", "all combined: length, nudge, guess"],
+  ["[2>-15]", "combined: length and nudge"],
+  ["capo: 2", "header or section line: capo fret 0-12; frets count from the capo (section value overrides, capo: 0 = none)"],
   ["# text", "comment line"],
 ];
 

@@ -1,9 +1,10 @@
 // Main-thread facade over pitch.worker.ts, spec 9.5. Not unit-testable in
 // Node (module Workers aren't available there); kept type-correct.
 
+import type { OctaveCheck } from "./yin";
 import type { PitchRequest, PitchResponse } from "./pitch.worker";
 
-export type PitchResult = { freq: number; confidence: number } | null;
+export type PitchResult = { freq: number; confidence: number; check?: OctaveCheck | null } | null;
 
 export class PitchDetector {
   private readonly worker: Worker;
@@ -13,20 +14,20 @@ export class PitchDetector {
   constructor() {
     this.worker = new Worker(new URL("./pitch.worker.ts", import.meta.url), { type: "module" });
     this.worker.onmessage = (ev: MessageEvent<PitchResponse>) => {
-      const { id, result } = ev.data;
+      const { id, result, check } = ev.data;
       const resolve = this.pending.get(id);
       if (resolve) {
         this.pending.delete(id);
-        resolve(result);
+        resolve(result ? { ...result, check } : null);
       }
     };
   }
 
-  detect(samples: Float32Array, sampleRate: number): Promise<PitchResult> {
+  detect(samples: Float32Array, sampleRate: number, expectedFreq?: number): Promise<PitchResult> {
     const id = this.nextId++;
     return new Promise((resolve) => {
       this.pending.set(id, resolve);
-      const request: PitchRequest = { id, samples, sampleRate };
+      const request: PitchRequest = { id, samples, sampleRate, expectedFreq };
       this.worker.postMessage(request, [samples.buffer]);
     });
   }

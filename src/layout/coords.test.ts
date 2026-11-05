@@ -5,7 +5,7 @@ import { makeSong } from "../tempo/testSongs";
 import { ROW_LEFT_PADDING } from "./constants";
 import type { LaneId } from "../model";
 
-const ALL_LANES_ON: Record<LaneId, boolean> = { tab: true, letter: true, teacher: true };
+const ALL_LANES_ON: Record<LaneId, boolean> = { tab: true, letter: true };
 
 describe("tickToX: linearity within a row", () => {
   it("is linear within a single bar", () => {

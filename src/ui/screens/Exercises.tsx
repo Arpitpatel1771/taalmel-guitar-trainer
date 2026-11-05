@@ -5,6 +5,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Bug, Drum, Guitar, Save, Waves } from "lucide-react";
 import { Field, Segmented, Stepper } from "../components/Controls";
+import { Button } from "../components/kit";
+import { PageHead } from "../components/PageHead";
 import { ProblemsPanel } from "../editor/ProblemsPanel";
 import ex from "./Exercises.module.css";
 import type { Settings, StringNumber } from "../../model";
@@ -131,12 +133,15 @@ export function Exercises({ settings, onSaveAsSong, onSaved, onSettingsChange }:
 
   return (
     <div className="screen exercises-screen">
-      <div className="screen-header">
-        <h2>Exercises</h2>
-        <button className="btn-primary" disabled={saving || !parseResult?.ok} onClick={() => void handleSaveAsSong()}>
-          <Save size={15} /> {saving ? "Saving…" : "Save as song"}
-        </button>
-      </div>
+      <PageHead
+        title="Exercises"
+        sub="Pick a drill, adjust it, and play along. Save any exercise as a song to keep it."
+        actions={
+          <Button variant="primary" size="lg" className={ex.save} icon={<Save size={16} />} disabled={saving || !parseResult?.ok} onClick={() => void handleSaveAsSong()}>
+            {saving ? "Saving…" : "Save as song"}
+          </Button>
+        }
+      />
 
       <div className={ex.picker} role="radiogroup" aria-label="Exercise type">
         {KINDS.map((k) => (
@@ -159,7 +164,7 @@ export function Exercises({ settings, onSaveAsSong, onSaved, onSettingsChange }:
 
       <div className={ex.body}>
         <div className={ex.panel}>
-          <div className={ex.panelTitle}>Settings</div>
+          <h2 className={ex.panelTitle}>Settings</h2>
           <Field label="BPM">
             <Stepper label="BPM" value={bpm} onChange={setBpm} min={20} max={999} step={5} />
           </Field>
@@ -300,6 +305,7 @@ export function Exercises({ settings, onSaveAsSong, onSaved, onSettingsChange }:
               settings={settings}
               onOffsetNudge={() => {}}
               onSetBar1Here={() => {}}
+              onSongBpmChange={setBpm}
               onSettingsChange={onSettingsChange}
             />
           )}

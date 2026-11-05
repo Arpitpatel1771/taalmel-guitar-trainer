@@ -6,21 +6,27 @@
 <title>Terms of Service · Taalmel</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <style>
-  :root { --bg: #111214; --surface: #1a1b1e; --text: #ececec; --muted: #a3a3a8; --accent: #f2a93b; --border: #2a2b2f; }
-  @media (prefers-color-scheme: light) { :root { --bg: #fafaf9; --surface: #ffffff; --text: #1a1a1a; --muted: #5c5c62; --accent: #b4720f; --border: #e4e4e7; } }
+  @font-face { font-family: "Space Grotesk"; font-weight: 600; font-display: swap; src: url(/fonts/space-grotesk-latin-600-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Space Grotesk"; font-weight: 700; font-display: swap; src: url(/fonts/space-grotesk-latin-700-normal.woff2) format("woff2"); }
+  :root { color-scheme: dark; --bg: #15130f; --surface: #1e1b16; --text: #f2ede4; --muted: #b8b0a3; --accent: #f2a93b; --link: #f2a93b; --tint: #2e2717; --border: #2a261f; --line: #3a352c; }
+  @media (prefers-color-scheme: light) { :root { color-scheme: light; --bg: #f7f4ee; --surface: #ffffff; --text: #1f1b14; --muted: #5e574b; --accent: #f2a93b; --link: #985a00; --tint: #fbebd0; --border: #e2dacb; --line: #e8e1d4; } }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 Inter, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 Inter, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
   main { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
   header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
-  .mark { width: 32px; height: 32px; border-radius: 7px; background: #f2a93b; color: #1a1204; display: grid; place-items: center; font-size: 18px; }
-  header a { color: var(--text); text-decoration: none; font-weight: 600; font-size: 18px; }
-  h1 { font-size: 32px; line-height: 1.2; margin: 0 0 8px; }
-  h2 { font-size: 20px; margin: 36px 0 8px; }
+  .mark { width: 36px; height: 36px; border-radius: 10px; background: #f2a93b; color: #1a1408; display: grid; place-items: center; font-size: 20px; }
+  header a { color: var(--text); text-decoration: none; font-family: "Space Grotesk", Inter, -apple-system, "Segoe UI", sans-serif; font-weight: 700; font-size: 20px; }
+  h1, h2 { font-family: "Space Grotesk", Inter, -apple-system, "Segoe UI", sans-serif; letter-spacing: -0.01em; }
+  h1 { font-size: 40px; line-height: 1.1; font-weight: 700; margin: 0 0 8px; }
+  h2 { font-size: 22px; font-weight: 600; margin: 40px 0 8px; }
   .updated { color: var(--muted); margin: 0 0 24px; }
-  a { color: var(--accent); }
+  a { color: var(--link); }
   ul { padding-left: 22px; }
   li { margin: 6px 0; }
+  .callout { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 20px; margin: 20px 0; }
+  code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.9em; background: var(--tint); border-radius: 6px; padding: 1px 6px; }
   footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+  @media (max-width: 560px) { h1 { font-size: 32px; } }
 </style>
 </head>
 <body>
@@ -37,6 +43,14 @@
 
   <h2>Your content</h2>
   <p>Songs, recordings, settings and other content you create remain yours. Taalmel stores them on your device and, if you connect it, in your own Google Drive. You are responsible for the content you add. Make sure you have the right to use any songs, lyrics, tabs or videos you import or link to.</p>
+
+  <h2>Sharing songs</h2>
+  <ul>
+    <li>Only share songs you have the right to share, and share them privately, one person to another. Taalmel never hosts a readable copy of a copyrighted song: the open library holds public-domain songs only, and replies to requests are encrypted for the person who asked.</li>
+    <li>Requests are public. Don't post anything unlawful, abusive or misleading in a request or a note.</li>
+    <li>The owner may remove any request on a complaint or a report, without notice.</li>
+    <li><strong>Takedown requests:</strong> if you believe something on the request board infringes your rights, email <a href="mailto:apfirefox1771@gmail.com">apfirefox1771@gmail.com</a> with the request title and a description of the problem.</li>
+  </ul>
 
   <h2>Google Drive</h2>
   <p>Connecting Google Drive is optional. When connected, Taalmel creates and manages files in a <em>Taalmel</em> folder in your Drive, and in files you pick through the import picker. Your use of Google Drive is also governed by Google's own terms. How Taalmel handles your data is described in the <a href="/privacy.html">Privacy Policy</a>.</p>

@@ -4,7 +4,7 @@
 // diagnostics; `jumpToLine` is exposed through a ref for the problems panel.
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { EditorState } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, drawSelection, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
@@ -21,59 +21,61 @@ export interface SongEditorHandle {
 
 const highlight = HighlightStyle.define([
   { tag: tags.comment, color: "var(--text-muted)", fontStyle: "italic" },
-  { tag: tags.heading, color: "var(--accent)", fontWeight: "600" },
-  { tag: tags.keyword, color: "var(--info)", fontWeight: "600" },
-  { tag: tags.propertyName, color: "var(--info)" },
+  { tag: tags.heading, color: "var(--accent-text)", fontWeight: "600" },
+  { tag: tags.keyword, color: "var(--verdict-ontime)", fontWeight: "600" },
+  { tag: tags.propertyName, color: "var(--verdict-ontime)" },
   { tag: tags.labelName, color: "var(--text-muted)" },
   { tag: tags.typeName, color: "var(--text-muted)" },
-  { tag: tags.string, color: "var(--text-primary)", fontWeight: "600" },
-  { tag: tags.number, color: "var(--success)" },
-  { tag: tags.operator, color: "var(--verdict-close)" },
-  { tag: tags.invalid, color: "var(--warning)", fontWeight: "700" },
+  { tag: tags.string, color: "var(--text)", fontWeight: "600" },
+  { tag: tags.number, color: "var(--ok)" },
+  { tag: tags.operator, color: "var(--verdict-ontime)" },
+  { tag: tags.invalid, color: "var(--warn)", fontWeight: "700" },
   { tag: tags.attributeName, color: "var(--verdict-missed)" },
-  { tag: tags.attributeValue, color: "var(--text-secondary)" },
+  { tag: tags.attributeValue, color: "var(--text-muted)" },
   { tag: [tags.bracket, tags.punctuation], color: "var(--text-muted)" },
 ]);
 
-const theme = EditorView.theme(
-  {
+// All colours are CSS variables, so the palette follows the theme and accent live. Only CodeMirror's
+// own `dark` base flag needs to be switched when <html data-theme> changes.
+const themeStyles = {
     "&": {
       height: "100%",
-      backgroundColor: "var(--surface-0)",
-      color: "var(--text-primary)",
+      backgroundColor: "var(--sheet)",
+      color: "var(--text)",
       fontSize: "13px",
-      border: "1px solid var(--border-subtle)",
-      borderRadius: "var(--radius-md)",
+      border: "1px solid var(--border)",
+      borderRadius: "var(--radius-lg)",
     },
-    "&.cm-focused": { outline: "none", borderColor: "var(--border-strong)" },
+    "&.cm-focused": { outline: "none", borderColor: "var(--accent)" },
     // No ligatures: "->" or ">-" must show exactly as typed.
     ".cm-scroller": { fontFamily: "var(--font-mono)", lineHeight: "1.65", fontVariantLigatures: "none" },
     ".cm-content": { caretColor: "var(--accent)", padding: "8px 0" },
     ".cm-gutters": {
       backgroundColor: "var(--surface-1)",
-      color: "var(--text-muted)",
+      color: "var(--text-subtle)",
       border: "none",
-      borderRight: "1px solid var(--border-subtle)",
-      borderRadius: "var(--radius-md) 0 0 var(--radius-md)",
+      borderRight: "1px solid var(--border)",
+      borderRadius: "var(--radius-lg) 0 0 var(--radius-lg)",
     },
-    ".cm-activeLine": { backgroundColor: "var(--accent-softer)" },
-    ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--text-secondary)" },
-    ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": { backgroundColor: "var(--accent-soft) !important" },
+    ".cm-activeLine": { backgroundColor: "var(--accent-loop)" },
+    ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--text-muted)" },
+    ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": { backgroundColor: "var(--accent-tint) !important" },
     ".cm-cursor": { borderLeftColor: "var(--accent)" },
     ".cm-tooltip": {
-      backgroundColor: "var(--surface-3)",
-      border: "1px solid var(--border-strong)",
+      backgroundColor: "var(--surface-2)",
+      border: "1px solid var(--line)",
       borderRadius: "var(--radius-sm)",
-      color: "var(--text-primary)",
+      color: "var(--text)",
     },
-    ".cm-tooltip-autocomplete > ul > li[aria-selected]": { backgroundColor: "var(--accent-soft)", color: "var(--text-primary)" },
+    ".cm-tooltip-autocomplete > ul > li[aria-selected]": { backgroundColor: "var(--accent-tint)", color: "var(--text)" },
     ".cm-completionDetail": { color: "var(--text-muted)", fontStyle: "normal", marginLeft: "8px" },
     ".cm-completionInfo": { maxWidth: "280px", padding: "6px 10px" },
-    ".cm-diagnostic-error": { borderLeftColor: "var(--danger)" },
-    ".cm-diagnostic-warning": { borderLeftColor: "var(--warning)" },
-  },
-  { dark: true },
-);
+    ".cm-diagnostic-error": { borderLeftColor: "var(--record)" },
+    ".cm-diagnostic-warning": { borderLeftColor: "var(--warn)" },
+};
+
+const isDark = () => document.documentElement.getAttribute("data-theme") !== "light";
+const makeTheme = (dark: boolean) => EditorView.theme(themeStyles, { dark });
 
 function toDiagnostics(state: EditorState, errors: ParseError[]): Diagnostic[] {
   const doc = state.doc;
@@ -105,6 +107,7 @@ export const SongEditor = forwardRef<
 >(function SongEditor({ value, onChange, errors, className }, ref) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const themeRef = useRef(new Compartment());
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
@@ -124,7 +127,7 @@ export const SongEditor = forwardRef<
           autocompletion({ override: [songCompletions], activateOnTyping: true }),
           closeBrackets(),
           syntaxHighlighting(highlight),
-          theme,
+          themeRef.current.of(makeTheme(isDark())),
           EditorView.lineWrapping,
           keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap]),
           EditorView.updateListener.of((u) => {
@@ -134,7 +137,11 @@ export const SongEditor = forwardRef<
       }),
     });
     viewRef.current = view;
+    const compartment = themeRef.current;
+    const observer = new MutationObserver(() => view.dispatch({ effects: compartment.reconfigure(makeTheme(isDark())) }));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => {
+      observer.disconnect();
       view.destroy();
       viewRef.current = null;
     };

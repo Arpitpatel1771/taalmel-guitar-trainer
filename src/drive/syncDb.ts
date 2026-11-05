@@ -22,6 +22,8 @@ export interface SyncItem {
   lastRemoteVersion: string;
   /** Clips only: the media file, once uploaded. */
   mediaFileId?: string;
+  /** Clips only: the `mediaRev` of the media last uploaded (absent = 0). */
+  mediaRev?: number;
   deletedLocally?: boolean;
 }
 

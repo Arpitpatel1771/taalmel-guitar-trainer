@@ -1,6 +1,17 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it } from "vitest";
-import { CLIPS_DB_NAME, _resetClipsDbForTests, deleteClip, listClips, renameClip, saveClip, updateClipFlags } from "./clipStore";
+import {
+  CLIPS_DB_NAME,
+  _resetClipsDbForTests,
+  deleteClip,
+  listClips,
+  renameClip,
+  replaceClipMedia,
+  saveClip,
+  setClipBoost,
+  updateClipFlags,
+  updateClipGain,
+} from "./clipStore";
 
 afterEach(async () => {
   await _resetClipsDbForTests();
@@ -43,5 +54,35 @@ describe("clipStore", () => {
     ]);
     expect((await listClips())[0].flags?.map((f) => f.id)).toEqual(["1", "2"]);
     await expect(updateClipFlags("missing", [])).rejects.toThrow();
+  });
+});
+
+describe("clip boost fields", () => {
+  it("new clips default to boost on, with no gain measured yet", async () => {
+    const a = await saveClip(clip("A", 1));
+    expect(a.boost).toBe(true);
+    expect(a.gainDb).toBeUndefined();
+    expect(a.mediaRev).toBeUndefined();
+  });
+
+  it("old records without the fields load unchanged and stay boost off", async () => {
+    const old = await saveClip({ ...clip("Old", 1), id: "old" });
+    expect(old.boost).toBeUndefined();
+    const [loaded] = await listClips();
+    expect(loaded.gainDb).toBeUndefined();
+    expect(loaded.boost).toBeUndefined();
+    await updateClipGain("old", 9);
+    expect((await listClips())[0]).toMatchObject({ gainDb: 9 });
+    expect((await listClips())[0].boost).toBeUndefined();
+    await setClipBoost("old", true);
+    expect((await listClips())[0].boost).toBe(true);
+  });
+
+  it("replaceClipMedia swaps the blob, bumps mediaRev and applies the patch", async () => {
+    const a = await saveClip(clip("A", 1));
+    await updateClipGain(a.id, 9, true);
+    const next = await replaceClipMedia(a.id, new Blob([new Uint8Array(7)]), { gainDb: 0, boost: false, peaks: [1] });
+    expect(next).toMatchObject({ size: 7, mediaRev: 1, gainDb: 0, boost: false, peaks: [1] });
+    expect((await replaceClipMedia(a.id, new Blob([new Uint8Array(2)]))).mediaRev).toBe(2);
   });
 });

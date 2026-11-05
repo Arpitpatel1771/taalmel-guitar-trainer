@@ -7,13 +7,9 @@ import type { TempoMap } from "../tempo";
 import type { Layout } from "../layout";
 import { rowIndexForTick, tickToX } from "../layout";
 import type { Verdict } from "../model";
-import {
-  clearCanvas,
-  drawEnvelopePoint,
-  drawExtraMarker,
-  drawMatchedMarker,
-  drawMissedMarker,
-} from "./drawing";
+import { clearCanvas, drawEnvelopePoint } from "./drawing";
+import { addExtraDot, applyNoteVerdict, clearVerdictMarks } from "./verdictMarks";
+import { TAB_LANE_TOP, TAB_STRING_GAP } from "../layout";
 
 export interface PlaybackControllerOptions {
   clock: Clock;
@@ -161,6 +157,7 @@ export class PlaybackController {
     this.opts.cursorEl.style.transform = `translate(${x}px, ${row.y}px)`;
     this.writePosition(row, tick);
     this.opts.cursorEl.style.height = `${row.height}px`;
+    this.opts.cursorEl.classList.toggle("chip-left", x > layout.width - 240);
 
     // Active-row emphasis (revamp 5.2): toggled imperatively, never via React state.
     this.opts.container.classList.toggle("is-playing", this.opts.clock.isPlaying());
@@ -229,34 +226,23 @@ export class PlaybackController {
     for (const verdict of items) this.drawVerdict(layout, verdict);
   }
 
+  /** Wipes verdict colours, marks and dots (each loop pass, stop). */
+  clearVerdicts(): void {
+    this.verdictQueue = [];
+    clearVerdictMarks(this.opts.container);
+  }
+
   private drawVerdict(layout: Layout, verdict: Verdict): void {
-    if (verdict.kind === "matched" && verdict.expected) {
-      const rowIndex = rowIndexForTick(layout, verdict.expected.tick);
-      const row = layout.rows[rowIndex];
-      const canvas = this.opts.getRowCanvas(rowIndex);
-      const ctx = canvas?.getContext("2d");
-      if (!ctx) return;
-      const expectedX = tickToX(row, verdict.expected.tick) - row.x0;
-      const onsetTick = this.opts.tempo.secToTicks(verdict.onsetSec ?? verdict.expected.timeSec);
-      const onsetX = tickToX(row, onsetTick) - row.x0;
-      drawMatchedMarker(ctx, onsetX, expectedX, row.height / 2, verdict.tier ?? "off", verdict.pitch);
-    } else if (verdict.kind === "missed" && verdict.expected) {
-      const rowIndex = rowIndexForTick(layout, verdict.expected.tick);
-      const row = layout.rows[rowIndex];
-      const canvas = this.opts.getRowCanvas(rowIndex);
-      const ctx = canvas?.getContext("2d");
-      if (!ctx) return;
-      const expectedX = tickToX(row, verdict.expected.tick) - row.x0;
-      drawMissedMarker(ctx, expectedX, row.height / 2);
+    if ((verdict.kind === "matched" || verdict.kind === "missed") && verdict.expected) {
+      applyNoteVerdict(this.opts.container, verdict);
     } else if (verdict.kind === "extra" && verdict.onsetSec !== undefined) {
       const onsetTick = this.opts.tempo.secToTicks(verdict.onsetSec);
-      const rowIndex = rowIndexForTick(layout, onsetTick);
-      const row = layout.rows[rowIndex];
-      const canvas = this.opts.getRowCanvas(rowIndex);
-      const ctx = canvas?.getContext("2d");
-      if (!ctx) return;
-      const onsetX = tickToX(row, onsetTick) - row.x0;
-      drawExtraMarker(ctx, onsetX, row.height / 2);
+      const row = layout.rows[rowIndexForTick(layout, onsetTick)];
+      const rowEl = this.opts.container.querySelector<HTMLElement>(`[data-row="${row.index}"]`);
+      if (!rowEl) return;
+      // Just below the bottom string, on the timeline.
+      const y = (row.laneOffsets.tab ?? 0) + TAB_LANE_TOP + TAB_STRING_GAP * 5 + 22;
+      addExtraDot(rowEl, tickToX(row, onsetTick), y);
     }
   }
 }

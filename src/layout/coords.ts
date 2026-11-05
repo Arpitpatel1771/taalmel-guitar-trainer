@@ -1,5 +1,5 @@
 // Coordinate mapping helpers (module contract): tickToX, xToTick,
-// rowIndexForTick. Each bar keeps a uniform pixel width (`pxPerBar`), and
+// rowIndexForTick. Bars share the zoom width unless dense notes need more, and
 // ticks map linearly within a bar's own tick range -- this stays correct
 // even if a hand-built test Song gives bars differing tick lengths, and is
 // equivalent to a whole-row-linear mapping for the common case (all bars

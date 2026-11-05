@@ -739,6 +739,73 @@ describe("clip media", () => {
     expect(a.engine.getStatus().uploads).toEqual({});
   });
 
+  it("replacing the blob bumps mediaRev and updates the same Drive file", async () => {
+    const { drive, a } = await setup();
+    await saveClip(a, clipOf("c1"));
+    await a.engine.syncNow();
+    const [file] = mediaFiles(drive);
+    expect(drive.readText(file.id)).toBe("0123456789");
+    const create = vi.spyOn(drive, "createFile");
+
+    const c = (await a.local.getClip("c1"))!;
+    const louder = new Blob(["LOUDER-BYTES!"], { type: "audio/webm" });
+    await saveClip(a, { ...c, blob: louder, mediaRev: 1, gainDb: 0, boost: false });
+    await a.engine.syncNow();
+
+    expect(mediaFiles(drive).map((f) => f.id)).toEqual([file.id]);
+    expect(drive.readText(file.id)).toBe("LOUDER-BYTES!");
+    expect(create).not.toHaveBeenCalled();
+    expect((await a.engine["store"].getItem("clip", "c1"))!.mediaRev).toBe(1);
+
+    // Same revision again: nothing is uploaded a second time.
+    const update = vi.spyOn(drive, "startResumableUpload");
+    await saveClip(a, (await a.local.getClip("c1"))!);
+    await a.engine.syncNow();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("clip metadata carries gainDb, boost and mediaRev to another device", async () => {
+    const { drive, a } = await setup();
+    await saveClip(a, clipOf("c1", { gainDb: 9, boost: true, mediaRev: 2 }));
+    await a.engine.syncNow();
+    const meta = JSON.parse(drive.readText(byKind(drive, "clipMeta")[0].id));
+    expect(meta).toMatchObject({ gainDb: 9, boost: true, mediaRev: 2 });
+
+    const b = device(drive);
+    await b.engine.connect({ interactive: true });
+    expect(await b.local.getClip("c1")).toMatchObject({ gainDb: 9, boost: true, mediaRev: 2, blob: null });
+  });
+
+  it("a boost toggle syncs as metadata only, with no media re-upload", async () => {
+    const { drive, a } = await setup();
+    await saveClip(a, clipOf("c1", { gainDb: 9, boost: true }));
+    await a.engine.syncNow();
+    const update = vi.spyOn(drive, "startResumableUpload");
+    await saveClip(a, { ...(await a.local.getClip("c1"))!, boost: false });
+    await a.engine.syncNow();
+    expect(update).not.toHaveBeenCalled();
+    expect(JSON.parse(drive.readText(byKind(drive, "clipMeta")[0].id)).boost).toBe(false);
+  });
+
+  it("a device with a stale copy drops it when another device replaced the media", async () => {
+    const { drive, a } = await setup();
+    await saveClip(a, clipOf("c1"));
+    await a.engine.syncNow();
+    const b = device(drive);
+    await b.engine.connect({ interactive: true });
+    await b.engine.downloadClipMedia("c1");
+    expect((await b.local.getClip("c1"))!.blob).not.toBeNull();
+
+    await saveClip(a, { ...(await a.local.getClip("c1"))!, blob: new Blob(["NEW-MEDIA"], { type: "audio/webm" }), mediaRev: 1 });
+    await a.engine.syncNow();
+    await b.engine.syncNow();
+    expect((await b.local.getClip("c1"))!.blob).toBeNull();
+    const blob = await b.engine.downloadClipMedia("c1");
+    expect(await blob.text()).toBe("NEW-MEDIA");
+    await b.engine.syncNow(); // the download is current: no upload back
+    expect(drive.readText(mediaFiles(drive)[0].id)).toBe("NEW-MEDIA");
+  });
+
   it("an expired upload session (404) restarts the upload", async () => {
     const drive = new FakeDrive();
     const a = device(drive, { chunkSize: 4 });

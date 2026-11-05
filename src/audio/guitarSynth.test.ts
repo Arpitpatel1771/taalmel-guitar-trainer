@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "../songFormat";
 import { TempoMap } from "../tempo";
-import { buildPlayPlan, renderPluck } from "./guitarSynth";
+import { PPQ } from "../model";
+import { GuitarPlayer, buildPlayPlan, renderPluck } from "./guitarSynth";
+import type { Clock } from "../clock";
 import { yin } from "./yin";
 
 function plan(body: string, header = "title: T\ntime: 4/4\nbpm: 60\nunit: 4\n\n[A]\n") {
@@ -28,12 +30,24 @@ describe("renderPluck", () => {
 });
 
 describe("buildPlayPlan", () => {
+  it("lets a note ring past its bar line for its full length", () => {
+    const p = plan("Bar 1: {4} 1S0[3]\nBar 2:");
+    expect(p).toHaveLength(1);
+    expect(p[0].sec).toBe(3);
+    expect(p[0].endSec).toBe(6); // 3 beats at 60 bpm from beat 4 of bar 1
+  });
+
   it("plucks each normal note at its time with its fretted pitch", () => {
     const p = plan("Bar 1: {1} 1S0 {3} 2S1");
     expect(p.map((v) => [v.sec, v.midi])).toEqual([
       [0, 64],
       [2, 60],
     ]);
+  });
+
+  it("sounds two semitones up under a capo-2 bar", () => {
+    const p = plan("Bar 1: {1} 1S0 {3} 2S1", "title: T\ntime: 4/4\nbpm: 60\nunit: 4\ncapo: 2\n\n[A]\n");
+    expect(p.map((v) => v.midi)).toEqual([66, 62]);
   });
 
   it("does not re-pluck hammer, pull or slide; it changes pitch instead", () => {
@@ -67,5 +81,96 @@ describe("buildPlayPlan", () => {
   it("cuts a ringing string when it is plucked again", () => {
     const p = plan("Bar 1: {1} 1S0[4] {2} 1S2");
     expect(p[0].endSec).toBeCloseTo(1, 6);
+  });
+});
+
+// Regression: pressing play exactly on a bar line skipped the note there, because the clock had always
+// moved on a few ms before the first scheduler tick found it, and late notes were dropped.
+describe("GuitarPlayer start of playback", () => {
+  const r4 = () => PPQ * 4;
+  function setup() {
+    const r = parse("title: T\ntime: 4/4\nbpm: 60\nunit: 4\n\n[A]\nBar 1: {1} 1S5\nBar 2: {1} 1S7\n");
+    if (!r.ok) throw new Error("parse");
+    const starts: number[] = [];
+    const param = () => ({ value: 1, setValueAtTime() {}, linearRampToValueAtTime() {}, setTargetAtTime() {}, cancelScheduledValues() {} });
+    const ctx = {
+      currentTime: 10,
+      sampleRate: 8000,
+      destination: {},
+      createGain: () => ({ gain: param(), connect() {}, disconnect() {} }),
+      createBuffer: () => ({ copyToChannel() {} }),
+      createBufferSource: () => ({ buffer: null, playbackRate: param(), connect() {}, start: (t: number) => starts.push(t), stop() {} }),
+      createOscillator: () => ({ frequency: { value: 0 }, connect() {}, start() {}, stop() {} }),
+    };
+    let sec = 0;
+    const state = new Set<(s: { playing: boolean }) => void>();
+    const loops = new Set<() => void>();
+    let loop: { startTick: number; endTick: number } | null = null;
+    const clock = {
+      isPlaying: () => true,
+      unclampedPositionSec: () => sec,
+      speed: () => 1,
+      loop: () => loop,
+      onLoop: (cb: () => void) => (loops.add(cb), () => loops.delete(cb)),
+      onStateChange: (cb: (s: { playing: boolean }) => void) => (state.add(cb), () => state.delete(cb)),
+    };
+    const player = new GuitarPlayer(ctx as unknown as AudioContext, r.song, new TempoMap(r.song));
+    player.attach(clock as unknown as Clock);
+    player.setEnabled(true);
+    return {
+      player,
+      starts,
+      at(s: number) {
+        sec = s;
+      },
+      fire: () => state.forEach((cb) => cb({ playing: true })),
+      setLoop(l: { startTick: number; endTick: number } | null) {
+        loop = l;
+      },
+      wrap: () => loops.forEach((cb) => cb()),
+      tick: () => (player as unknown as { tick(): void }).tick(),
+    };
+  }
+
+  it("plays the note on the play-from point even when the clock is already a little past it", () => {
+    const h = setup();
+    h.player.armFrom(4); // bar 2 starts at 4 s
+    h.at(4.03);
+    h.fire();
+    h.tick();
+    expect(h.starts).toEqual([10]);
+  });
+
+  it("plays the note on a plain play press even though the clock reports playing a moment late", () => {
+    const h = setup();
+    h.at(4.02);
+    h.fire();
+    h.tick();
+    expect(h.starts).toEqual([10]);
+  });
+
+  it("plays the loop's first note on every pass, though the wrap is noticed late", () => {
+    const h = setup();
+    const bar = r4();
+    h.setLoop({ startTick: bar, endTick: 2 * bar }); // loop bar 2 (its note is at 4 s)
+    h.player.armFrom(4);
+    h.at(4.01);
+    h.fire();
+    h.tick();
+    h.at(7.9);
+    h.tick();
+    h.at(4.04); // wrapped back to the loop start, found 40 ms late
+    h.wrap();
+    h.tick();
+    expect(h.starts.length).toBe(2);
+  });
+
+  it("still drops notes well before the play-from point", () => {
+    const h = setup();
+    h.player.armFrom(4.5);
+    h.at(4.52);
+    h.fire();
+    h.tick();
+    expect(h.starts).toEqual([]);
   });
 });

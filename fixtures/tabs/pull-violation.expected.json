@@ -1,0 +1,46 @@
+{
+  "events": [
+    {
+      "column": 3,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 3
+        }
+      ]
+    },
+    {
+      "column": 5,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 5
+        }
+      ]
+    }
+  ],
+  "bars": [
+    {
+      "index": 0,
+      "block": 0,
+      "startColumn": 1,
+      "endColumn": 8,
+      "explicit": true
+    }
+  ],
+  "sectionNames": [],
+  "warnings": [
+    {
+      "line": 1,
+      "code": "TAB_PULL_NOT_LOWER",
+      "message": "Line 1: pull-off to fret 5 on string 1 needs a lower fret than the note before it (3); the pull-off flag was dropped"
+    }
+  ],
+  "errors": []
+}

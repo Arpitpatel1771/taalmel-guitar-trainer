@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { FREE_MAX_BPM, FREE_MIN_BPM, FreeMetronome, getAudioContext, resumeAudio } from "../../audio";
 import { parseChordName } from "../../chords";
 import { pairKey, perMinute, recordRun } from "../../chords/practice/changes";
+import { saveRecentChords } from "../../storage/recent";
 import { ChordDiagram } from "../components/ChordDiagram";
 import { Field, Segmented, Stepper } from "../components/Controls";
 import { ChordPicker } from "./ChordPicker";
@@ -55,7 +56,7 @@ function ChordCard({ chord, on, settings }: { chord: PickedChord; on: boolean; s
 
 export function OneMinuteChanges({ settings, onChange, initial }: PracticeModeProps) {
   const [a, setA] = useState<PickedChord>(initial?.chord ?? SUGGESTED_PAIRS[0]?.a ?? { rootPc: 9, typeId: "maj", spelling: "sharp" });
-  const [b, setB] = useState<PickedChord>(SUGGESTED_PAIRS[0]?.b ?? { rootPc: 2, typeId: "maj", spelling: "sharp" });
+  const [b, setB] = useState<PickedChord>(initial?.chordB ?? SUGGESTED_PAIRS[0]?.b ?? { rootPc: 2, typeId: "maj", spelling: "sharp" });
   const [duration, setDuration] = useState(60);
   const [click, setClick] = useState(false);
   const [bpm, setBpm] = useState(60);
@@ -124,6 +125,7 @@ export function OneMinuteChanges({ settings, onChange, initial }: PracticeModePr
     const n = countRef.current;
     const r = recordRun(settingsRef.current.chordStats, key, { at: new Date().toISOString(), count: n, seconds: duration });
     onChangeRef.current({ ...settingsRef.current, chordStats: r.stats });
+    saveRecentChords({ pair: [pickedName(a), pickedName(b)], best: r.stats.changes[key]?.best, at: Date.now() });
     setResult({ count: n, seconds: duration, rate: perMinute(n, duration), isBest: r.isBest, previousBest: r.previousBest, key });
     setPhase("done");
   }
@@ -203,7 +205,7 @@ export function OneMinuteChanges({ settings, onChange, initial }: PracticeModePr
           <ChordCard chord={b} on settings={settings} />
         </div>
         <div className={cs.actions}>
-          <button type="button" className="primary" onClick={start}>Start</button>
+          <button type="button" className="btn-primary" onClick={start}>Start</button>
         </div>
       </div>
     );
@@ -231,7 +233,7 @@ export function OneMinuteChanges({ settings, onChange, initial }: PracticeModePr
           ))}
         </div>
         <div className={cs.actions}>
-          <button type="button" className="primary" onClick={start}>Again</button>
+          <button type="button" className="btn-primary" onClick={start}>Again</button>
           <button type="button" onClick={reset}>Done</button>
         </div>
       </div>
@@ -253,7 +255,7 @@ export function OneMinuteChanges({ settings, onChange, initial }: PracticeModePr
         <ChordCard chord={b} on={phase === "running" ? !aIsTarget : true} settings={settings} />
       </div>
       {phase === "running" && (
-        <button type="button" className={`primary ${cs.changeBtn}`} onClick={change}>Change</button>
+        <button type="button" className={`btn-primary ${cs.changeBtn}`} onClick={change}>Change</button>
       )}
       <div className={cs.actions}>
         {active && <button type="button" onClick={reset}>Stop</button>}

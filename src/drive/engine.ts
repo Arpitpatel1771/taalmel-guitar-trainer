@@ -8,7 +8,7 @@ import { deleteClip, listClips, saveClip, setClipBlob } from "../recording/clipS
 import type { Settings, SongRecord } from "../model/index";
 import { onStorageChange, type StorageChange } from "../storage/changes";
 import { SONGS_STORE, openDb, txDone } from "../storage/db";
-import { loadSettings, saveSettings } from "../storage/settings";
+import { loadSettings, normalizeLanes, saveSettings } from "../storage/settings";
 import { deleteSong, getSong, listSongs, saveSong } from "../storage/songs";
 import { DriveError, listAllFiles, type DriveApi, type DriveFile } from "./api";
 import { AuthRequiredError, type DriveAuth } from "./auth";
@@ -105,7 +105,7 @@ export interface SyncEngineOptions {
 // ------------------------------------------------------------------- constants
 
 const ROOT_NAME = "Taalmel";
-const DEVICE_LOCAL_SETTINGS = ["calibration", "micEnabled", "persistBannerDismissed"] as const;
+const DEVICE_LOCAL_SETTINGS = ["calibration", "micEnabled", "persistBannerDismissed", "theme"] as const;
 const DEFAULT_CHUNK = 8 * 1024 * 1024;
 const BACKOFF_BASE_MS = 2000;
 const BACKOFF_MAX_MS = 5 * 60 * 1000;
@@ -219,6 +219,9 @@ function clipContent(c: ClipRecord) {
     size: c.size,
     flags: c.flags ?? [],
     peaks: c.peaks ?? [],
+    gainDb: c.gainDb,
+    boost: c.boost,
+    mediaRev: c.mediaRev,
   };
 }
 
@@ -662,7 +665,8 @@ export class SyncEngine {
   private async wantsMediaUpload(clip: ClipRecord): Promise<boolean> {
     if (!this.eligible(clip)) return false;
     const item = await this.store.getItem("clip", clip.id);
-    return !(item?.mediaFileId ?? clip.driveFileId);
+    if (!(item?.mediaFileId ?? clip.driveFileId)) return true;
+    return !!item?.mediaFileId && (clip.mediaRev ?? 0) > (item.mediaRev ?? 0);
   }
 
   /** Enqueues anything local that Drive hasn't seen (after connect/resume, or a setting change). */
@@ -754,6 +758,9 @@ export class SyncEngine {
       size: j.size,
       flags: j.flags ?? [],
       peaks: j.peaks ?? [],
+      gainDb: j.gainDb,
+      boost: j.boost,
+      mediaRev: j.mediaRev,
     };
   }
 
@@ -768,6 +775,7 @@ export class SyncEngine {
       const incoming = syncedSettings((remote.json?.settings ?? {}) as Partial<Settings>);
       const merged = { ...current, ...incoming } as Settings;
       for (const k of DEVICE_LOCAL_SETTINGS) (merged as unknown as Record<string, unknown>)[k] = current[k];
+      merged.lanes = normalizeLanes(merged.lanes); // an older device may still send lanes.teacher
       await this.local.saveSettings(merged);
       await this.store.setMeta("settingsUpdatedAt", remote.updatedAt);
       return sha256(stable(syncedSettings(merged)));
@@ -786,7 +794,15 @@ export class SyncEngine {
       driveFileId: existing?.driveFileId,
       flags: (j.flags as ClipRecord["flags"]) ?? [],
       peaks: (j.peaks as number[] | undefined) ?? [],
+      gainDb: typeof j.gainDb === "number" ? j.gainDb : undefined,
+      boost: typeof j.boost === "boolean" ? j.boost : undefined,
+      mediaRev: typeof j.mediaRev === "number" ? j.mediaRev : undefined,
     };
+    // Another device replaced the media: our copy is stale, so drop it (it can be downloaded again).
+    if (existing?.blob && existing.driveFileId && (record.mediaRev ?? 0) > (existing.mediaRev ?? 0)) {
+      record.blob = null;
+      record.size = Number(j.size ?? 0);
+    }
     if (!existing) record.driveFileId = (await this.findMediaFile(id))?.id;
     await this.local.putClip(record);
     await this.store.setMeta(`clipUpdatedAt:${id}`, remote.updatedAt);
@@ -1251,6 +1267,9 @@ export class SyncEngine {
     if (!clip.driveFileId) throw new Error("This recording is not in Drive.");
     const blob = await this.api.downloadMedia(clip.driveFileId, onProgress, clip.size);
     await this.local.setClipBlob(id, blob);
+    // What we just downloaded is the current revision: it must not be uploaded again.
+    const item = await this.store.getItem("clip", id);
+    if (item) await this.store.putItem({ ...item, mediaRev: clip.mediaRev });
     return blob;
   }
 
@@ -1272,9 +1291,11 @@ export class SyncEngine {
       item = await this.store.getItem("clip", q.id);
       if (!item) return;
     }
-    if (item.mediaFileId) return;
-    if (clip.driveFileId) {
-      await this.store.putItem({ ...item, mediaFileId: clip.driveFileId });
+    // The media was replaced locally (e.g. made louder): overwrite the existing Drive file, keeping its id.
+    const replaceId = item.mediaFileId && (clip.mediaRev ?? 0) > (item.mediaRev ?? 0) ? item.mediaFileId : undefined;
+    if (item.mediaFileId && !replaceId) return;
+    if (!replaceId && clip.driveFileId) {
+      await this.store.putItem({ ...item, mediaFileId: clip.driveFileId, mediaRev: clip.mediaRev });
       return;
     }
     const blob = clip.blob;
@@ -1289,7 +1310,7 @@ export class SyncEngine {
     this.emit();
     try {
       let file: DriveFile | undefined;
-      if (total === 0) file = await this.api.createFile(meta, blob);
+      if (total === 0) file = replaceId ? await this.api.updateMedia(replaceId, blob) : await this.api.createFile(meta, blob);
       else {
         let url = q.resumableUrl;
         for (let attempt = 0; attempt < 2 && !file; attempt++) {
@@ -1303,7 +1324,7 @@ export class SyncEngine {
               }
               offset = st.received;
             } else {
-              url = await this.api.startResumableUpload(meta, total);
+              url = await this.api.startResumableUpload(meta, total, replaceId);
               await this.store.updateQueueItem(q.key, { resumableUrl: url });
             }
             while (offset < total) {
@@ -1329,7 +1350,9 @@ export class SyncEngine {
       }
       if (!file) throw new Error("Upload did not complete.");
       const cur = await this.store.getItem("clip", q.id);
-      if (cur) await this.store.putItem({ ...cur, mediaFileId: file.id });
+      if (cur) await this.store.putItem({ ...cur, mediaFileId: file.id, mediaRev: clip.mediaRev });
+      // The name follows the extension, which may change with the new media.
+      if (replaceId) await this.api.updateMetadata(file.id, { name: meta.name });
       const fresh = await this.local.getClip(q.id);
       if (fresh) await this.local.putClip({ ...fresh, driveFileId: file.id });
     } finally {

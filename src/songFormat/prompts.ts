@@ -1,7 +1,7 @@
 // Import prompt and repair prompt builders (spec 11.2, 11.3).
 
 import type { ParseError, TimeSignature } from "../model/index.js";
-import { noteNameWithOctave, pitchOf } from "../notation/index.js";
+import { noteNameWithOctave, soundingMidi } from "../notation/index.js";
 
 export interface ImportForm {
   title: string;
@@ -29,7 +29,7 @@ function buildFretTable(): string {
   const divider = `| --- | ${stringNumbers.map(() => "---").join(" | ")} |`;
   const rows: string[] = [header, divider];
   for (let fret = 0; fret <= 12; fret++) {
-    const cells = stringNumbers.map((s) => noteCell(pitchOf(s, fret)));
+    const cells = stringNumbers.map((s) => noteCell(soundingMidi(s, fret, 0)));
     rows.push(`| ${fret} | ${cells.join(" | ")} |`);
   }
   return rows.join("\n");
@@ -38,8 +38,15 @@ function buildFretTable(): string {
 const FORMAT_SPEC = `Line types: header fields ("key: value") come before any section. A section
 starts with "[Name]" on its own line; at least one section is required, and each
 section needs at least one bar. Immediately after a section start, and before that
-section's first bar, you may write "bpm: <number>" and/or "unit: <int>" to override
-the song defaults for that section only.
+section's first bar, you may write "bpm: <number>", "unit: <int>" and/or
+"capo: <0-12>" to override the song defaults for that section only (a section's
+"capo: 0" means no capo in that section). The header may also carry an optional
+"capo: <0-12>" (absent = no capo) and an optional "artist: <text>" right after
+"title" (the performer or band; leave the line out when unknown).
+
+Capo: frets are relative to the capo, as in printed tabs. Fret 0 is the capo fret,
+so write the tab's numbers unchanged and put the capo in the "capo" field. The
+sounding pitch is open string + capo + fret, and capo + fret must not exceed 24.
 
 Bars look like:
   Bar <k>: [(<n>)] {<s>} <note> <note>... {<s>} <note>...
@@ -62,8 +69,7 @@ Notes look like:
        three sixteenth notes), independent of the bar's grid. Omitted = 1 unit.
     2. Offset: ">-15" or ">20" - a millisecond timing nudge applied after converting
        to seconds (negative = early, positive = late). Omitted = 0. Range -500..500.
-    3. "?" - marks this note's rhythm as a guess. Omit if you are confident.
-  Examples: 1S5[2], 1S5[2>-15], 1S5[?], 1S5[4?], 1S5[3X1/16>10?], 1S5[>-8].
+  Examples: 1S5[2], 1S5[2>-15], 1S5[3X1/16>10], 1S5[>-8].
 - The optional (meta) block is comma-separated entries, each "key" (boolean) or
   "key: value":
     | Key         | Value           | Meaning                                                      |
@@ -149,15 +155,15 @@ ${headerLines.join("\n")}
 --- Song format specification ---
 ${FORMAT_SPEC}
 
---- String/fret to note name table (standard tuning, frets 0-12) ---
+--- String/fret to note name table (standard tuning, no capo, frets 0-12) ---
 Look up positions in this table rather than computing them yourself:
 ${buildFretTable()}
 
 --- Rhythm instructions ---
-If you are confident of the song's rhythm (note lengths and starts), encode it using
-the length block. If you are NOT confident, place the notes on consecutive slots of
-the default grid ("unit" above) with length 1, and mark EVERY such note uncertain
-with "?". Never invent a confident-looking rhythm you are not sure of.
+Encode the song's rhythm (note lengths and starts) using the length block. If you
+are NOT sure of the rhythm, place the notes on consecutive slots of the default grid
+("unit" above) with length 1. Never invent a confident-looking rhythm you are not
+sure of.
 
 --- Worked example ---
 ${WORKED_EXAMPLE}
@@ -166,7 +172,7 @@ ${WORKED_EXAMPLE}
 1. Bar numbering is global across the whole song (1, 2, 3, ...), never restarted
    per section.
 2. Slot markers within a bar must strictly increase.
-3. Every note must fit inside its bar (it cannot extend past the bar's end).
+3. A note may ring past the end of its bar (give it a long enough length); never split it into tied pieces.
 4. Only one note per string per slot (a chord/double-stop needs different strings).`;
 }
 

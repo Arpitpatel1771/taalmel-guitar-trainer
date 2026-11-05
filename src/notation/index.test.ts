@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Note, StringNumber } from "../model/index.js";
 import {
-  TUNING_MIDI,
   isPicked,
   letterOf,
   letterOfNote,
   noteNameWithOctave,
-  pitchOf,
+  soundingMidi,
   tabGlyph,
-  teacherGlyph,
 } from "./index.js";
 
 function makeNote(partial: Partial<Note> & { string: StringNumber; fret: number }): Note {
@@ -16,22 +14,24 @@ function makeNote(partial: Partial<Note> & { string: StringNumber; fret: number 
     startTick: 0,
     durationTicks: 960,
     offsetMs: 0,
-    uncertain: false,
     meta: {},
     source: { line: 1, column: 1 },
     ...partial,
   };
 }
 
-describe("pitchOf", () => {
+describe("soundingMidi", () => {
+  const open: Record<StringNumber, number> = { 1: 64, 2: 59, 3: 55, 4: 50, 5: 45, 6: 40 };
   const strings: StringNumber[] = [1, 2, 3, 4, 5, 6];
   const frets = [0, 1, 5, 12, 24];
 
-  for (const s of strings) {
-    for (const f of frets) {
-      it(`string ${s} fret ${f}`, () => {
-        expect(pitchOf(s, f)).toBe(TUNING_MIDI[s] + f);
-      });
+  for (const capo of [0, 3]) {
+    for (const s of strings) {
+      for (const f of frets) {
+        it(`string ${s} fret ${f} capo ${capo}`, () => {
+          expect(soundingMidi(s, f, capo)).toBe(open[s] + capo + f);
+        });
+      }
     }
   }
 });
@@ -55,12 +55,12 @@ describe("letterOf", () => {
 
 describe("noteNameWithOctave", () => {
   it("open strings", () => {
-    expect(noteNameWithOctave(pitchOf(1, 0), "sharps")).toBe("E4");
-    expect(noteNameWithOctave(pitchOf(2, 0), "sharps")).toBe("B3");
-    expect(noteNameWithOctave(pitchOf(3, 0), "sharps")).toBe("G3");
-    expect(noteNameWithOctave(pitchOf(4, 0), "sharps")).toBe("D3");
-    expect(noteNameWithOctave(pitchOf(5, 0), "sharps")).toBe("A2");
-    expect(noteNameWithOctave(pitchOf(6, 0), "sharps")).toBe("E2");
+    expect(noteNameWithOctave(soundingMidi(1, 0, 0), "sharps")).toBe("E4");
+    expect(noteNameWithOctave(soundingMidi(2, 0, 0), "sharps")).toBe("B3");
+    expect(noteNameWithOctave(soundingMidi(3, 0, 0), "sharps")).toBe("G3");
+    expect(noteNameWithOctave(soundingMidi(4, 0, 0), "sharps")).toBe("D3");
+    expect(noteNameWithOctave(soundingMidi(5, 0, 0), "sharps")).toBe("A2");
+    expect(noteNameWithOctave(soundingMidi(6, 0, 0), "sharps")).toBe("E2");
   });
 
   it("middle C is C4", () => {
@@ -80,81 +80,23 @@ describe("isPicked", () => {
   });
 });
 
-describe("teacherGlyph", () => {
-  it("register above for strings 1-2", () => {
-    const g = teacherGlyph(makeNote({ string: 1, fret: 3 }));
-    expect(g).toMatchObject({ kind: "teacher", register: "above" });
-    const g2 = teacherGlyph(makeNote({ string: 2, fret: 3 }));
-    expect(g2).toMatchObject({ kind: "teacher", register: "above" });
-  });
-
-  it("register none for strings 3-4", () => {
-    const g = teacherGlyph(makeNote({ string: 3, fret: 3 }));
-    expect(g).toMatchObject({ kind: "teacher", register: "none" });
-    const g2 = teacherGlyph(makeNote({ string: 4, fret: 3 }));
-    expect(g2).toMatchObject({ kind: "teacher", register: "none" });
-  });
-
-  it("register below for strings 5-6", () => {
-    const g = teacherGlyph(makeNote({ string: 5, fret: 3 }));
-    expect(g).toMatchObject({ kind: "teacher", register: "below" });
-    const g2 = teacherGlyph(makeNote({ string: 6, fret: 3 }));
-    expect(g2).toMatchObject({ kind: "teacher", register: "below" });
-  });
-
-  it("zone boundaries: fret 0 is zone 0", () => {
-    expect(teacherGlyph(makeNote({ string: 1, fret: 0 }))).toMatchObject({ zone: 0 });
-  });
-
-  it("zone boundaries: frets 1 and 4 are zone 1", () => {
-    expect(teacherGlyph(makeNote({ string: 1, fret: 1 }))).toMatchObject({ zone: 1 });
-    expect(teacherGlyph(makeNote({ string: 1, fret: 4 }))).toMatchObject({ zone: 1 });
-  });
-
-  it("zone boundaries: frets 5 and 8 are zone 2", () => {
-    expect(teacherGlyph(makeNote({ string: 1, fret: 5 }))).toMatchObject({ zone: 2 });
-    expect(teacherGlyph(makeNote({ string: 1, fret: 8 }))).toMatchObject({ zone: 2 });
-  });
-
-  it("zone boundaries: frets 9 and 12 are zone 3", () => {
-    expect(teacherGlyph(makeNote({ string: 1, fret: 9 }))).toMatchObject({ zone: 3 });
-    expect(teacherGlyph(makeNote({ string: 1, fret: 12 }))).toMatchObject({ zone: 3 });
-  });
-
-  it("fret 13 and above falls back to tab form", () => {
-    expect(teacherGlyph(makeNote({ string: 1, fret: 13 }))).toEqual({
-      kind: "fallback",
-      text: "1S13",
-    });
-    expect(teacherGlyph(makeNote({ string: 3, fret: 24 }))).toEqual({
-      kind: "fallback",
-      text: "3S24",
-    });
-  });
-
-  it("letter is sharp by default, flat when meta.flat is set", () => {
-    // 1S1 -> midi 65 -> F (natural, no sharp/flat ambiguity, sanity check)
-    expect(teacherGlyph(makeNote({ string: 1, fret: 1 }))).toMatchObject({ letter: "F" });
-    // 1S2 -> midi 66 -> F#/Gb; default is sharp, meta.flat picks the flat spelling
-    expect(teacherGlyph(makeNote({ string: 1, fret: 2 }))).toMatchObject({ letter: "F#" });
-    expect(teacherGlyph(makeNote({ string: 1, fret: 2, meta: { flat: true } }))).toMatchObject({
-      letter: "Gb",
-    });
-  });
-});
-
 describe("letterOfNote", () => {
-  it("defaults to sharp spelling", () => {
-    expect(letterOfNote(makeNote({ string: 1, fret: 2 }))).toBe("F#");
+  it("shows the sounding note with octave, sharps by default", () => {
+    expect(letterOfNote(makeNote({ string: 1, fret: 0 }), 0)).toBe("E4");
+    expect(letterOfNote(makeNote({ string: 1, fret: 9 }), 0)).toBe("C#5");
   });
 
   it("uses flat spelling when meta.flat is set", () => {
-    expect(letterOfNote(makeNote({ string: 1, fret: 2, meta: { flat: true } }))).toBe("Gb");
+    expect(letterOfNote(makeNote({ string: 1, fret: 9, meta: { flat: true } }), 0)).toBe("Db5");
   });
 
   it("naturals are spelled the same regardless of meta.flat", () => {
-    expect(letterOfNote(makeNote({ string: 1, fret: 0 }))).toBe("E");
-    expect(letterOfNote(makeNote({ string: 1, fret: 0, meta: { flat: true } }))).toBe("E");
+    expect(letterOfNote(makeNote({ string: 1, fret: 0, meta: { flat: true } }), 0)).toBe("E4");
+  });
+
+  it("sounds the capo: open high E under capo 2 is F#4", () => {
+    expect(letterOfNote(makeNote({ string: 1, fret: 0 }), 2)).toBe("F#4");
+    expect(letterOfNote(makeNote({ string: 1, fret: 0, meta: { flat: true } }), 2)).toBe("Gb4");
   });
 });
 

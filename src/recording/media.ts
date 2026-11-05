@@ -144,3 +144,27 @@ export function buildTrimPlan(opts: {
   }
   return { args: [...seek, ...codec, ...mp4Flags, outputName], inputName, outputName, outputMime: mimeForExtension(outExt, hasVideo) };
 }
+
+/**
+ * ffmpeg arguments that bake a volume boost into a clip's file: audio is
+ * re-encoded in the same codec (Opus for WebM, AAC for MP4/M4A, Vorbis for
+ * Ogg, MP3 for MP3), video is copied. The container and MIME type stay.
+ */
+export function buildBoostPlan(opts: { sourceMime: string; hasVideo: boolean; gainDb: number }): TrimPlan {
+  const { sourceMime, hasVideo } = opts;
+  const ext = extensionFor(sourceMime, hasVideo);
+  const gain = `${Math.round(opts.gainDb * 100) / 100}dB`;
+  const audio =
+    ext === "mp4" || ext === "m4a"
+      ? ["-c:a", "aac", "-b:a", "192k"]
+      : ext === "ogg"
+        ? ["-c:a", "libvorbis", "-b:a", "192k"]
+        : ext === "mp3"
+          ? ["-c:a", "libmp3lame", "-b:a", "192k"]
+          : ["-c:a", "libopus", "-b:a", "192k"];
+  const inputName = `boost-input.${ext}`;
+  const outputName = `boost-output.${ext}`;
+  const mp4Flags = ext === "mp4" || ext === "m4a" ? ["-movflags", "+faststart"] : [];
+  const args = ["-i", inputName, ...(hasVideo ? ["-c:v", "copy"] : ["-vn"]), "-af", `volume=${gain}`, ...audio, ...mp4Flags, outputName];
+  return { args, inputName, outputName, outputMime: mimeForExtension(ext, hasVideo) };
+}

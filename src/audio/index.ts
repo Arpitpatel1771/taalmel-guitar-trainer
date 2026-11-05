@@ -15,18 +15,27 @@ export {
 
 export { MicInput, MicError, type MicErrorKind, type EnvelopeBatch } from "./micInput";
 
-export { yin, DEFAULT_YIN_OPTIONS, type YinOptions, type PitchEstimate } from "./yin";
+export {
+  LevelMeter,
+  levelStateFor,
+  peakDbOf,
+  LEVEL_CONFIG,
+  type LevelState,
+  type LevelReading,
+} from "./inputLevel";
+export { startLevelTap, type LevelSource } from "./levelTap";
+export { useInputLevel } from "./useInputLevel";
+
+export { yin, yinWithCheck, DEFAULT_YIN_OPTIONS, type YinOptions, type PitchEstimate, type OctaveCheck } from "./yin";
 export { PitchDetector, type PitchResult } from "./pitchDetector";
 export {
-  TUNING_MIDI,
-  midiOf,
   freqToMidi,
   pitchClassOfMidi,
   pitchClassOfFreq,
   pitchClassesMatch,
 } from "./pitchClass";
 
-export { buildExpectedEvents, Matcher, summarize, type SessionSummary } from "./matcher";
+export { buildExpectedEvents, Matcher, summarize, type SessionSummary, type PitchOptions } from "./matcher";
 
 export {
   computeCalibration,

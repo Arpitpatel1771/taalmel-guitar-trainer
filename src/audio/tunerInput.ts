@@ -59,6 +59,11 @@ export class TunerInput {
     }, POLL_MS);
   }
 
+  /** The open mic stream, for the shell's level meter. */
+  get mediaStream(): MediaStream {
+    return this.stream;
+  }
+
   stop(): void {
     if (this.timer !== null) window.clearInterval(this.timer);
     this.timer = null;

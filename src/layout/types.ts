@@ -8,6 +8,7 @@ export interface BarBox {
   width: number;
   startTick: number;
   lengthTicks: number;
+  capo: number;
   /** x of each slot boundary, including the bar's start and end (length = slots + 1). */
   gridXs: number[];
 }
@@ -18,6 +19,8 @@ export interface NoteBox {
   width: number;
   /** 0 = string 1 (top, high E). */
   stringIndex: number;
+  /** Capo of the note's bar (for the sounding letter name). */
+  capo: number;
 }
 
 export interface Row {

@@ -30,6 +30,10 @@ describe("songCompletions", () => {
     expect(labels(complete("ti"))).toContain("title: ");
   });
 
+  it("offers capo as a header and section key", () => {
+    expect(labels(complete("ca"))).toContain("capo: ");
+  });
+
   it("does not offer flags for the bar slot count '(12)'", () => {
     expect(complete("Bar 1: (")).toBeNull();
   });

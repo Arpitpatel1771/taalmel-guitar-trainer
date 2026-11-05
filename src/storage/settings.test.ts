@@ -17,10 +17,17 @@ describe("loadSettings", () => {
     const custom = {
       ...DEFAULT_SETTINGS,
       zoom: 400,
-      lanes: { ...DEFAULT_SETTINGS.lanes, teacher: true },
+      lanes: { ...DEFAULT_SETTINGS.lanes, letter: false },
     };
     await saveSettings(custom);
     expect(await loadSettings()).toEqual(custom);
+  });
+
+  it("drops a stored lanes.teacher (the lane was removed)", async () => {
+    const old = { ...DEFAULT_SETTINGS, lanes: { tab: true, letter: false, teacher: true } } as unknown as typeof DEFAULT_SETTINGS;
+    await saveSettings(old);
+    const loaded = await loadSettings();
+    expect(loaded.lanes).toEqual({ tab: true, letter: false });
   });
 
   it("merges a partial stored record with defaults (forward compatibility)", async () => {

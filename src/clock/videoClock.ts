@@ -253,6 +253,10 @@ export class VideoClock implements Clock {
     this.offsetSec = sec;
   }
 
+  loop(): LoopRange | null {
+    return this.loopRange;
+  }
+
   setLoop(range: LoopRange | null): void {
     if (range && range.endTick <= range.startTick) {
       throw new Error("Invalid loop range: endTick must be greater than startTick");

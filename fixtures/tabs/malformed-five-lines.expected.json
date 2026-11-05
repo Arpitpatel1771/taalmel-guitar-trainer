@@ -1,0 +1,13 @@
+{
+  "events": [],
+  "bars": [],
+  "sectionNames": [],
+  "warnings": [],
+  "errors": [
+    {
+      "line": 1,
+      "code": "TAB_BLOCK_SIZE",
+      "message": "Line 1: found 5 string lines in a row; a tab block needs 6"
+    }
+  ]
+}

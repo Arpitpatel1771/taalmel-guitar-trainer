@@ -1,0 +1,8 @@
+title: techniques
+time: 4/4
+bpm: 90
+unit: 8
+
+[Song]
+Bar 1: {2} 1S3 6S0(muted) {3} 1S5(hammer) {4} 1S3(pull) {5} 1S5 {6} 1S7(slide) {7} 1S5(slide)
+Bar 2: {2} 1S7 {3} 1S7(bend: 2) {4} 1S7(bend: 0) {7} 1S9(vibrato)

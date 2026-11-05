@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useStatusSlot } from "./AppShellContext";
 import styles from "./Shell.module.css";
 
 export type ChipTone = "neutral" | "ok" | "info" | "warning" | "error" | "accent";
@@ -47,6 +49,10 @@ export function StatusChip({
   );
 }
 
+/** Status chips live at the top-right of the screen (spec 3.3): rendered into
+ * the shell's status slot when there is one, inline otherwise (tests). */
 export function ChipRow({ children }: { children: ReactNode }) {
-  return <div className={styles.chips}>{children}</div>;
+  const { slot } = useStatusSlot();
+  const row = <div className={styles.chips}>{children}</div>;
+  return slot ? createPortal(row, slot) : row;
 }

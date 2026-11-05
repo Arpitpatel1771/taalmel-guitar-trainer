@@ -1,0 +1,7 @@
+title: multi-digit
+time: 4/4
+bpm: 90
+unit: 8
+
+[Song]
+Bar 1: {3} 1S12 {5} 1S15 {7} 1S17

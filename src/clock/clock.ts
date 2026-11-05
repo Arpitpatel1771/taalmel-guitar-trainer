@@ -37,6 +37,8 @@ export interface Clock {
   /** Loop playback over a tick range, optionally with a rest held at the end
    * (spec 10.2). null disables looping. */
   setLoop(range: LoopRange | null): void;
+  /** The active loop range, or null. Lets schedulers find the loop start after a wrap. */
+  loop?(): LoopRange | null;
   /** Fires each time the clock wraps back to the loop start (after any
    * rest). Used to reset per-pass mic feedback state and the metronome's
    * scheduling watermark. */

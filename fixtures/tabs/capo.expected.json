@@ -1,0 +1,101 @@
+{
+  "events": [
+    {
+      "column": 3,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 2,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 0
+        },
+        {
+          "string": 2,
+          "fret": 1
+        },
+        {
+          "string": 3,
+          "fret": 0
+        },
+        {
+          "string": 4,
+          "fret": 2
+        },
+        {
+          "string": 5,
+          "fret": 3
+        }
+      ]
+    },
+    {
+      "column": 6,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 2,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 3
+        },
+        {
+          "string": 2,
+          "fret": 0
+        },
+        {
+          "string": 3,
+          "fret": 0
+        },
+        {
+          "string": 4,
+          "fret": 0
+        },
+        {
+          "string": 5,
+          "fret": 2
+        }
+      ]
+    },
+    {
+      "column": 9,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 2,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 0
+        },
+        {
+          "string": 2,
+          "fret": 1
+        },
+        {
+          "string": 3,
+          "fret": 0
+        },
+        {
+          "string": 4,
+          "fret": 2
+        },
+        {
+          "string": 5,
+          "fret": 3
+        }
+      ]
+    }
+  ],
+  "bars": [
+    {
+      "index": 0,
+      "block": 0,
+      "startColumn": 1,
+      "endColumn": 12,
+      "explicit": true
+    }
+  ],
+  "sectionNames": [],
+  "warnings": [],
+  "errors": [],
+  "capo": 3
+}

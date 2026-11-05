@@ -200,6 +200,10 @@ export class GridClock implements Clock {
 
   /** Loop playback over [startTick, endTick), optionally holding a rest at
    * the end before wrapping back to startTick with no count-in (spec 10.2). */
+  loop(): LoopRange | null {
+    return this.loopRange;
+  }
+
   setLoop(range: LoopRange | null): void {
     if (range && range.endTick <= range.startTick) {
       throw new Error("Invalid loop range: endTick must be greater than startTick");

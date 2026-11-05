@@ -119,6 +119,43 @@ describe("duplicate section names produce a warning, not an error", () => {
   });
 });
 
+describe("capo", () => {
+  const head = "title: T\ntime: 4/4\nbpm: 100\nunit: 8\n";
+  it("resolves Bar.capo from the song value and section overrides without carry-over", () => {
+    const r = parse(`${head}capo: 2\n\n[A]\nBar 1: {1} 1S0\n\n[B]\ncapo: 0\nBar 2: {1} 1S0\n\n[C]\ncapo: 5\nBar 3: {1} 1S0\n\n[D]\nBar 4: {1} 1S0\n`);
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.song.sections.flatMap((s) => s.bars.map((b) => b.capo))).toEqual([2, 0, 5, 2]);
+  });
+
+  it("is 0 everywhere when no capo is given", () => {
+    const r = parse(`${head}\n[A]\nBar 1: {1} 1S0\n`);
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.song.sections[0].bars[0].capo).toBe(0);
+    expect(r.song.header.capo).toBeUndefined();
+  });
+
+  it("rejects a capo outside 0-12 or a non-integer, in the header and a section", () => {
+    for (const bad of ["13", "-1", "1.5", "x"]) {
+      const h = parse(`${head}capo: ${bad}\n\n[A]\nBar 1: {1} 1S0\n`);
+      expect(!h.ok && h.errors[0].code).toBe("INVALID_CAPO");
+      const s = parse(`${head}\n[A]\ncapo: ${bad}\nBar 1: {1} 1S0\n`);
+      expect(!s.ok && s.errors[0].code).toBe("INVALID_CAPO");
+    }
+  });
+
+  it("reports a duplicate capo in a section as a duplicate key", () => {
+    const r = parse(`${head}\n[A]\ncapo: 1\ncapo: 2\nBar 1: {1} 1S0\n`);
+    expect(!r.ok && r.errors[0].code).toBe("DUPLICATE_HEADER_KEY");
+  });
+
+  it("checks the flat flag against the sounding note", () => {
+    // 1S0 + capo 2 = F#4, a black key, so flat is allowed; without the capo it is E4.
+    expect(parse(`${head}capo: 2\n\n[A]\nBar 1: {1} 1S0(flat)\n`).ok).toBe(true);
+    const r = parse(`${head}\n[A]\nBar 1: {1} 1S0(flat)\n`);
+    expect(!r.ok && r.errors[0].code).toBe("FLAT_ON_NATURAL");
+  });
+});
+
 describe("additional parser behavior not covered by single-error fixtures", () => {
   it("collects multiple errors within the same stage instead of stopping at the first", () => {
     const text = `title: T

@@ -1,0 +1,7 @@
+title: labels-uppercase-reversed
+time: 4/4
+bpm: 90
+unit: 8
+
+[Song]
+Bar 1: {1} 5S3 {2} 4S2 {3} 3S0 {4} 2S1 {6} 1S0 {8} 2S12

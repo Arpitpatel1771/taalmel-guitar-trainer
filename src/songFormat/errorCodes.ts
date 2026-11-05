@@ -4,7 +4,7 @@
 // before stopping at that stage:
 //   1. SYNTAX     - line forms, token grammar, header required fields.
 //   2. STRUCTURE  - bar numbering, slot ranges/ordering, grid divisibility,
-//                   distinct strings per slot, length fits in bar.
+//                   distinct strings per slot.
 //   3. SEMANTICS  - connection flag rules, metadata value ranges, fret/string range.
 //
 // The exact code list is an implementation decision (the spec gives only one example,
@@ -19,6 +19,7 @@ export const SYNTAX_ERROR_CODES = [
   "INVALID_TIME_SIGNATURE",
   "INVALID_BPM",
   "INVALID_UNIT",
+  "INVALID_CAPO",
   "INVALID_YOUTUBE_URL",
   "MISSING_OFFSET",
   "OFFSET_WITHOUT_YOUTUBE",
@@ -42,12 +43,12 @@ export const STRUCTURE_ERROR_CODES = [
   "DUPLICATE_STRING_IN_SLOT",
   "INVALID_LENGTH_COUNT",
   "LENGTH_NOT_INTEGER_TICKS",
-  "NOTE_EXCEEDS_BAR",
 ] as const;
 
 export const SEMANTIC_ERROR_CODES = [
   "INVALID_STRING",
   "INVALID_FRET",
+  "FRET_EXCEEDS_WITH_CAPO",
   "INVALID_NOTE_OFFSET",
   "INVALID_BEND_VALUE",
   "INVALID_STRUM_VALUE",

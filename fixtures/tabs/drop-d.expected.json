@@ -1,0 +1,86 @@
+{
+  "events": [
+    {
+      "column": 3,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 2,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 0
+        },
+        {
+          "string": 2,
+          "fret": 1
+        },
+        {
+          "string": 3,
+          "fret": 0
+        },
+        {
+          "string": 4,
+          "fret": 2
+        },
+        {
+          "string": 5,
+          "fret": 3
+        },
+        {
+          "string": 6,
+          "fret": 0
+        }
+      ]
+    },
+    {
+      "column": 8,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 2,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 3
+        },
+        {
+          "string": 2,
+          "fret": 0
+        },
+        {
+          "string": 3,
+          "fret": 0
+        },
+        {
+          "string": 4,
+          "fret": 0
+        },
+        {
+          "string": 5,
+          "fret": 2
+        },
+        {
+          "string": 6,
+          "fret": 3
+        }
+      ]
+    }
+  ],
+  "bars": [
+    {
+      "index": 0,
+      "block": 0,
+      "startColumn": 1,
+      "endColumn": 11,
+      "explicit": true
+    }
+  ],
+  "sectionNames": [],
+  "warnings": [
+    {
+      "line": 1,
+      "code": "TAB_TUNING_NONSTANDARD",
+      "message": "Line 1: non-standard tuning (Tuning: Drop D). Only standard tuning (E A D G B E) is supported for now; notes are read as if in standard tuning."
+    }
+  ],
+  "errors": []
+}

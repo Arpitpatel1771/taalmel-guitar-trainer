@@ -4,6 +4,7 @@
 
 import { MAX_BPM, MIN_BPM, type BpmRampConfig } from "../usePlaybackEngine";
 import { NumberInput } from "./Controls";
+import styles from "./BpmRampPanel.module.css";
 
 export interface BpmRampPanelProps {
   config: BpmRampConfig;
@@ -17,7 +18,7 @@ export function BpmRampPanel({ config, onChange, micOn }: BpmRampPanelProps) {
   }
 
   return (
-    <div className="bpm-ramp-panel">
+    <div className={`bpm-ramp-panel ${styles.panel}`}>
       <label className="checkbox">
         <input type="checkbox" checked={config.enabled} onChange={(e) => patch({ enabled: e.target.checked })} />
         BPM ramp on loop

@@ -15,3 +15,4 @@ export {
   WARNING_CODES,
 } from "./errorCodes.js";
 export type { ErrorCode } from "./errorCodes.js";
+export { withSongBpm } from "./tempo.js";

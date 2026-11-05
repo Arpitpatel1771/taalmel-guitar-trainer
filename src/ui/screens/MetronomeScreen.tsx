@@ -14,6 +14,8 @@ import {
   type Subdivision,
 } from "../../audio";
 import { Field, Segmented, Stepper } from "../components/Controls";
+import { Button, Card, Slider } from "../components/kit";
+import { PageHead } from "../components/PageHead";
 import st from "./MetronomeScreen.module.css";
 
 const SUBDIVISIONS: { value: Subdivision; label: string }[] = [
@@ -107,10 +109,8 @@ export function MetronomeScreen({ settings, onChange }: { settings: Settings; on
 
   return (
     <div className="screen">
-      <div className="screen-header">
-        <h2>Metronome</h2>
-      </div>
-      <div className={st.card}>
+      <PageHead title="Metronome" sub="A steady click to play along to. Press Space to start and stop." />
+      <Card className={st.card}>
         <div className={st.dots} aria-hidden>
           {Array.from({ length: beatsPerBar }, (_, i) => (
             <span
@@ -125,27 +125,16 @@ export function MetronomeScreen({ settings, onChange }: { settings: Settings; on
           <span className={st.bpmUnit}>BPM</span>
         </div>
 
-        <input
-          className={st.slider}
-          type="range"
-          min={FREE_MIN_BPM}
-          max={FREE_MAX_BPM}
-          value={bpm}
-          aria-label="BPM"
-          onChange={(e) => setBpm(Number(e.target.value))}
-        />
+        <Slider className={st.slider} min={FREE_MIN_BPM} max={FREE_MAX_BPM} value={bpm} label="BPM" onChange={setBpm} />
 
         <div className={st.row}>
           <Stepper label="BPM" value={bpm} onChange={setBpm} min={FREE_MIN_BPM} max={FREE_MAX_BPM} />
-          <button type="button" onClick={tap}>
-            Tap tempo
-          </button>
+          <Button onClick={tap}>Tap tempo</Button>
         </div>
 
-        <button type="button" className={`btn-primary ${st.start}`} onClick={() => void toggle()}>
-          {running ? <Pause size={18} /> : <Play size={18} />}
+        <Button variant="primary" size="lg" className={st.start} icon={running ? <Pause size={18} /> : <Play size={18} />} onClick={() => void toggle()}>
           {running ? "Stop" : "Start"}
-        </button>
+        </Button>
         <span className={st.hint}>Space to start/stop</span>
 
         <div className={st.options}>
@@ -160,20 +149,19 @@ export function MetronomeScreen({ settings, onChange }: { settings: Settings; on
           </Field>
           <Field label="Volume">
             <div className={st.row}>
-              <input
-                type="range"
+              <Slider
                 min={0}
                 max={1}
                 step={0.01}
-                aria-label="Volume"
+                label="Volume"
                 value={settings.metronomeVolume}
-                onChange={(e) => onChange({ ...settings, metronomeVolume: Number(e.target.value) })}
+                onChange={(v) => onChange({ ...settings, metronomeVolume: v })}
               />
               <span className={st.volume}>{Math.round(settings.metronomeVolume * 100)}%</span>
             </div>
           </Field>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

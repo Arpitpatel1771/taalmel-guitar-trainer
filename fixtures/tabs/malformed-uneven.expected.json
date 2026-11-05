@@ -1,0 +1,14 @@
+{
+  "events": [],
+  "bars": [],
+  "sectionNames": [],
+  "warnings": [],
+  "errors": [
+    {
+      "line": 2,
+      "column": 12,
+      "code": "TAB_LINE_LENGTH",
+      "message": "Line 2: string lines have different lengths (10 characters here, 13 on the others)"
+    }
+  ]
+}

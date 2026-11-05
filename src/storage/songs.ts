@@ -77,6 +77,8 @@ export async function saveSong(text: string, id?: string, opts?: WriteOptions): 
       title,
       bpm,
       hasVideo,
+      ...(existing?.libraryId ? { libraryId: existing.libraryId } : {}),
+      ...(existing?.libraryVersion ? { libraryVersion: existing.libraryVersion } : {}),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
@@ -104,4 +106,24 @@ export async function deleteSong(id: string, opts?: WriteOptions): Promise<void>
   tx.objectStore(SONGS_STORE).delete(id);
   await txDone(tx);
   emitStorageChange({ kind: "song", id, op: "delete" }, opts);
+}
+
+/** Marks a saved song as a copy of open-library entry `libraryId` at `libraryVersion` (the entry's updatedAt). */
+export async function linkSongToLibrary(
+  id: string,
+  libraryId: string,
+  libraryVersion: string,
+  opts?: WriteOptions,
+): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(SONGS_STORE, "readwrite");
+  const store = tx.objectStore(SONGS_STORE);
+  const existing = (await reqToPromise(store.get(id))) as SongRecord | undefined;
+  if (!existing) {
+    tx.abort();
+    throw new Error(`Cannot link song ${id}: not found`);
+  }
+  store.put({ ...existing, libraryId, libraryVersion });
+  await txDone(tx);
+  emitStorageChange({ kind: "song", id, op: "upsert" }, opts);
 }

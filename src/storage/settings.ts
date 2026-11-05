@@ -3,9 +3,18 @@
 // added fields never come back `undefined` for an older stored record.
 
 import type { Settings } from "../model/index.js";
-import { DEFAULT_SETTINGS } from "../model/index.js";
+import { ACCENT_IDS, DEFAULT_SETTINGS, THEME_PREFS } from "../model/index.js";
 import { SETTINGS_KEY, SETTINGS_STORE, openDb, reqToPromise, txDone } from "./db.js";
 import { emitStorageChange, type WriteOptions } from "./changes.js";
+
+/** Only known lanes survive: the teacher lane was removed (specs/5-11-capo.md),
+ * so a stored or synced `lanes.teacher` is dropped. */
+export function normalizeLanes(lanes: Partial<Settings["lanes"]> | undefined): Settings["lanes"] {
+  return {
+    tab: lanes?.tab ?? DEFAULT_SETTINGS.lanes.tab,
+    letter: lanes?.letter ?? DEFAULT_SETTINGS.lanes.letter,
+  };
+}
 
 function mergeWithDefaults(stored: Partial<Settings> | undefined): Settings {
   if (!stored) return { ...DEFAULT_SETTINGS };
@@ -18,7 +27,11 @@ function mergeWithDefaults(stored: Partial<Settings> | undefined): Settings {
   return {
     ...DEFAULT_SETTINGS,
     ...rest,
-    lanes: { ...DEFAULT_SETTINGS.lanes, ...(rest.lanes ?? {}) },
+    // Unknown values (a newer app version, hand-edited data) fall back to defaults.
+    theme: THEME_PREFS.includes(rest.theme as never) ? (rest.theme as Settings["theme"]) : DEFAULT_SETTINGS.theme,
+    accent: ACCENT_IDS.includes(rest.accent as never) ? (rest.accent as Settings["accent"]) : DEFAULT_SETTINGS.accent,
+    lanes: normalizeLanes(rest.lanes),
+    restBars: ([0, 1, 2, 4] as const).includes(rest.restBars as never) ? (rest.restBars as Settings["restBars"]) : DEFAULT_SETTINGS.restBars,
     tiers: { ...DEFAULT_SETTINGS.tiers, ...(rest.tiers ?? {}) },
     chordMarks: { ...(rest.chordMarks ?? {}) },
     chordView: { ...DEFAULT_SETTINGS.chordView, ...(rest.chordView ?? {}) },
@@ -38,7 +51,7 @@ export async function loadSettings(): Promise<Settings> {
 export async function saveSettings(settings: Settings, opts?: WriteOptions): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(SETTINGS_STORE, "readwrite");
-  tx.objectStore(SETTINGS_STORE).put(settings, SETTINGS_KEY);
+  tx.objectStore(SETTINGS_STORE).put({ ...settings, lanes: normalizeLanes(settings.lanes) }, SETTINGS_KEY);
   await txDone(tx);
   emitStorageChange({ kind: "settings", op: "upsert" }, opts);
 }

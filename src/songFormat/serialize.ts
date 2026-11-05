@@ -31,9 +31,8 @@ function serializeLengthBlock(note: Note, slotTicks: number): string {
 
   // JS number-to-string already omits "+" for positive and includes "-" for negative.
   const offsetPart = note.offsetMs !== 0 ? `>${note.offsetMs}` : "";
-  const uncertainPart = note.uncertain ? "?" : "";
 
-  const inner = `${countPart}${offsetPart}${uncertainPart}`;
+  const inner = `${countPart}${offsetPart}`;
   return inner === "" ? "" : `[${inner}]`;
 }
 
@@ -62,9 +61,11 @@ export function serialize(song: Song): string {
   const lines: string[] = [];
 
   lines.push(`title: ${song.header.title}`);
+  if (song.header.artist !== undefined) lines.push(`artist: ${song.header.artist}`);
   lines.push(`time: ${song.header.time.numerator}/${song.header.time.denominator}`);
   lines.push(`bpm: ${song.header.bpm}`);
   lines.push(`unit: ${song.header.unit}`);
+  if (song.header.capo !== undefined) lines.push(`capo: ${song.header.capo}`);
   if (song.header.youtube) {
     lines.push(`youtube: ${song.header.youtube.url}`);
     lines.push(`offset: ${song.header.youtube.offsetSec}`);
@@ -77,6 +78,7 @@ export function serialize(song: Song): string {
     sectionLines.push(`[${section.name}]`);
     if (section.bpm !== song.header.bpm) sectionLines.push(`bpm: ${section.bpm}`);
     if (section.unit !== song.header.unit) sectionLines.push(`unit: ${section.unit}`);
+    if (section.capo !== (song.header.capo ?? 0)) sectionLines.push(`capo: ${section.capo}`);
 
     for (const bar of section.bars) {
       const slotTicks = bar.lengthTicks / bar.slots;

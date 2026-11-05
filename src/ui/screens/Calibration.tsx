@@ -5,6 +5,8 @@
 import { useState } from "react";
 import { CircleAlert, CircleCheck, Headphones, Speaker } from "lucide-react";
 import cal from "./Calibration.module.css";
+import pg from "../components/page.module.css";
+import { Button, Card, IconTile } from "../components/kit";
 import type { Calibration } from "../../model";
 import {
   MicError,
@@ -87,13 +89,18 @@ export function CalibrationScreen({ calibration, onSave, onBack }: CalibrationSc
   const running = status.kind === "running";
 
   return (
-    <div className="screen calibration-screen">
-      <div className="screen-header">
-        <h2>Calibration</h2>
-        <button className="btn-ghost" onClick={onBack}>
-          Done
-        </button>
-      </div>
+    <div className="screen">
+      <header className={pg.head}>
+        <div className={pg.headText}>
+          <h1 className={pg.title}>Calibration</h1>
+          <p className={pg.sub}>Your speakers and microphone add a small delay. Measuring it once lets Taalmel judge your timing fairly.</p>
+        </div>
+        <div className={pg.actions}>
+          <Button variant="ghost" onClick={onBack}>
+            Done
+          </Button>
+        </div>
+      </header>
 
       <div className={cal.wrap}>
         <p className={cal.current}>
@@ -110,9 +117,8 @@ export function CalibrationScreen({ calibration, onSave, onBack }: CalibrationSc
             className={`${cal.method}${method === "loopback" ? ` ${cal.methodOn}` : ""}`}
             onClick={() => setMethod("loopback")}
           >
-            <span className={cal.methodName}>
-              <Speaker size={16} /> Speakers (recommended)
-            </span>
+            <IconTile size={36}><Speaker size={18} /></IconTile>
+            <span className={cal.methodName}>Speakers (recommended)</span>
             <span className={cal.methodDesc}>Speakers on, stay quiet. The app plays 8 clicks and listens for them.</span>
           </button>
           <button
@@ -122,20 +128,19 @@ export function CalibrationScreen({ calibration, onSave, onBack }: CalibrationSc
             className={`${cal.method}${method === "tap" ? ` ${cal.methodOn}` : ""}`}
             onClick={() => setMethod("tap")}
           >
-            <span className={cal.methodName}>
-              <Headphones size={16} /> Headphones (tap)
-            </span>
+            <IconTile size={36}><Headphones size={18} /></IconTile>
+            <span className={cal.methodName}>Headphones (tap)</span>
             <span className={cal.methodDesc}>Pluck a muted string on each of 8 clicks. Less accurate: includes your own timing.</span>
           </button>
         </div>
 
-        <div className={cal.stage}>
+        <Card className={cal.stage}>
           {status.kind === "idle" && (
             <>
               <p className={cal.caption}>{method === "loopback" ? "Turn your speakers up and keep the room quiet." : "Put on headphones and mute a string with your fretting hand."}</p>
-              <button className={`btn-primary ${cal.start}`} onClick={() => void run(method)}>
+              <Button variant="primary" size="lg" className={cal.start} onClick={() => void run(method)}>
                 Start
-              </button>
+              </Button>
             </>
           )}
           {running && (
@@ -158,10 +163,10 @@ export function CalibrationScreen({ calibration, onSave, onBack }: CalibrationSc
               </span>
               <div className={cal.big}>{status.latencyMs.toFixed(1)} ms</div>
               <div className={cal.row}>
-                <button className="btn-primary" onClick={save}>
+                <Button variant="primary" onClick={save}>
                   Save calibration
-                </button>
-                <button onClick={() => void run(method)}>Retry</button>
+                </Button>
+                <Button onClick={() => void run(method)}>Retry</Button>
               </div>
             </>
           )}
@@ -173,16 +178,16 @@ export function CalibrationScreen({ calibration, onSave, onBack }: CalibrationSc
               <p className={cal.caption}>{status.message}</p>
               {status.offerTap && <p className={cal.caption}>On headphones? Switch to the tap method.</p>}
               <div className={cal.row}>
-                <button className="btn-primary" onClick={() => void run(method)}>
+                <Button variant="primary" onClick={() => void run(method)}>
                   Retry
-                </button>
+                </Button>
                 {status.offerTap && (
-                  <button onClick={() => { setMethod("tap"); setStatus({ kind: "idle" }); }}>Use tap method</button>
+                  <Button onClick={() => { setMethod("tap"); setStatus({ kind: "idle" }); }}>Use tap method</Button>
                 )}
               </div>
             </>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

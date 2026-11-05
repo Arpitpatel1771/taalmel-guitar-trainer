@@ -1,0 +1,216 @@
+{
+  "events": [
+    {
+      "column": 3,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 6,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 0
+        },
+        {
+          "string": 2,
+          "fret": 1
+        },
+        {
+          "string": 3,
+          "fret": 0
+        },
+        {
+          "string": 4,
+          "fret": 2
+        },
+        {
+          "string": 5,
+          "fret": 3
+        }
+      ]
+    },
+    {
+      "column": 6,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 6,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 3
+        },
+        {
+          "string": 2,
+          "fret": 0
+        },
+        {
+          "string": 3,
+          "fret": 0
+        },
+        {
+          "string": 4,
+          "fret": 0
+        },
+        {
+          "string": 5,
+          "fret": 2
+        }
+      ]
+    },
+    {
+      "column": 12,
+      "bar": 1,
+      "block": 0,
+      "blockLine": 6,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 5
+        },
+        {
+          "string": 2,
+          "fret": 6
+        },
+        {
+          "string": 3,
+          "fret": 5
+        },
+        {
+          "string": 4,
+          "fret": 7
+        },
+        {
+          "string": 5,
+          "fret": 7
+        }
+      ]
+    },
+    {
+      "column": 15,
+      "bar": 1,
+      "block": 0,
+      "blockLine": 6,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 3
+        },
+        {
+          "string": 2,
+          "fret": 0
+        },
+        {
+          "string": 3,
+          "fret": 0
+        },
+        {
+          "string": 4,
+          "fret": 0
+        },
+        {
+          "string": 5,
+          "fret": 2
+        }
+      ]
+    },
+    {
+      "column": 3,
+      "bar": 2,
+      "block": 1,
+      "blockLine": 16,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 0
+        },
+        {
+          "string": 2,
+          "fret": 1
+        },
+        {
+          "string": 3,
+          "fret": 0
+        },
+        {
+          "string": 4,
+          "fret": 2
+        },
+        {
+          "string": 5,
+          "fret": 3
+        }
+      ]
+    },
+    {
+      "column": 6,
+      "bar": 2,
+      "block": 1,
+      "blockLine": 16,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 3
+        },
+        {
+          "string": 2,
+          "fret": 0
+        },
+        {
+          "string": 3,
+          "fret": 0
+        },
+        {
+          "string": 4,
+          "fret": 0
+        },
+        {
+          "string": 5,
+          "fret": 2
+        }
+      ]
+    }
+  ],
+  "bars": [
+    {
+      "index": 0,
+      "block": 0,
+      "startColumn": 1,
+      "endColumn": 9,
+      "explicit": true
+    },
+    {
+      "index": 1,
+      "block": 0,
+      "startColumn": 10,
+      "endColumn": 18,
+      "explicit": true
+    },
+    {
+      "index": 2,
+      "block": 1,
+      "startColumn": 1,
+      "endColumn": 9,
+      "explicit": true
+    }
+  ],
+  "sectionNames": [
+    {
+      "name": "Intro",
+      "barIndex": 0,
+      "line": 5
+    },
+    {
+      "name": "Verse 1",
+      "barIndex": 2,
+      "line": 15
+    }
+  ],
+  "warnings": [
+    {
+      "line": 15,
+      "code": "TAB_REPEAT",
+      "message": "Repeats aren't expanded; copy the bars if needed"
+    }
+  ],
+  "errors": [],
+  "capo": 2
+}

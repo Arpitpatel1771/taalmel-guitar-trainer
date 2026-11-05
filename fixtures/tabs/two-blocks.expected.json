@@ -1,0 +1,71 @@
+{
+  "events": [
+    {
+      "column": 3,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 0
+        }
+      ]
+    },
+    {
+      "column": 6,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 3
+        }
+      ]
+    },
+    {
+      "column": 3,
+      "bar": 1,
+      "block": 1,
+      "blockLine": 8,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 5
+        }
+      ]
+    },
+    {
+      "column": 6,
+      "bar": 1,
+      "block": 1,
+      "blockLine": 8,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 7
+        }
+      ]
+    }
+  ],
+  "bars": [
+    {
+      "index": 0,
+      "block": 0,
+      "startColumn": 1,
+      "endColumn": 9,
+      "explicit": true
+    },
+    {
+      "index": 1,
+      "block": 1,
+      "startColumn": 1,
+      "endColumn": 9,
+      "explicit": true
+    }
+  ],
+  "sectionNames": [],
+  "warnings": [],
+  "errors": []
+}

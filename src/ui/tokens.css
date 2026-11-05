@@ -1,62 +1,160 @@
-/* Design tokens (specs/26-9-ui-revamp.md section 3). Components use these
- * semantic names, never raw colors. Dark theme only for now; a light theme
- * later redefines the same names under [data-theme="light"]. */
+/* Design tokens (specs/5-11-ui-redesign.md section 2). Components use these
+ * semantic names, never raw colors.
+ *
+ * <html data-theme="dark|light" data-accent="saffron|teal|violet">. The
+ * theme attribute always holds the RESOLVED mode ("system" is resolved in
+ * script, see ui/theme.ts and the inline script in index.html). Without
+ * attributes the page is dark saffron. tokens.test.ts parses this file, so
+ * keep one custom property per line and the selector shapes below.
+ */
 
-:root {
+/* ---- Dark (default) ---- */
+:root,
+:root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Surfaces: elevation by lightness, not borders. */
-  --surface-0: #111214; /* page */
-  --surface-1: #18191c; /* panels, sidebar */
-  --surface-2: #202226; /* inputs, raised controls */
-  --surface-3: #2a2c31; /* popovers, hover */
-  --border-subtle: #26282d;
-  --border-strong: #363941;
+  --bg: #15130f;
+  --rail: #110f0c;
+  --surface-1: #1e1b16;
+  --surface-2: #27231c;
+  --surface-3: #2e2920;
+  --pocket: #27231c;
+  --sheet: #17150f;
+  --border: #2a261f;
+  --card-border: transparent;
+  --line: #3a352c;
+  --barline: #4a443a;
+  --text: #f2ede4;
+  --text-muted: #b8b0a3;
+  --text-subtle: #8c8477;
+  --shadow-float: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --accent-glow-alpha: 60%;
 
-  /* Text */
-  --text-primary: #ecebe8;
-  --text-secondary: #a9a7a1;
-  --text-muted: #95938d; /* 4.5:1+ on every surface (WCAG AA) */
-  --text-on-accent: #1a1204;
+  /* Fixed meaning colours: same in every accent. */
+  --verdict-ontime: #7db4f0;
+  --verdict-off: #f07aa8;
+  --ok: #7fc8a9;
+  --warn: #e8b04a;
+  --record: #f06a4a;
+  --record-tint: #3a1f1a;
 
-  /* Accent: warm amber. */
+  /* Saffron (default accent) */
   --accent: #f2a93b;
-  --accent-hover: #f7ba5c;
-  --accent-active: #d98f22;
-  --accent-soft: rgba(242, 169, 59, 0.14);
-  --accent-softer: rgba(242, 169, 59, 0.08);
+  --on-accent: #1a1408;
+  --accent-text: #f2a93b;
+  --accent-tint: #2e2717;
+}
 
-  /* Status */
-  --danger: #ef6b5b;
-  --danger-soft: rgba(239, 107, 91, 0.12);
-  --warning: #e8c547;
-  --warning-soft: rgba(232, 197, 71, 0.12);
-  --success: #5cc48a;
-  --info: #7aa7e8;
-  --info-soft: rgba(122, 167, 232, 0.12);
+/* ---- Light ---- */
+:root[data-theme="light"] {
+  color-scheme: light;
 
-  /* Verdicts: Okabe-Ito based, colorblind-safe. */
-  --verdict-ontime: #009e73;
-  --verdict-close: #e69f00;
-  --verdict-off: #d55e00;
-  --verdict-missed: #cc79a7;
-  --verdict-extra: #999999;
-  --uncertain-tint: rgba(232, 197, 71, 0.16);
+  --bg: #f7f4ee;
+  --rail: #efeae1;
+  --surface-1: #ffffff;
+  --surface-2: #f1ece3;
+  --surface-3: #e8e1d4;
+  --pocket: #ffffff;
+  --sheet: #fbf9f5;
+  --border: #e2dacb;
+  --card-border: #e8e1d4;
+  --line: #d6cebf;
+  --barline: #b9af9d;
+  --text: #1f1b14;
+  --text-muted: #5e574b;
+  --text-subtle: #7a7264;
+  --shadow-float: 0 10px 28px rgba(60, 45, 20, 0.14);
+  --accent-glow-alpha: 35%;
+
+  --verdict-ontime: #1f66c2;
+  --verdict-off: #c2306e;
+  --ok: #1e7f57;
+  --warn: #a0620e;
+  --record: #d2492a;
+  --record-tint: #fbe3dc;
+
+  --accent: #f2a93b;
+  --on-accent: #1a1408;
+  --accent-text: #985a00;
+  --accent-tint: #fbebd0;
+}
+
+/* ---- Accents (saffron is the base above) ---- */
+:root[data-theme="dark"][data-accent="teal"] {
+  --accent: #3cc8b4;
+  --on-accent: #04201c;
+  --accent-text: #5ed6c4;
+  --accent-tint: #142824;
+}
+:root[data-theme="light"][data-accent="teal"] {
+  --accent: #0d8575; /* spec said #0f8f80: white on it was 3.99:1 */
+  --on-accent: #ffffff;
+  --accent-text: #0b6f63;
+  --accent-tint: #d7f0ec;
+}
+:root[data-theme="dark"][data-accent="violet"] {
+  --accent: #a78bfa;
+  --on-accent: #170e33;
+  --accent-text: #b9a3ff;
+  --accent-tint: #231d36;
+}
+:root[data-theme="light"][data-accent="violet"] {
+  --accent: #6d4fd8;
+  --on-accent: #ffffff;
+  --accent-text: #5a3ec4;
+  --accent-tint: #e9e3fb;
+}
+
+/* ---- Everything below is shared by all themes ---- */
+:root {
+  /* Derived from the accent. */
+  --accent-loop: color-mix(in srgb, var(--accent) 8%, transparent);
+  --accent-loop-edge: color-mix(in srgb, var(--accent) 50%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) var(--accent-glow-alpha), transparent);
+  --verdict-missed: color-mix(in srgb, var(--text-subtle) 50%, transparent);
+
+  /* Legacy names (aliases onto the semantic tokens above) so screens that
+   * are not restyled yet keep working. New code uses the names above. */
+  --surface-0: var(--bg);
+  --border-subtle: var(--border);
+  --border-strong: var(--line);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-muted);
+  --text-on-accent: var(--on-accent);
+  --accent-hover: color-mix(in srgb, var(--accent) 85%, white);
+  --accent-active: color-mix(in srgb, var(--accent) 85%, black);
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-softer: color-mix(in srgb, var(--accent) 8%, transparent);
+  --danger: var(--record);
+  --danger-soft: var(--record-tint);
+  --warning: var(--warn);
+  --warning-soft: color-mix(in srgb, var(--warn) 14%, transparent);
+  --success: var(--ok);
+  --info: var(--verdict-ontime);
+  --info-soft: color-mix(in srgb, var(--verdict-ontime) 14%, transparent);
+  --verdict-close: var(--verdict-ontime);
+  --verdict-extra: var(--text-subtle);
+  --shadow-popover: var(--shadow-float);
 
   /* Type */
   --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
-  --text-xs: 11px;
-  --text-sm: 12px;
+  --text-xs: 12px;
+  --text-sm: 13px;
   --text-md: 14px;
-  --text-lg: 17.5px;
+  --text-body: 15px;
+  --text-lg: 17px;
   --text-xl: 22px;
-  --text-2xl: 27.5px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  --text-4xl: 40px;
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
+  --weight-bold: 700;
 
-  /* Spacing: 8pt scale with a 4px half-step. */
+  /* Spacing: 4/8 grid. */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -65,12 +163,13 @@
   --space-6: 32px;
   --space-7: 48px;
 
-  /* Shape and depth */
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  /* Shape: controls 10-12, tiles 14, cards 18, pills 999. */
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-tile: 14px;
+  --radius-lg: 18px;
   --radius-pill: 999px;
-  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --focus-ring: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--accent);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
 
   /* Motion */
   --duration-fast: 120ms;
@@ -78,9 +177,9 @@
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   /* Shell */
-  --sidebar-width: 216px;
-  --sidebar-width-collapsed: 60px;
+  --rail-width: 88px;
   --topbar-height: 48px;
+  --pocket-clearance: 112px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -104,10 +203,10 @@ body,
 }
 
 body {
-  background: var(--surface-0);
-  color: var(--text-primary);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-ui);
-  font-size: var(--text-md);
+  font-size: var(--text-body);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
 }
@@ -116,6 +215,7 @@ h1,
 h2,
 h3 {
   margin: 0;
+  font-family: var(--font-display);
   font-weight: var(--weight-semibold);
   letter-spacing: -0.01em;
 }

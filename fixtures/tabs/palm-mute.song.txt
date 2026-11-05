@@ -1,0 +1,7 @@
+title: palm-mute
+time: 4/4
+bpm: 90
+unit: 8
+
+[Song]
+Bar 1: {2} 4S0(muted) {3} 4S0(muted) {4} 4S0(muted) {5} 4S0(muted) {7} 5S0

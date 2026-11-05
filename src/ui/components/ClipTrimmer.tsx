@@ -2,11 +2,19 @@
 // handles), preview or loop the selection, then trim with ffmpeg.wasm and
 // save to disk or back into the clip list.
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Flag, Pause, Play, Repeat, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Flag, Pause, Play, Repeat, Trash2, Volume2, X } from "lucide-react";
+import { getAudioContext, resumeAudio } from "../../audio";
 import {
+  effectiveGainDb,
+  ensureClipGain,
   extensionFor,
   formatClipTime,
+  makeBoostPermanent,
+  routeMediaThroughGain,
+  scalePeaks,
+  setClipBoost,
+  type BoostedPlayback,
   parseClipTime,
   safeFileName,
   saveBlobToDisk,
@@ -24,6 +32,7 @@ import {
   type TrimStage,
 } from "../../recording";
 import { Field, NumberInput, Segmented } from "./Controls";
+import { Button, Chip } from "./kit";
 import { WaveformCanvas } from "./WaveformCanvas";
 import { useShell } from "../shell/AppShellContext";
 import st from "../screens/Recorder.module.css";
@@ -106,7 +115,7 @@ export function ClipTrimmer({
     setUrl(u);
     return () => URL.revokeObjectURL(u);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clip.id]);
+  }, [clip.id, clip.mediaRev]);
 
   const mediaRef = useRef<HTMLVideoElement & HTMLAudioElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -141,6 +150,84 @@ export function ClipTrimmer({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clip.id]);
+  // Volume boost (spec 5-11-recording-level 2): measured lazily for older clips.
+  const [gainDb, setGainDb] = useState<number | undefined>(clip.gainDb);
+  const [boost, setBoost] = useState(!!clip.boost);
+  useEffect(() => setGainDb(clip.gainDb), [clip.gainDb]);
+  useEffect(() => setBoost(!!clip.boost), [clip.boost]);
+  useEffect(() => {
+    if (clip.gainDb !== undefined) return;
+    let cancelled = false;
+    void ensureClipGain(clip)
+      .then((g) => {
+        if (cancelled || g === null) return;
+        setGainDb(g);
+        onFlagsChanged?.();
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clip.id]);
+  const appliedDb = effectiveGainDb({ gainDb, boost });
+  const routeRef = useRef<BoostedPlayback | null>(null);
+  const appliedRef = useRef(appliedDb);
+  appliedRef.current = appliedDb;
+  useEffect(() => {
+    const el = mediaRef.current;
+    if (!el) return;
+    try {
+      routeRef.current = routeMediaThroughGain(getAudioContext(), el, appliedRef.current);
+    } catch {
+      routeRef.current = null; // plays unboosted
+    }
+    return () => {
+      routeRef.current?.dispose();
+      routeRef.current = null;
+    };
+  }, []);
+  useEffect(() => routeRef.current?.setGainDb(appliedDb), [appliedDb]);
+  const shownPeaks = useMemo(() => (peaks ? scalePeaks(peaks, appliedDb) : null), [peaks, appliedDb]);
+
+  async function toggleBoost() {
+    const next = !boost;
+    setBoost(next);
+    try {
+      await setClipBoost(clip.id, next);
+      onFlagsChanged?.();
+    } catch (err) {
+      setBoost(!next);
+      toast(err instanceof Error ? err.message : String(err), "error");
+    }
+  }
+
+  const [confirmPermanent, setConfirmPermanent] = useState(false);
+  const [permBusy, setPermBusy] = useState<{ stage: TrimStage; fraction: number | null } | null>(null);
+  const [permError, setPermError] = useState<{ message: string } | null>(null);
+  async function makePermanent() {
+    setConfirmPermanent(false);
+    setPermError(null);
+    setPermBusy({ stage: "loading", fraction: null });
+    try {
+      const next = await makeBoostPermanent({ ...clip, gainDb, boost: true }, (stage, fraction) => setPermBusy({ stage, fraction }));
+      setGainDb(0);
+      setBoost(false);
+      if (next.peaks) setPeaks(next.peaks);
+      onFlagsChanged?.();
+      toast("The recording is now louder.");
+    } catch (err) {
+      setPermError({ message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setPermBusy(null);
+    }
+  }
+  const permLabel = permBusy
+    ? permBusy.stage === "loading"
+      ? `Loading engine…${permBusy.fraction !== null ? ` ${Math.round(permBusy.fraction * 100)}%` : ""}`
+      : `Boosting… ${permBusy.fraction !== null ? `${Math.round(permBusy.fraction * 100)}%` : ""}`
+    : null;
+
   const [padSec, setPadSec] = useState(10);
   const [busy, setBusy] = useState<{ stage: TrimStage; fraction: number | null } | null>(null);
   /** Last trim failure, shown inline with Retry (e.g. the 32 MB engine download stalled). */
@@ -367,7 +454,7 @@ export function ClipTrimmer({
     const out = await runTrim(() => void trimAndKeep());
     if (!out) return;
     try {
-      await saveClip({
+      const saved = await saveClip({
         name: `${clip.name} (trimmed)`,
         createdAt: Date.now(),
         mimeType: out.mimeType,
@@ -376,6 +463,7 @@ export function ClipTrimmer({
         blob: out.blob,
         flags: shiftFlagsIntoRange(flags, start, end),
       });
+      await ensureClipGain(saved).catch(() => null);
       onSavedAsClip();
       toast("Trimmed clip added.");
     } catch (err) {
@@ -399,7 +487,10 @@ export function ClipTrimmer({
     preload: "auto",
     onLoadedMetadata,
     onDurationChange,
-    onPlay: () => setPlaying(true),
+    onPlay: () => {
+      void resumeAudio(); // the boost path runs through Web Audio
+      setPlaying(true);
+    },
     onPause: () => {
       setPlaying(false);
       setCurrent(mediaRef.current?.currentTime ?? 0);
@@ -420,8 +511,47 @@ export function ClipTrimmer({
 
       {clip.hasVideo ? <video {...mediaProps} playsInline className={st.player} /> : <audio {...mediaProps} className={st.audioPlayer} />}
 
+      {gainDb !== undefined && gainDb > 0 && (
+        <div className={st.boostRow}>
+          <Chip on={boost} onClick={() => void toggleBoost()} icon={<Volume2 size={14} />} title="Play this clip louder">
+            Boost volume +{Math.round(gainDb)} dB
+          </Chip>
+          {clip.blob ? (
+            <Button size="md" disabled={!!permBusy} onClick={() => setConfirmPermanent(true)} title="Bake the boost into the file">
+              Make it permanent
+            </Button>
+          ) : (
+            <Button size="md" disabled title="Download the clip first">
+              Download the clip first
+            </Button>
+          )}
+          {permLabel && <span className={st.hint}>{permLabel}</span>}
+        </div>
+      )}
+      {confirmPermanent && (
+        <div className={st.confirm} role="alertdialog" aria-label="Make the boost permanent">
+          <span>This replaces the recording with the louder version. The original can't be restored.</span>
+          <div className={st.inline}>
+            <Button variant="primary" onClick={() => void makePermanent()}>
+              Replace recording
+            </Button>
+            <Button variant="ghost" onClick={() => setConfirmPermanent(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+      {permError && (
+        <div className="notice notice-error">
+          Could not boost the clip: {permError.message}{" "}
+          <button onClick={() => void makePermanent()} disabled={!!permBusy}>
+            Retry
+          </button>
+        </div>
+      )}
+
       <div ref={trackRef} className={st.rangeTrack} onPointerDown={onTrackPointerDown}>
-        <WaveformCanvas className={st.waveform} peaks={peaks} duration={duration} start={start} end={end} />
+        <WaveformCanvas className={st.waveform} peaks={shownPeaks} duration={duration} start={start} end={end} />
         {peaksState !== "ready" && (
           <span className={st.waveStatus}>{peaksState === "computing" ? "Drawing waveform…" : "Waveform unavailable"}</span>
         )}

@@ -6,7 +6,8 @@
 import type { Note, Song, StringNumber } from "../model";
 import type { Clock } from "../clock";
 import type { TempoMap } from "../tempo";
-import { OPEN_STRING_MIDI, midiToFreq } from "./tuner";
+import { capoByNote, soundingMidi } from "../notation";
+import { midiToFreq } from "./tuner";
 
 // ---------------------------------------------------------------- synthesis
 
@@ -70,6 +71,7 @@ const BEND_SEC = 0.12;
 /** Builds the voices to play. Hammer/pull/slide and same-fret bends continue
  * the previous voice on their string (no re-pluck); anything else plucks. */
 export function buildPlayPlan(song: Song, tempo: TempoMap): PluckPlan[] {
+  const capos = capoByNote(song);
   const plans: PluckPlan[] = [];
   const current = new Map<StringNumber, PluckPlan>();
   const lastFret = new Map<StringNumber, number>();
@@ -82,7 +84,7 @@ export function buildPlayPlan(song: Song, tempo: TempoMap): PluckPlan[] {
   const endOf = (n: Note) => tempo.ticksToSec(n.startTick + n.durationTicks) + n.offsetMs / 1000;
 
   for (const n of song.notes) {
-    const midi = OPEN_STRING_MIDI[n.string] + n.fret;
+    const midi = soundingMidi(n.string, n.fret, capos.get(n) ?? 0);
     const conn = n.meta.connection;
     const prevFret = lastFret.get(n.string);
     lastFret.set(n.string, n.fret);
@@ -135,6 +137,12 @@ export function buildPlayPlan(song: Song, tempo: TempoMap): PluckPlan[] {
 const SCHEDULER_INTERVAL_MS = 25;
 const SCHEDULE_AHEAD_SEC = 0.1;
 const RELEASE_SEC = 0.06;
+/** A note at the play-from point may be found a little late (the clock has moved on before the first
+ * scheduler tick, a video seek lands just past it): play it now rather than drop it. */
+const START_GRACE_SEC = 0.3;
+/** When playback starts without a known start point, a note this far behind the clock still counts as
+ * "at the start" (the clock has always moved on a little by the time it reports playing). */
+const START_LOOKBACK_SEC = 0.06;
 
 interface LiveVoice {
   source: AudioBufferSourceNode;
@@ -150,6 +158,7 @@ export class GuitarPlayer {
   private readonly out: GainNode;
   private clock: Clock | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
+  private armedSec: number | null = null;
   private unsubscribeLoop: (() => void) | null = null;
   private unsubscribeState: (() => void) | null = null;
   private live: LiveVoice[] = [];
@@ -159,7 +168,7 @@ export class GuitarPlayer {
   constructor(
     private readonly ctx: AudioContext,
     song: Song,
-    tempo: TempoMap,
+    private readonly tempo: TempoMap,
   ) {
     this.plans = buildPlayPlan(song, tempo);
     this.out = ctx.createGain();
@@ -173,12 +182,27 @@ export class GuitarPlayer {
     this.clock = clock;
     this.unsubscribeLoop = clock.onLoop(() => {
       this.silence();
-      this.lastScheduledSongSec = clock.unclampedPositionSec() - 1e-6;
+      // The note on the loop start must sound on every pass, even though the wrap is noticed a moment late.
+      const r = clock.loop?.();
+      this.armFrom(r ? this.tempo.ticksToSec(r.startTick) : clock.unclampedPositionSec() - START_LOOKBACK_SEC);
     });
     this.unsubscribeState = clock.onStateChange((s) => {
       if (!s.playing) this.silence();
-      this.lastScheduledSongSec = clock.unclampedPositionSec() - 1e-6;
+      const pos = clock.unclampedPositionSec();
+      if (s.playing && (this.armedSec === null || Math.abs(pos - this.armedSec) > START_GRACE_SEC)) this.armedSec = pos - START_LOOKBACK_SEC;
+      this.lastScheduledSongSec = this.watermarkFrom(pos);
     });
+  }
+
+  /** Playback is about to start at `songSec`: a note exactly there must sound even if found late. */
+  armFrom(songSec: number): void {
+    this.armedSec = songSec;
+    this.lastScheduledSongSec = songSec - 1e-6;
+  }
+
+  private watermarkFrom(posSec: number): number {
+    const a = this.armedSec;
+    return (a !== null && a <= posSec && posSec - a < START_GRACE_SEC ? a : posSec) - 1e-6;
   }
 
   setVolume(v: number): void {
@@ -245,11 +269,17 @@ export class GuitarPlayer {
     const toAudio = (sec: number) => now + (sec - songSecNow) / speed;
     this.live = this.live.filter((v) => v.endAudio > now);
 
+    const armed = this.armedSec;
+    this.armedSec = null;
+    if (armed !== null && songSecNow - armed < START_GRACE_SEC) this.lastScheduledSongSec = Math.min(this.lastScheduledSongSec, armed - 1e-6);
+
     for (const p of this.plans) {
       if (p.sec <= this.lastScheduledSongSec) continue;
       if (p.sec > windowEnd) break;
-      const t = toAudio(p.sec);
-      if (t < now) continue;
+      const due = toAudio(p.sec);
+      const lateOk = armed !== null && p.sec >= armed - 1e-6 && now - due < START_GRACE_SEC;
+      if (due < now && !lateOk) continue;
+      const t = Math.max(now, due);
       const source = this.ctx.createBufferSource();
       source.buffer = this.buffer(p.midi, p.muted);
       const gain = this.ctx.createGain();

@@ -4,8 +4,8 @@
 //    click-to-jump, and Save (spec 4.3 rule 1: text is the source of truth).
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ParseError, Settings, Song } from "../../model";
-import { buildRepairPrompt, parse, serialize, withYoutubeOffset } from "../../songFormat";
+import type { ParseError, PracticeMode, Settings, Song } from "../../model";
+import { buildRepairPrompt, parse, serialize, withSongBpm, withYoutubeOffset } from "../../songFormat";
 import { computeLayout } from "../../layout";
 import { Sheet, buildSongIndex } from "../../render";
 import { TransportBar } from "../components/TransportBar";
@@ -18,9 +18,14 @@ import { SessionSummaryPanel } from "../components/SessionSummaryPanel";
 import { usePlaybackEngine } from "../usePlaybackEngine";
 import { copyToClipboard, useDebouncedValue } from "../utils";
 import { useElementWidth } from "../useElementWidth";
-import { Copy, Mic, MicOff, VideoOff } from "lucide-react";
+import { Copy, Mic, MicOff, Share2, VideoOff } from "lucide-react";
+import { ShareDialog } from "../sharing/ShareDialog";
+import { Chip, SegmentedControl } from "../components/kit";
+import { updateRecentSong } from "../../storage/recent";
+import { practiceBpmRange } from "../tempoLabels";
+import pr from "./Practice.module.css";
 import { ChipRow, StatusChip } from "../shell/StatusChip";
-import { useShell } from "../shell/AppShellContext";
+import { useRegisterPractice, useShell, useShellMic } from "../shell/AppShellContext";
 
 const OFFSET_STEPS_MS = [-100, -10, 10, 100];
 
@@ -42,18 +47,34 @@ function EditorPreview({ song, settings }: { song: Song; settings: Settings }) {
 const VIDEO_DOCK_MIN_WIDTH = 1100;
 const VIDEO_DOCK_WIDTH = 420;
 
+export interface PracticeInitialState {
+  loop: { startBar: number; endBar: number } | null;
+}
+
 export function PracticeArea({
   song,
   settings,
   onOffsetNudge,
   onSetBar1Here,
+  onSongBpmChange,
   onSettingsChange,
+  recentId,
+  initialState,
+  headerActions,
 }: {
   song: Song;
   settings: Settings;
   onOffsetNudge: (deltaMs: number) => void;
   onSetBar1Here: (videoSec: number) => void;
+  /** Saves a new tempo for the song itself. */
+  onSongBpmChange: (bpm: number) => void;
   onSettingsChange?: (next: Settings) => void;
+  /** Identifies the song for the device-local "recent" record. */
+  recentId?: { songId: string; sample?: boolean };
+  /** Loop and speed to start with (Home's Continue). */
+  initialState?: PracticeInitialState;
+  /** Buttons at the right of the practice header (edit, back). */
+  headerActions?: React.ReactNode;
 }) {
   const shell = useShell();
   const engine = usePlaybackEngine({
@@ -64,7 +85,61 @@ export function PracticeArea({
     onSettingsChange,
   });
   const { setViewportWidth } = engine;
+  // Apply the saved loop once, when the song opens from Home. The practice tempo always starts at the
+  // song's tempo; it is never carried over from an earlier session.
+  const initialRef = useRef(initialState);
+  useEffect(() => {
+    const init = initialRef.current;
+    if (!init) return;
+    if (init.loop) engine.setLoopRange({ start: init.loop.startBar, end: init.loop.endBar });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // The pocket shows the practice mic level and the song tempo.
+  useShellMic("practice", engine.micNode);
+  useRegisterPractice(engine.currentBpm, engine.mode === "video" && engine.hasVideo);
   const [widthRef, width] = useElementWidth(900);
+
+  // Device-local "recent" record (Home's continue card): song visit, then loop
+  // and speed changes (debounced), then the take result at the session summary.
+  const recentLoop = engine.loopEnabled && engine.loopRange ? { startBar: engine.loopRange.start, endBar: engine.loopRange.end } : null;
+  const sectionIndex = useMemo(() => {
+    if (!recentLoop) return 0;
+    const i = song.sections.findIndex((sec) => sec.bars.some((b) => b.number === recentLoop.startBar));
+    return Math.max(0, i);
+  }, [song, recentLoop?.startBar]); // eslint-disable-line react-hooks/exhaustive-deps
+  const recentState = { title: song.header.title, sectionIndex, loop: recentLoop };
+  const recentRef = useRef(recentState);
+  recentRef.current = recentState;
+  const recordRecent = (lastTake?: { onTime: number; total: number }) => {
+    if (!recentId) return;
+    updateRecentSong({ songId: recentId.songId, ...(recentId.sample ? { sample: true } : {}), ...recentRef.current, ...(lastTake ? { lastTake } : {}) });
+  };
+  const recordRecentRef = useRef(recordRecent);
+  recordRecentRef.current = recordRecent;
+  useEffect(() => {
+    recordRecentRef.current();
+  }, [recentId?.songId, recentId?.sample]); // eslint-disable-line react-hooks/exhaustive-deps
+  const recentKey = `${recentLoop?.startBar}-${recentLoop?.endBar}-${sectionIndex}`;
+  const firstKey = useRef(recentKey);
+  useEffect(() => {
+    if (firstKey.current === recentKey) return;
+    const id = window.setTimeout(() => recordRecentRef.current(), 600);
+    return () => window.clearTimeout(id);
+  }, [recentKey]);
+  // Leaving within the debounce window must not lose the latest loop/speed.
+  useEffect(() => () => recordRecentRef.current(), []);
+  // The take summary never pops up by itself; the transport's summary button opens it.
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const lastPass = engine.sessionSummary?.lastPass;
+  useEffect(() => {
+    if (lastPass) recordRecentRef.current({ onTime: lastPass.onTime, total: lastPass.totalExpected });
+  }, [lastPass]);
+
+  const sectionRanges = useMemo(
+    () => song.sections.map((sec, i) => ({ i, name: sec.name || `Section ${i + 1}`, capo: sec.capo, start: sec.bars[0]?.number, end: sec.bars[sec.bars.length - 1]?.number })),
+    [song],
+  );
+  const songCapo = song.header.capo ?? 0;
   const [videoPanelHeight, setVideoPanelHeight] = useState(320);
 
   // Wide screens dock the video to the right of the sheet (revamp 5); the
@@ -115,10 +190,10 @@ export function PracticeArea({
           if (eng.micAvailable) eng.toggleMic();
           break;
         case "[":
-          if (eng.mode === "grid") eng.setSpeedPercent(Math.max(25, eng.speedPercent - 5));
+          if (eng.mode === "grid") eng.setPracticeBpm(Math.max(practiceBpmRange(eng.baseBpm).min, Math.round(eng.currentBpm) - 5));
           break;
         case "]":
-          if (eng.mode === "grid") eng.setSpeedPercent(Math.min(200, eng.speedPercent + 5));
+          if (eng.mode === "grid") eng.setPracticeBpm(Math.min(practiceBpmRange(eng.baseBpm).max, Math.round(eng.currentBpm) + 5));
           break;
         case "ArrowLeft":
           eng.seekBars(-1);
@@ -137,7 +212,55 @@ export function PracticeArea({
 
   return (
     <div className="practice-area" ref={(el) => widthRef(el)}>
-
+      <header className={pr.header}>
+        <div className={pr.titleRow}>
+          <h2 className={pr.title}>{song.header.title}</h2>
+          <div className={pr.actions}>
+            {engine.hasVideo && (
+              <SegmentedControl<PracticeMode>
+                label="Clock"
+                value={engine.mode}
+                onChange={engine.setMode}
+                options={[
+                  { value: "grid", label: "Metronome", title: "The metronome is the clock" },
+                  { value: "video", label: "YouTube video", title: "The video is the clock" },
+                ]}
+              />
+            )}
+            {headerActions}
+          </div>
+        </div>
+        <div className={pr.meta}>
+          <span className={pr.metaMono}>
+            {song.header.time.numerator}/{song.header.time.denominator}
+          </span>
+          <span className={pr.dot}>&middot;</span>
+          <span>
+            <span className={pr.metaMono}>{song.header.bpm}</span> BPM
+          </span>
+          <span className={pr.dot}>&middot;</span>
+          <span>{songCapo > 0 ? `Capo ${songCapo}` : "No capo"}</span>
+        </div>
+        {sectionRanges.length > 1 && (
+          <div className={pr.chips} role="group" aria-label="Sections">
+            {sectionRanges.map((sec) => {
+              const on = !!engine.loopRange && engine.loopRange.start === sec.start && engine.loopRange.end === sec.end;
+              const differs = sec.capo !== songCapo;
+              return (
+                <Chip
+                  key={sec.i}
+                  on={on}
+                  title={on ? "Click to loop the whole song again" : "Loop this section"}
+                  onClick={() => (on ? engine.clearLoopRange() : sec.start !== undefined && engine.setLoopRange({ start: sec.start, end: sec.end ?? sec.start }))}
+                >
+                  {sec.name}
+                  {differs && <span className={`${pr.chipCapo}${on ? ` ${pr.chipOnCapo}` : ""}`}>Capo {sec.capo}</span>}
+                </Chip>
+              );
+            })}
+          </div>
+        )}
+      </header>
 
       <ChipRow>
         {engine.micErrorMessage ? (
@@ -202,6 +325,7 @@ export function PracticeArea({
         loopRange={engine.loopRange}
         onBarMouseDown={engine.onBarMouseDown}
         onBarMouseEnter={engine.onBarMouseEnter}
+        cursorChip={engine.capoWarning !== null ? `Next section: capo → ${engine.capoWarning}` : null}
       />
       </div>
       <TransportBar
@@ -213,9 +337,8 @@ export function PracticeArea({
         onModeChange={engine.setMode}
         baseBpm={engine.baseBpm}
         currentBpm={engine.currentBpm}
-        speedPercent={engine.speedPercent}
-        onSpeedPercentChange={engine.setSpeedPercent}
-        onBpmFieldChange={engine.setBpmField}
+        onSongBpmChange={onSongBpmChange}
+        onPracticeBpmChange={engine.setPracticeBpm}
         videoRate={engine.videoRate}
         availableVideoRates={engine.availableVideoRates}
         onVideoRateChange={engine.setVideoRate}
@@ -250,8 +373,7 @@ export function PracticeArea({
         onZoomChange={engine.setZoom}
         bpmRampActive={engine.bpmRampActive}
         positionRef={engine.positionRef}
-        a4Hz={settings.a4Hz}
-        onA4Change={onSettingsChange ? (hz) => onSettingsChange({ ...settings, a4Hz: hz }) : undefined}
+        onShowSummary={engine.sessionSummary ? () => setSummaryOpen(true) : undefined}
         practiceExtras={
           engine.mode === "grid" ? (
             <BpmRampPanel config={engine.bpmRamp} onChange={engine.setBpmRamp} micOn={engine.micOn} />
@@ -259,11 +381,11 @@ export function PracticeArea({
         }
       />
 
-      {engine.sessionSummary && (
+      {summaryOpen && engine.sessionSummary && (
         <SessionSummaryPanel
           lastPass={engine.sessionSummary.lastPass}
           allPasses={engine.sessionSummary.allPasses}
-          onClose={engine.closeSessionSummary}
+          onClose={() => setSummaryOpen(false)}
         />
       )}
     </div>
@@ -275,10 +397,16 @@ export interface SongViewProps {
   settings: Settings;
   onSave: (text: string) => Promise<{ ok: true } | { ok: false; message: string }>;
   onBack: () => void;
+  /** Opens the song editor on the given song text; absent for read-only examples. */
+  onEdit?: (songText: string) => void;
   onSettingsChange?: (next: Settings) => void;
+  /** Identifies the song for the "recent" record (Home's continue card). */
+  recentId?: { songId: string; sample?: boolean };
+  /** Loop and speed to start with (Home's Continue). */
+  initialState?: PracticeInitialState;
 }
 
-export function SongView({ initialText, settings, onSave, onBack, onSettingsChange }: SongViewProps) {
+export function SongView({ initialText, settings, onSave, onBack, onEdit, onSettingsChange, recentId, initialState }: SongViewProps) {
   const { toast } = useShell();
   const [text, setText] = useState(initialText);
   const [savedText, setSavedText] = useState(initialText);
@@ -288,6 +416,7 @@ export function SongView({ initialText, settings, onSave, onBack, onSettingsChan
 
   const initialParse = useMemo(() => parse(initialText), [initialText]);
   const [editing, setEditing] = useState(!initialParse.ok);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const parseResult = useMemo(() => parse(debouncedText), [debouncedText]);
   const errors: ParseError[] = parseResult.ok ? parseResult.warnings : [...parseResult.errors, ...parseResult.warnings];
@@ -329,20 +458,75 @@ export function SongView({ initialText, settings, onSave, onBack, onSettingsChan
     setText(serialize(withYoutubeOffset(parseResult.song, videoSec)));
   }
 
+  /** The BPM box in the transport is the song's tempo: save it with the song so
+   * the library and everything else show it. Examples are read-only, so they
+   * only change here (unsaved) until saved as a copy. */
+  async function handleSongBpmChange(bpm: number) {
+    if (!parseResult.ok) return;
+    const canonical = serialize(withSongBpm(parseResult.song, bpm));
+    if (recentId?.sample) {
+      setText(canonical);
+      return;
+    }
+    const result = await onSave(canonical);
+    if (result.ok) {
+      setSavedText(canonical);
+      setText(canonical);
+      setSaveError(null);
+      toast(`Song tempo saved: ${Math.round(bpm)} bpm.`);
+    } else {
+      setSaveError(result.message);
+    }
+  }
+
   const unsaved = text !== savedText;
+  const practicing = !editing && parseResult.ok;
+
+  /** Opens the piano-roll editor on the song's canonical text (the text editor's unsaved changes are kept in the text box until saved). */
+  function openEditor() {
+    if (!onEdit || !parseResult.ok) return;
+    onEdit(serialize(parseResult.song));
+  }
+  const editButtons = (
+    <>
+      {onEdit && (
+        <button className="btn-primary" onClick={openEditor} disabled={!parseResult.ok || unsaved} title={unsaved ? "Save or undo your text changes first" : "Fix and add notes on a piano roll"}>
+          Edit
+        </button>
+      )}
+      <button onClick={() => setEditing((v) => !v)}>{editing ? "Preview / practice" : "Edit text"}</button>
+    </>
+  );
+  const actionButtons = (
+    <>
+      {unsaved && <span className={pr.unsaved}>Unsaved changes</span>}
+      <button onClick={() => setShareOpen(true)} disabled={!parseResult.ok}>
+        <Share2 size={14} /> Share
+      </button>
+      {editButtons}
+      <button onClick={onBack}>Back to library</button>
+    </>
+  );
 
   return (
     <div className="screen song-view">
+      {!practicing && (
       <div className="screen-header">
         <h2>{parseResult.ok ? parseResult.song.header.title : "Song (has errors)"}</h2>
+        {parseResult.ok && !!parseResult.song.header.capo && <span className="capo-badge song-capo">Capo {parseResult.song.header.capo}</span>}
         <div className="song-view-actions">
           {unsaved && <span className="unsaved-badge">Unsaved changes</span>}
-          <button onClick={() => setEditing((v) => !v)}>{editing ? "Preview / practice" : "Edit text"}</button>
+          <button onClick={() => setShareOpen(true)} disabled={!parseResult.ok}>
+            <Share2 size={14} /> Share
+          </button>
+          {editButtons}
           <button onClick={onBack}>Back to library</button>
         </div>
       </div>
+      )}
 
       {saveError && <div className="notice notice-error">Could not save: {saveError}</div>}
+      {shareOpen && parseResult.ok && <ShareDialog title={parseResult.song.header.title} text={serialize(parseResult.song)} onClose={() => setShareOpen(false)} />}
 
       {editing ? (
         <div className={ed.split}>
@@ -381,7 +565,11 @@ export function SongView({ initialText, settings, onSave, onBack, onSettingsChan
           settings={settings}
           onOffsetNudge={handleOffsetNudge}
           onSetBar1Here={handleSetBar1Here}
+          onSongBpmChange={(bpm) => void handleSongBpmChange(bpm)}
           onSettingsChange={onSettingsChange}
+          recentId={recentId}
+          initialState={initialState}
+          headerActions={actionButtons}
         />
       ) : (
         <ProblemsPanel errors={errors} onJump={(line, col) => { setEditing(true); window.setTimeout(() => jumpToLine(line, col), 0); }} />

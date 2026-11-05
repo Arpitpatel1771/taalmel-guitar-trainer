@@ -38,7 +38,7 @@ offset: 12.35
 
 [Intro]
 Bar 1: {1} 2S5[2] {3} 1S5 3S7[2] {5} 1S8[4]
-Bar 2: (12) {1} 2S5 {2} 2S7 {3} 1S5[4?]
+Bar 2: (12) {1} 2S5 {2} 2S7 {3} 1S5[4]
 
 [Verse]
 bpm: 100
@@ -76,6 +76,14 @@ Bar 5: {1} 4S2[4] 5S2[4] 6S0[4](strum: down) {9} 6S0(muted, strum: up)
     expect(out).toContain("[A]\nbpm: 120\nunit: 16\nBar 1:");
   });
 
+  it("capo goes after unit in the header and in section fields; no capo serializes as before", () => {
+    const text =
+      "title: T\ntime: 4/4\nbpm: 100\nunit: 8\ncapo: 2\n\n[A]\nBar 1: {1} 1S0\n\n[B]\nunit: 16\ncapo: 0\nBar 2: {1} 1S0\n";
+    expect(serialize(mustParse(text))).toBe(text);
+    const plain = "title: T\ntime: 4/4\nbpm: 100\nunit: 8\n\n[A]\nBar 1: {1} 1S0\n";
+    expect(serialize(mustParse(plain))).toBe(plain);
+  });
+
   it("notes within a slot are ordered by string number ascending", () => {
     const song = mustParse("title: T\ntime: 4/4\nbpm: 100\nunit: 8\n\n[A]\nBar 1: {1} 3S2 1S0 2S1\n");
     const out = serialize(song);
@@ -103,11 +111,21 @@ Bar 5: {1} 4S2[4] 5S2[4] 6S0[4](strum: down) {9} 6S0(muted, strum: up)
     expect(out).toContain("1S3[>20]");
   });
 
-  it("default length (1 unit, no offset, not uncertain) omits the length block entirely", () => {
+  it("default length (1 unit, no offset) omits the length block entirely", () => {
     const song = mustParse("title: T\ntime: 4/4\nbpm: 100\nunit: 8\n\n[A]\nBar 1: {1} 1S0[1]\n");
     const out = serialize(song);
     expect(out).toContain("Bar 1: {1} 1S0\n");
     expect(out).not.toContain("1S0[");
+  });
+
+  it("accepts the old guessed-rhythm marker, ignores it and never writes it", () => {
+    const song = mustParse("title: T\ntime: 4/4\nbpm: 100\nunit: 8\n\n[A]\nBar 1: {1} 1S0[?] {3} 1S5[2>-15?]\n");
+    expect(song.notes.map((n) => [n.durationTicks, n.offsetMs])).toEqual(
+      mustParse("title: T\ntime: 4/4\nbpm: 100\nunit: 8\n\n[A]\nBar 1: {1} 1S0 {3} 1S5[2>-15]\n").notes.map((n) => [n.durationTicks, n.offsetMs]),
+    );
+    const out = serialize(song);
+    expect(out).not.toContain("?");
+    expect(out).toContain("Bar 1: {1} 1S0 {3} 1S5[2>-15]\n");
   });
 
   it("metadata keys are ordered per the spec 5.6 table regardless of input order", () => {
@@ -131,5 +149,32 @@ Bar 5: {1} 4S2[4] 5S2[4] 6S0[4](strum: down) {9} 6S0(muted, strum: up)
     );
     const out = serialize(song);
     expect(out).toContain("1S2(vibrato, flat)");
+  });
+});
+
+describe("serialize: artist header", () => {
+  const base = "title: T\ntime: 4/4\nbpm: 90\nunit: 8\n\n[S]\nBar 1: {1} 1S0\n";
+  it("writes artist right after title and round-trips", () => {
+    const text = base.replace("title: T\n", "title: T\nartist: Someone\n");
+    expect(serialize(mustParse(text))).toBe(text);
+  });
+  it("is byte-identical for songs without artist", () => {
+    expect(serialize(mustParse(base))).toBe(base);
+  });
+  it("rejects an empty artist", () => {
+    expect(parse(base.replace("title: T\n", "title: T\nartist: \n")).ok).toBe(false);
+  });
+});
+
+describe("serialize: notes longer than their bar", () => {
+  it("writes the full length and round-trips exactly", () => {
+    const text = "title: T\ntime: 4/4\nbpm: 120\nunit: 4\n\n[A]\nBar 1: {4} 1S3[3]\nBar 2:\nBar 3: {1} 2S0[3X1/16]\n";
+    const song = mustParse(text);
+    expect(song.notes[0]!.durationTicks).toBe(3 * 960);
+    const out = serialize(song);
+    expect(out).toContain("{4} 1S3[3]");
+    expect(out).toContain("2S0[3X1/16]");
+    expect(parse(out)).toEqual(parse(serialize(mustParse(out))));
+    expect(mustParse(out).notes.map((n) => n.durationTicks)).toEqual(song.notes.map((n) => n.durationTicks));
   });
 });

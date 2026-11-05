@@ -25,6 +25,8 @@ import { pcName, rootName } from "../../chords/theory";
 import { ChordDiagram } from "../components/ChordDiagram";
 import { FullNeck } from "../components/FullNeck";
 import { Field, Segmented } from "../components/Controls";
+import { Button, Card } from "../components/kit";
+import { PageHead } from "../components/PageHead";
 import { ChordPractice, type PracticeMode } from "../chordPractice/ChordPractice";
 import type { PickedChord } from "../chordPractice/picked";
 import st from "./ChordsScreen.module.css";
@@ -56,9 +58,23 @@ function fromKey(key: string): { rootPc: number; typeId: TypeSel; slash?: SlashC
   return { rootPc, typeId: typeId as ChordTypeId };
 }
 
-export function ChordsScreen({ settings, onChange }: { settings: Settings; onChange: (next: Settings) => void }) {
-  const [tab, setTab] = useState<"browse" | "mine" | "practice">("browse");
-  const [practiceStart, setPracticeStart] = useState<{ mode: PracticeMode; chord: PickedChord; voicingId?: string; nonce: number }>();
+export function ChordsScreen({
+  settings,
+  onChange,
+  startChanges,
+  startPractice,
+}: {
+  settings: Settings;
+  onChange: (next: Settings) => void;
+  /** Opens one-minute changes with this pair selected (Home's "Go again"). */
+  startChanges?: [PickedChord, PickedChord];
+  /** Opens the Practice tab. */
+  startPractice?: boolean;
+}) {
+  const [tab, setTab] = useState<"browse" | "mine" | "practice">(startChanges || startPractice ? "practice" : "browse");
+  const [practiceStart, setPracticeStart] = useState<{ mode: PracticeMode; chord: PickedChord; voicingId?: string; chordB?: PickedChord; nonce: number } | undefined>(
+    startChanges ? { mode: "changes", chord: startChanges[0], chordB: startChanges[1], nonce: 1 } : undefined,
+  );
   const [rootPc, setRootPc] = useState(0);
   const [spelling, setSpelling] = useState<Spelling>("sharp");
   const [typeId, setTypeId] = useState<TypeSel>("maj");
@@ -182,19 +198,22 @@ export function ChordsScreen({ settings, onChange }: { settings: Settings; onCha
 
   return (
     <div className="screen">
-      <div className="screen-header">
-        <h2>Chords</h2>
-        <Segmented
-          label="Chords view"
-          value={tab}
-          options={[
-            { value: "browse", label: "Library" },
-            { value: "mine", label: `My chords${markedCount ? ` (${markedCount})` : ""}` },
-            { value: "practice", label: "Practice" },
-          ]}
-          onChange={setTab}
-        />
-      </div>
+      <PageHead
+        title="Chords"
+        sub="Look up any chord, hear it, and practise switching between shapes."
+        actions={
+          <Segmented
+            label="Chords view"
+            value={tab}
+            options={[
+              { value: "browse", label: "Library" },
+              { value: "mine", label: `My chords${markedCount ? ` (${markedCount})` : ""}` },
+              { value: "practice", label: "Practice" },
+            ]}
+            onChange={setTab}
+          />
+        }
+      />
 
       {tab === "practice" ? (
         <ChordPractice settings={settings} onChange={onChange} start={practiceStart} />
@@ -245,7 +264,7 @@ export function ChordsScreen({ settings, onChange }: { settings: Settings; onCha
                 setError(null);
               }}
             />
-            <button type="submit">Go</button>
+            <Button type="submit" variant="primary" className={st.go}>Go</Button>
             {error && (
               <span className={st.error} role="alert">
                 {error}
@@ -327,7 +346,7 @@ export function ChordsScreen({ settings, onChange }: { settings: Settings; onCha
 
           {current && selected && (
             <>
-              <div className={st.header}>
+              <Card className={st.header}>
                 <div className={st.title}>
                   <span className={st.name}>{current.display}</span>
                   <span className={st.meta}>
@@ -335,14 +354,14 @@ export function ChordsScreen({ settings, onChange }: { settings: Settings; onCha
                   </span>
                 </div>
                 <div className={st.actions}>
-                  <button type="button" onClick={() => play(selected, "strum")}>
-                    <Play size={14} /> Strum
-                  </button>
-                  <button type="button" onClick={() => play(selected, "arpeggio")}>
-                    <Waves size={14} /> Arpeggio
-                  </button>
-                  <button
-                    type="button"
+                  <Button variant="primary" className={st.go} icon={<Play size={14} />} onClick={() => play(selected, "strum")}>
+                    Strum
+                  </Button>
+                  <Button icon={<Waves size={14} />} onClick={() => play(selected, "arpeggio")}>
+                    Arpeggio
+                  </Button>
+                  <Button
+                    icon={<Mic size={14} />}
                     onClick={() => {
                       const chord: PickedChord =
                         typeId === "slash" && slash ? { slash: slash.name } : { rootPc, typeId: typeId === "slash" ? "maj" : typeId, spelling };
@@ -350,8 +369,8 @@ export function ChordsScreen({ settings, onChange }: { settings: Settings; onCha
                       setTab("practice");
                     }}
                   >
-                    <Mic size={14} /> Check with mic
-                  </button>
+                    Check with mic
+                  </Button>
                   <Segmented<Mark>
                     label="Mark"
                     value={(mark ?? "") as Mark}
@@ -362,7 +381,7 @@ export function ChordsScreen({ settings, onChange }: { settings: Settings; onCha
                     onChange={(v) => setMark(current.key, v === mark ? undefined : v)}
                   />
                 </div>
-              </div>
+              </Card>
 
               <div className={st.toolbar}>
                 <Field label="Orientation">
@@ -423,7 +442,7 @@ export function ChordsScreen({ settings, onChange }: { settings: Settings; onCha
                 })}
               </div>
 
-              <div className={st.neck}>
+              <Card className={st.neck}>
                 <FullNeck
                   rootPc={diagramRoot}
                   typeId={current.typeId}
@@ -433,7 +452,7 @@ export function ChordsScreen({ settings, onChange }: { settings: Settings; onCha
                   showNoteNames={view.noteNames}
                   leftHanded={settings.leftHanded}
                 />
-              </div>
+              </Card>
             </>
           )}
         </div>

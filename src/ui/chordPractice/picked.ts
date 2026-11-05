@@ -8,6 +8,7 @@ import {
   chordDisplayName,
   chordKey,
   listVoicings,
+  parseChordName,
   type ChordTypeId,
   type Spelling,
   type Voicing,
@@ -67,4 +68,11 @@ export function markedChords(marks: Record<string, "learning" | "known">): Picke
     .sort((a, b) => order(a[1]) - order(b[1]))
     .map(([k]) => pickedFromKey(k))
     .filter((p): p is PickedChord => p !== null);
+}
+
+/** Rebuilds a chord from its display name ("C", "F#m7", "D/F#"); null if unknown. */
+export function pickedFromName(name: string): PickedChord | null {
+  const p = parseChordName(name);
+  if (!p) return null;
+  return "slash" in p ? p : { rootPc: p.rootPc, typeId: p.typeId, spelling: p.spelling };
 }

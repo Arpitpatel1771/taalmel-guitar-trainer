@@ -1,0 +1,52 @@
+{
+  "events": [
+    {
+      "column": 4,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 12
+        }
+      ]
+    },
+    {
+      "column": 8,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 15
+        }
+      ]
+    },
+    {
+      "column": 12,
+      "bar": 0,
+      "block": 0,
+      "blockLine": 1,
+      "notes": [
+        {
+          "string": 1,
+          "fret": 17
+        }
+      ]
+    }
+  ],
+  "bars": [
+    {
+      "index": 0,
+      "block": 0,
+      "startColumn": 1,
+      "endColumn": 16,
+      "explicit": true
+    }
+  ],
+  "sectionNames": [],
+  "warnings": [],
+  "errors": []
+}

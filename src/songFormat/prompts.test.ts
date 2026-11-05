@@ -42,9 +42,9 @@ describe("buildImportPrompt (spec 11.2)", () => {
     expect(prompt).not.toContain("| 13 |"); // table stops at fret 12
   });
 
-  it("instructs the LLM to mark unsure rhythm as uncertain and never invent it", () => {
+  it("instructs the LLM to use the default grid when unsure and never invent rhythm", () => {
     const prompt = buildImportPrompt(form);
-    expect(prompt).toMatch(/mark EVERY such note uncertain/);
+    expect(prompt).toMatch(/default grid/);
     expect(prompt).toMatch(/Never invent/);
   });
 
@@ -59,7 +59,7 @@ describe("buildImportPrompt (spec 11.2)", () => {
     const prompt = buildImportPrompt(form);
     expect(prompt).toMatch(/global/i);
     expect(prompt).toMatch(/strictly increase/i);
-    expect(prompt).toMatch(/fit inside its bar/i);
+    expect(prompt).toMatch(/ring past the end of its bar/i);
     expect(prompt).toMatch(/one note per string per slot/i);
   });
 });

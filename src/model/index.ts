@@ -28,7 +28,6 @@ export interface Note {
   startTick: number; // absolute from song start
   durationTicks: number;
   offsetMs: number; // default 0
-  uncertain: boolean;
   meta: NoteMeta;
   source: { line: number; column: number }; // for editor highlighting
 }
@@ -38,6 +37,7 @@ export interface Bar {
   startTick: number;
   lengthTicks: number;
   slots: number; // n
+  capo: number; // effective (song value or section override), 0 = none
   notes: Note[]; // sorted by startTick, then string
 }
 
@@ -45,14 +45,18 @@ export interface Section {
   name: string;
   bpm: number; // effective
   unit: number; // effective default slots
+  capo: number; // effective
   bars: Bar[];
 }
 
 export interface SongHeader {
   title: string;
+  /** Optional performer or band; absent = not given. Written right after `title`. */
+  artist?: string;
   time: TimeSignature;
   bpm: number;
   unit: number;
+  capo?: number; // 0..12, absent = no capo
   youtube?: { url: string; videoId: string; offsetSec: number };
 }
 
@@ -78,7 +82,7 @@ export type ParseResult =
   | { ok: true; song: Song; warnings: ParseError[] }
   | { ok: false; errors: ParseError[]; warnings: ParseError[] };
 
-export type LaneId = "tab" | "letter" | "teacher";
+export type LaneId = "tab" | "letter";
 export type PracticeMode = "grid" | "video";
 
 export interface Calibration {
@@ -93,7 +97,16 @@ export interface TimingTiers {
   missWindowMs: number; // default 150
 }
 
+export type ThemePref = "system" | "dark" | "light";
+export type AccentId = "saffron" | "teal" | "violet";
+export const THEME_PREFS: readonly ThemePref[] = ["system", "dark", "light"];
+export const ACCENT_IDS: readonly AccentId[] = ["saffron", "teal", "violet"];
+
 export interface Settings {
+  /** Colour mode. Device-local (not synced). "system" follows prefers-color-scheme. */
+  theme: ThemePref;
+  /** Accent colour (synced). The logo stays saffron. */
+  accent: AccentId;
   calibration: Calibration | null;
   lanes: Record<LaneId, boolean>;
   zoom: number; // px per bar, 120..800
@@ -103,6 +116,18 @@ export interface Settings {
   subdivisionClicks: boolean;
   tiers: TimingTiers;
   countIn: boolean;
+  /** Bars of rest between loop passes (the transport's "Rest between loops"). */
+  restBars: 0 | 1 | 2 | 4;
+  /** The transport's BPM ramp on loop, as last set (absent = off with the defaults). */
+  bpmRamp?: {
+    enabled: boolean;
+    startBpm: number;
+    stepBpm: number;
+    maxBpm: number | null;
+    condition: { kind: "passes"; count: number } | { kind: "accuracy"; count: number; minOnTimePct: number };
+  };
+  /** Song editor listen controls as last set (absent = defaults: click on only without a video). */
+  editorListen?: { click?: boolean; follow?: boolean; balance?: number };
   /** Start the mic automatically on the first Play press of a practice
    * session (a user gesture, needed for AudioContext resume + the
    * permission prompt), unless the user has turned it off. The transport's
@@ -123,6 +148,8 @@ export interface Settings {
   leftHanded: boolean;
   /** Chord practice results (chord practice spec "Shared"). */
   chordStats: ChordStats;
+  /** Private sharing key (JWK), backed up in synced settings once Drive is connected so another device can read replies (specs/5-11-shared-library.md 3.2). */
+  sharingKeyBackup?: JsonWebKey;
 }
 
 export interface ChordStats {
@@ -133,8 +160,10 @@ export interface ChordStats {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  theme: "system",
+  accent: "saffron",
   calibration: null,
-  lanes: { tab: true, letter: true, teacher: false },
+  lanes: { tab: true, letter: true },
   zoom: 240,
   defaultMode: "grid",
   metronomeVolume: 0.7,
@@ -142,6 +171,7 @@ export const DEFAULT_SETTINGS: Settings = {
   subdivisionClicks: false,
   tiers: { onTimeMs: 30, closeMs: 80, missWindowMs: 150 },
   countIn: true,
+  restBars: 0,
   micEnabled: true,
   persistBannerDismissed: false,
   a4Hz: 440,
@@ -159,6 +189,9 @@ export interface SongRecord {
   title: string;
   bpm: number;
   hasVideo: boolean;
+  /** Set when the song is a copy of an open-library entry (specs/5-11-shared-library.md 2). */
+  libraryId?: string;
+  libraryVersion?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -176,6 +209,7 @@ export interface ExpectedEvent {
   tick: number;
   timeSec: number; // song seconds incl. offsetMs
   notes: Note[]; // picked notes starting at this tick
+  capo: number; // capo of the bar these notes are in
 }
 
 export interface Verdict {
@@ -185,4 +219,6 @@ export interface Verdict {
   errorMs?: number; // signed: onset - expected (negative = early)
   tier?: TimingTier;
   pitch?: PitchVerdict;
+  /** MIDI note actually heard when `pitch` is "wrong" (spec 5-11-ui-redesign 6.2). */
+  playedMidi?: number;
 }

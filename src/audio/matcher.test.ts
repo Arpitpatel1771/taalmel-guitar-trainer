@@ -9,7 +9,6 @@ function note(overrides: Partial<Note> & Pick<Note, "string" | "fret" | "startTi
   return {
     durationTicks: 480,
     offsetMs: 0,
-    uncertain: false,
     meta: {},
     source: { line: 1, column: 1 },
     ...overrides,
@@ -27,12 +26,14 @@ function buildSong(notesInput: Note[]): Song {
         name: "A",
         bpm: 120,
         unit: 8,
+        capo: 0,
         bars: [
           {
             number: 1,
             startTick: 0,
             lengthTicks: barLen,
             slots: 8,
+            capo: 0,
             notes: notes.filter((n) => n.startTick < barLen),
           },
           {
@@ -40,6 +41,7 @@ function buildSong(notesInput: Note[]): Song {
             startTick: barLen,
             lengthTicks: barLen,
             slots: 8,
+            capo: 0,
             notes: notes.filter((n) => n.startTick >= barLen),
           },
         ],
@@ -160,8 +162,8 @@ describe("Matcher", () => {
 
   it("matches each onset to the nearest unmatched event within the miss window, at most once each", () => {
     const events: ExpectedEvent[] = [
-      { tick: 0, timeSec: 1.0, notes: [note({ string: 1, fret: 0, startTick: 0 })] },
-      { tick: 480, timeSec: 1.2, notes: [note({ string: 1, fret: 2, startTick: 480 })] },
+      { tick: 0, timeSec: 1.0, notes: [note({ string: 1, fret: 0, startTick: 0 })], capo: 0 },
+      { tick: 480, timeSec: 1.2, notes: [note({ string: 1, fret: 2, startTick: 480 })], capo: 0 },
     ];
     const matcher = new Matcher(events, TIERS);
 
@@ -176,13 +178,33 @@ describe("Matcher", () => {
 
   it("classifies tier boundaries at the exact threshold values", () => {
     const mkEvents = (): ExpectedEvent[] => [
-      { tick: 0, timeSec: 0, notes: [note({ string: 1, fret: 0, startTick: 0 })] },
+      { tick: 0, timeSec: 0, notes: [note({ string: 1, fret: 0, startTick: 0 })], capo: 0 },
     ];
 
     expect(new Matcher(mkEvents(), TIERS).addOnset(0.03).tier).toBe("onTime"); // 30ms
     expect(new Matcher(mkEvents(), TIERS).addOnset(0.0301).tier).toBe("close"); // 30.1ms
     expect(new Matcher(mkEvents(), TIERS).addOnset(0.08).tier).toBe("close"); // 80ms
     expect(new Matcher(mkEvents(), TIERS).addOnset(0.0801).tier).toBe("off"); // 80.1ms
+  });
+
+  it("reads the expected pitch through the bar's capo", () => {
+    const withCapo = (capo: number) => {
+      const n = note({ string: 1, fret: 0, startTick: 0 });
+      const s = buildSong([n]);
+      for (const sec of s.sections) {
+        sec.capo = capo;
+        for (const b of sec.bars) b.capo = capo;
+      }
+      return s;
+    };
+    const verdictFor = (song: Song) => {
+      const m = new Matcher(buildExpectedEvents(song, new TempoMap(song)), TIERS);
+      const v = m.addOnset(0);
+      m.attachPitch(v, 369.99, 0.9); // F#4 = open high E under capo 2
+      return v.pitch;
+    };
+    expect(verdictFor(withCapo(2))).toBe("right");
+    expect(verdictFor(withCapo(0))).toBe("wrong");
   });
 
   it("resets matched flags and accumulated verdicts between loop passes", () => {

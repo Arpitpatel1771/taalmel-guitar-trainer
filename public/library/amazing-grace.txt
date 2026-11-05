@@ -1,0 +1,29 @@
+# Amazing Grace (tune "New Britain", public domain). Key of G, one octave
+# down so it sits in open position. Bar 1 is a pickup on beat 3.
+title: Amazing Grace
+time: 3/4
+bpm: 80
+unit: 6
+
+[Line 1]
+Bar 1: {5} 4S0[2]
+Bar 2: {1} 3S0[4] {5} 2S0 {6} 3S0
+Bar 3: {1} 2S0[4] {5} 3S2[2]
+Bar 4: {1} 3S0[4] {5} 4S2[2]
+Bar 5: {1} 4S0[4] {5} 4S0[2]
+
+[Line 2]
+Bar 6: {1} 3S0[4] {5} 2S0 {6} 3S0
+Bar 7: {1} 2S0[4] {5} 3S2[2]
+Bar 8: {1} 2S3[4] {5} 2S0[2]
+
+[Line 3]
+Bar 9: {1} 2S3[4] {5} 2S0 {6} 3S0
+Bar 10: {1} 2S0[4] {5} 3S2[2]
+Bar 11: {1} 3S0[4] {5} 4S2[2]
+Bar 12: {1} 4S0[4] {5} 4S0[2]
+
+[Line 4]
+Bar 13: {1} 3S0[4] {5} 2S0 {6} 3S0
+Bar 14: {1} 2S0[4] {5} 3S2[2]
+Bar 15: {1} 3S0[6]

@@ -23,13 +23,15 @@ import {
   PitchDetector,
   buildExpectedEvents,
   getAudioContext,
+  midiToFreq,
   resumeAudio,
   summarize,
   type SessionSummary,
 } from "../audio";
+import { soundingMidi } from "../notation";
 import type { Layout } from "../layout";
 import { computeLayout } from "../layout";
-import { PlaybackController, buildSongIndex, type SheetHandle } from "../render";
+import { PlaybackController, buildSongIndex, upcomingCapoChange, type SheetHandle } from "../render";
 
 type EngineClock = GridClock | VideoClock;
 
@@ -50,13 +52,7 @@ function audioTimeToSongSec(clock: EngineClock, ctx: AudioContext, audioTime: nu
   return clock.audioTimeToSongSec(audioTime, toOutputTimestampSource(ctx));
 }
 
-export interface BpmRampConfig {
-  enabled: boolean;
-  startBpm: number;
-  stepBpm: number;
-  maxBpm: number | null;
-  condition: { kind: "passes"; count: number } | { kind: "accuracy"; count: number; minOnTimePct: number };
-}
+export type BpmRampConfig = NonNullable<Settings["bpmRamp"]>;
 
 export const DEFAULT_BPM_RAMP: BpmRampConfig = {
   enabled: false,
@@ -103,6 +99,8 @@ export interface PlaybackEngine {
   setMode: (m: PracticeMode) => void;
   hasVideo: boolean;
   videoNotice: string | null;
+  /** Capo of the next bar while the cursor is in the bar before a capo change (also across a loop wrap), else null. Playback never pauses for it. */
+  capoWarning: number | null;
   playing: boolean;
   play: () => void;
   pause: () => void;
@@ -113,9 +111,8 @@ export interface PlaybackEngine {
 
   baseBpm: number;
   currentBpm: number;
-  speedPercent: number;
-  setSpeedPercent: (p: number) => void;
-  setBpmField: (bpm: number) => void;
+  /** Practice tempo in bpm (a slowdown or speed-up of the song, not a change to it). */
+  setPracticeBpm: (bpm: number) => void;
   bpmRampActive: boolean;
 
   videoRate: number;
@@ -141,6 +138,8 @@ export interface PlaybackEngine {
   micAvailable: boolean;
   micErrorMessage: string | null;
   micListening: boolean;
+  /** The open mic as an audio node (for the pocket level meter); null while the mic is off. */
+  micNode: AudioNode | null;
   micNotCalibrated: boolean;
   toggleMic: () => void;
 
@@ -152,6 +151,8 @@ export interface PlaybackEngine {
   loopRange: LoopBars | null;
   firstBarNumber: number;
   lastBarNumber: number;
+  /** Sets the whole range at once and turns looping on (section chips). */
+  setLoopRange: (range: LoopBars) => void;
   setLoopRangeFrom: (bar: number) => void;
   setLoopRangeTo: (bar: number) => void;
   clearLoopRange: () => void;
@@ -246,7 +247,7 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
 
   const [playing, setPlaying] = useState(false);
   /** Absolute practice tempo in BPM (spec 10.1): the source of truth. The
-   * clock's speed factor and the % readout are derived from it. */
+   * clock's internal speed factor is derived from it. */
   const [targetBpm, setTargetBpm] = useState(() => clampBpm(song.header.bpm));
   const [videoRate, setVideoRateState] = useState(1);
   const [availableVideoRates, setAvailableVideoRates] = useState<number[]>([0.25, 0.5, 0.75, 1, 1.25, 1.5, 2]);
@@ -261,17 +262,19 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
 
   const [loopEnabled, setLoopEnabledState] = useState(false);
   const [loopRange, setLoopRangeState] = useState<LoopBars | null>(null);
-  const [restBars, setRestBarsState] = useState<RestBars>(0);
+  const [restBars, setRestBarsState] = useState<RestBars>(settings.restBars);
   const dragAnchorRef = useRef<number | null>(null);
 
   const [following, setFollowing] = useState(true);
   const [viewportWidth, setViewportWidth] = useState(900);
-  const [bpmRamp, setBpmRamp] = useState<BpmRampConfig>(DEFAULT_BPM_RAMP);
+  const [bpmRamp, setBpmRamp] = useState<BpmRampConfig>(settings.bpmRamp ?? DEFAULT_BPM_RAMP);
+  const [capoWarning, setCapoWarning] = useState<number | null>(null);
   const [rampBpmOverride, setRampBpmOverride] = useState<number | null>(null);
 
   const [micOn, setMicOn] = useState(false);
   const [micErrorMessage, setMicErrorMessage] = useState<string | null>(null);
   const [micListening, setMicListening] = useState(false);
+  const [micNode, setMicNode] = useState<AudioNode | null>(null);
   const [sessionSummary, setSessionSummary] = useState<{ lastPass: SessionSummary; allPasses: SessionSummary | null } | null>(
     null,
   );
@@ -304,13 +307,29 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
   const allPassVerdictsRef = useRef<Verdict[]>([]);
   const micRef = useRef<MicInput | null>(null);
   const pitchDetectorRef = useRef<PitchDetector | null>(null);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  // Every option in the transport's controls is a saved setting: a change sticks for every song and visit.
+  const onSettingsChangeRef = useRef(opts.onSettingsChange);
+  onSettingsChangeRef.current = opts.onSettingsChange;
+  const persistSetting = (patch: Partial<Settings>): void => {
+    const next = { ...settingsRef.current, ...patch };
+    settingsRef.current = next;
+    onSettingsChangeRef.current?.(next);
+  };
   const pendingVerdictByFrame = useRef<Map<number, Verdict>>(new Map());
   const passesSinceRampRef = useRef(0);
   const [videoMountEl, setVideoMountEl] = useState<HTMLDivElement | null>(null);
 
   const baseBpm = song.header.bpm;
+  // The song's own tempo changed (saved from the transport): practise at it, no leftover slowdown.
+  const [seenBaseBpm, setSeenBaseBpm] = useState(baseBpm);
+  if (seenBaseBpm !== baseBpm) {
+    setSeenBaseBpm(baseBpm);
+    setTargetBpm(clampBpm(baseBpm));
+    setRampBpmOverride(null);
+  }
   const speedFactor = targetBpm / baseBpm;
-  const speedPercent = Math.round(speedFactor * 100);
   const currentBpm = rampBpmOverride ?? targetBpm;
 
   const micNotCalibrated = settings.calibration === null;
@@ -369,6 +388,8 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
       allPassVerdictsRef.current = [...allPassVerdictsRef.current, ...matcher.verdicts()];
       matcher.reset();
     }
+    // Verdict colours restart with every pass.
+    controllerRef.current?.clearVerdicts();
     passesSinceRampRef.current += 1;
     if (bpmRamp.enabled && mode === "grid") {
       let shouldStep = false;
@@ -521,6 +542,7 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
       const ctx = getAudioContext();
       const mic = await MicInput.start(ctx);
       micRef.current = mic;
+      setMicNode(mic.inputNode);
       pitchDetectorRef.current = new PitchDetector();
       setMicErrorMessage(null);
       setMicListening(true);
@@ -551,11 +573,22 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
       });
 
       mic.onSlice((onsetFrame, samples) => {
-        pitchDetectorRef.current?.detect(samples, mic.sampleRate).then((result) => {
+        const pending = pendingVerdictByFrame.current.get(onsetFrame);
+        const a4Hz = settingsRef.current.a4Hz;
+        // Single picked note: ask the worker for the octave re-check at the expected pitch.
+        const expected = pending?.expected;
+        const expectedFreq =
+          expected && expected.notes.length === 1
+            ? midiToFreq(soundingMidi(expected.notes[0].string, expected.notes[0].fret, expected.capo), a4Hz)
+            : undefined;
+        pitchDetectorRef.current?.detect(samples, mic.sampleRate, expectedFreq).then((result) => {
           const verdict = pendingVerdictByFrame.current.get(onsetFrame);
           const matcher = matcherRef.current;
           if (!verdict || !matcher) return;
-          matcher.attachPitch(verdict, result?.freq ?? null, result?.confidence ?? 0);
+          matcher.attachPitch(verdict, result?.freq ?? null, result?.confidence ?? 0, {
+            a4Hz: settingsRef.current.a4Hz,
+            check: result?.check,
+          });
           controllerRef.current?.pushVerdict(verdict);
           pendingVerdictByFrame.current.delete(onsetFrame);
         });
@@ -582,6 +615,7 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
   const stopMic = useCallback(() => {
     micRef.current?.stop();
     micRef.current = null;
+    setMicNode(null);
     pitchDetectorRef.current?.dispose();
     pitchDetectorRef.current = null;
     pendingVerdictByFrame.current.clear();
@@ -622,16 +656,17 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
     allPassVerdictsRef.current = [];
     passesSinceRampRef.current = 0;
     controllerRef.current?.clearAllCanvases(layoutRef.current.rows.length);
+    controllerRef.current?.clearVerdicts();
     controllerRef.current?.resumeFollow();
   }, [loopEnabled, loopRange, restBars, song, finalizeSession]);
 
   const toggleMic = useCallback(() => {
     if (micOn) {
       stopMic();
-      opts.onSettingsChange?.({ ...settings, micEnabled: false });
+      persistSetting({ micEnabled: false });
       return;
     }
-    opts.onSettingsChange?.({ ...settings, micEnabled: true });
+    persistSetting({ micEnabled: true });
     void startMic();
   }, [micOn, stopMic, startMic, opts, settings]);
 
@@ -650,6 +685,18 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
     }, 100);
     return () => window.clearInterval(id);
   }, []);
+
+  // Warn one bar before a capo change (also when a loop wraps across one).
+  // Only the clock is read; playback is never paused or altered.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const clock = clockRef.current;
+      if (!clock) return;
+      const loop = effectiveLoopRange(song, loopEnabled, loopRange, restBars);
+      setCapoWarning(upcomingCapoChange(song, clock.positionTick(), loop));
+    }, 100);
+    return () => window.clearInterval(id);
+  }, [song, loopEnabled, loopRange, restBars]);
 
   useEffect(() => {
     return () => {
@@ -684,7 +731,9 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
     (n: RestBars) => {
       setRestBarsState(n);
       applyLoopNow(loopEnabled, loopRange, n);
+      persistSetting({ restBars: n });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [applyLoopNow, loopEnabled, loopRange],
   );
 
@@ -761,7 +810,7 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
     setVideoNotice(null);
   }, []);
 
-  const setBpmField = useCallback(
+  const setPracticeBpm = useCallback(
     (bpm: number) => {
       if (!Number.isFinite(bpm) || bpm <= 0) return;
       setTargetBpm(clampBpm(bpm));
@@ -814,6 +863,7 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
     setMode,
     hasVideo,
     videoNotice,
+    capoWarning,
     playing,
     play,
     pause,
@@ -823,12 +873,7 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
 
     baseBpm,
     currentBpm,
-    speedPercent,
-    setSpeedPercent: (p: number) => {
-      setTargetBpm(clampBpm((baseBpm * p) / 100));
-      setRampBpmOverride(null);
-    },
-    setBpmField,
+    setPracticeBpm,
     bpmRampActive: bpmRamp.enabled,
 
     videoRate,
@@ -836,29 +881,42 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
     setVideoRate,
 
     countIn,
-    setCountIn,
+    setCountIn: (v: boolean) => {
+      setCountIn(v);
+      persistSetting({ countIn: v });
+    },
 
     metronomeVolume,
-    setMetronomeVolume: setMetronomeVolumeState,
+    setMetronomeVolume: (v: number) => {
+      setMetronomeVolumeState(v);
+      persistSetting({ metronomeVolume: v });
+    },
     playNotes,
     setPlayNotes: (v: boolean) => {
       setPlayNotesState(v);
-      opts.onSettingsChange?.({ ...settings, playNotes: v });
+      persistSetting({ playNotes: v });
     },
     playNotesVolume,
     setPlayNotesVolume: (v: number) => {
       setPlayNotesVolumeState(v);
-      opts.onSettingsChange?.({ ...settings, playNotesVolume: v });
+      persistSetting({ playNotesVolume: v });
     },
     metronomeMuted,
-    setMetronomeMuted: setMetronomeMutedState,
+    setMetronomeMuted: (v: boolean) => {
+      setMetronomeMutedState(v);
+      persistSetting({ metronomeMuted: v });
+    },
     subdivisionOn,
-    setSubdivisionOn: setSubdivisionOnState,
+    setSubdivisionOn: (v: boolean) => {
+      setSubdivisionOnState(v);
+      persistSetting({ subdivisionClicks: v });
+    },
 
     micOn,
     micAvailable: typeof navigator !== "undefined" && !!navigator.mediaDevices,
     micErrorMessage,
     micListening,
+    micNode,
     micNotCalibrated,
     toggleMic,
 
@@ -867,6 +925,7 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
     loopRange,
     firstBarNumber,
     lastBarNumber,
+    setLoopRange,
     setLoopRangeFrom,
     setLoopRangeTo,
     clearLoopRange,
@@ -876,9 +935,16 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
     setRestBars,
 
     lanes,
-    setLanes,
+    // Lane and zoom choices are saved settings, so they stay as set the next time a song opens.
+    setLanes: (l: Record<LaneId, boolean>) => {
+      setLanes(l);
+      persistSetting({ lanes: l });
+    },
     zoom,
-    setZoom,
+    setZoom: (z: number) => {
+      setZoom(z);
+      persistSetting({ zoom: z });
+    },
 
     layout,
     songIndex,
@@ -896,6 +962,9 @@ export function usePlaybackEngine(opts: PlaybackEngineOptions): PlaybackEngine {
     setBar1Here,
 
     bpmRamp,
-    setBpmRamp,
+    setBpmRamp: (c: BpmRampConfig) => {
+      setBpmRamp(c);
+      persistSetting({ bpmRamp: c });
+    },
   };
 }

@@ -1,0 +1,7 @@
+title: pull-violation
+time: 4/4
+bpm: 90
+unit: 8
+
+[Song]
+Bar 1: {3} 1S3 {6} 1S5

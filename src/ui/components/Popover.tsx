@@ -14,6 +14,8 @@ export function Popover({
   trigger,
   triggerClassName,
   align = "right",
+  open: openProp,
+  onOpenChange,
 }: {
   label: string;
   icon?: ReactNode;
@@ -28,8 +30,17 @@ export function Popover({
   triggerClassName?: string;
   /** Which edge of the trigger the panel lines up with. */
   align?: "left" | "right";
+  /** Controlled mode (e.g. opened by a keyboard shortcut). Omit for uncontrolled. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (v: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof v === "function" ? v(open) : v;
+    if (openProp === undefined) setOpenState(next);
+    onOpenChange?.(next);
+  };
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -46,6 +57,7 @@ export function Popover({
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   return (

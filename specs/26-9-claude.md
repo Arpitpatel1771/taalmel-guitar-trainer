@@ -153,6 +153,7 @@ The parser processes lines in order. Leading/trailing whitespace is trimmed. Emp
 | Key       | Required                  | Value                                                                      | Meaning                                                                                                                                                                                     |
 | --------- | ------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `title`   | yes                       | free text                                                                  | Song title.                                                                                                                                                                                 |
+| `artist`  | no                        | free text                                                                  | Performer or band. Written right after `title`; songs without it serialize unchanged.                                                                                                       |
 | `time`    | yes                       | `<int>/<int>`                                                              | Time signature for the whole song. Denominator must be 1, 2, 4, 8, 16, or 32. Numerator 1 to 32.                                                                                            |
 | `bpm`     | yes                       | number > 0, up to 999, decimals allowed                                    | Default tempo. Beats are **quarter notes**, regardless of time signature. For compound meters users convert: a 6/8 song felt at 60 dotted-quarter beats is entered as `bpm: 90` (60 x 1.5). |
 | `unit`    | yes                       | int >= 1                                                                   | Default slot count per bar.                                                                                                                                                                 |
@@ -199,9 +200,9 @@ Order is fixed: position, then optional length block, then optional metadata blo
    - `<k>X<a>/<b>`: k times the note value a/b of a whole note, independent of the bar's grid. `[3X1/16]` = three sixteenths. Uppercase `X`.
    - Omitted: 1 unit.
 2. **Offset** `><signed int>`: a timing nudge in **milliseconds**, applied after converting musical time to seconds. `>-15` = 15 ms early, `>20` or `>+20` = 20 ms late. Omitted means 0. Range -500 to +500.
-3. **Uncertain** `?`: this note's rhythm (start or length) is a guess. The UI highlights it.
+3. **Uncertain** `?`: removed (2026-11). The parser still accepts a trailing `?` in old songs and ignores it; the serializer never writes it.
 
-Examples: `1S5[2]`, `1S5[2>-15]`, `1S5[?]`, `1S5[4?]`, `1S5[3X1/16>10?]`, `1S5[>-8]`.
+Examples: `1S5[2]`, `1S5[2>-15]`, `1S5[3X1/16>10]`, `1S5[>-8]`.
 
 Length rules:
 
@@ -252,7 +253,7 @@ Tab equivalents, for prompt examples and documentation:
 
 `serialize(song)` must produce exactly one text form so that exports and diffs are stable:
 
-- Header keys in the order: `title`, `time`, `bpm`, `unit`, `youtube`, `offset`. One blank line after the header.
+- Header keys in the order: `title`, `artist` (only if present), `time`, `bpm`, `unit`, `capo` (only if present), `youtube`, `offset`. One blank line after the header.
 - Sections separated by one blank line. Section fields in order `bpm`, `unit`, only if they override.
 - `(n)` written only when it differs from the effective section unit.
 - Within a slot, notes ordered by string number ascending.
@@ -316,7 +317,6 @@ interface Note {
   startTick: number; // absolute from song start
   durationTicks: number;
   offsetMs: number; // default 0
-  uncertain: boolean;
   meta: NoteMeta;
   source: { line: number; column: number }; // for editor highlighting
 }
@@ -422,11 +422,13 @@ A row stacks the enabled lanes vertically, sharing the time axis. Bar lines and 
 
 1. **Tab lane** (default on): six horizontal lines, string 1 on top. Each note shows its fret number on its string line. Box width spans its duration (thin bar behind the number).
 2. **Letter lane** (default on): letter name per note, as sharps (`C#`) unless the note has the `flat` flag (`Db`); chord slots stack letters vertically, highest string on top.
-3. **Teacher notation lane** (default off): see 8.3.
+3. **Teacher notation lane**: Removed 2026-11-05, see specs/5-11-capo.md.
 
-Technique labels in the tab lane between connected notes: `h` (hammer), `p` (pull), `/` or `\` (slide up/down), `b<n>` for bend targets (`b2`, `r` for release to 0), `~/` prefix for `slide_in`, `\~` suffix for `slide_out`, `x` for muted, `~` after the fret number for vibrato. Strum direction shown as an arrow above the slot (`↑`/`↓`). Uncertain notes: dashed outline plus a distinct tint in every lane.
+Technique labels in the tab lane between connected notes: `h` (hammer), `p` (pull), `/` or `\` (slide up/down), `b<n>` for bend targets (`b2`, `r` for release to 0), `~/` prefix for `slide_in`, `\~` suffix for `slide_out`, `x` for muted, `~` after the fret number for vibrato. Strum direction shown as an arrow above the slot (`↑`/`↓`).
 
 ### 8.3 Teacher notation mapping (display only in v1)
+
+> Removed 2026-11-05, see specs/5-11-capo.md. The lane, its layout, rendering and settings are gone; the text below is kept as history only.
 
 The teacher writes: letter name, a register mark, and a fret-zone digit.
 
@@ -496,6 +498,7 @@ Useful property for the v1.1 input parser: within one zone on one string pair (t
 - YIN algorithm over the 2048-sample slice. Threshold 0.15. Search range 70 Hz to 1400 Hz.
 - Output: frequency and confidence. Low confidence gives verdict **unknown** (grey marker).
 - Comparison uses **pitch class only** (ignore octave). YIN frequently makes octave errors on guitar, and octave is not needed to tell whether the right note was played.
+- Changed 2026-11-05: exact pitch incl. octave, see specs/5-11-ui-redesign.md §6.2.
 - Verdict **right** / **wrong** is attached to the timing marker of the matched onset (marker gains a green or red ring).
 - Slots with more than one picked note (chords): pitch check skipped, timing only.
 - Onsets that matched no expected event: pitch not checked.
@@ -578,7 +581,7 @@ Play/pause, stop (returns to loop start or song start), mode toggle (grid / vide
 4. User pastes the LLM reply into the app.
 5. **Extraction:** if the reply contains a fenced block tagged `song` (` ```song `), use its contents. Else, any fenced block containing a line starting with `title:`. Else, from the first line starting with `title:` to the last line starting with `Bar `. Else: error "No song found in the reply."
 6. Parse and validate. Errors listed with line, bar, slot, and token; clicking one jumps to it in the editor. **Copy repair prompt** button (11.3).
-7. On a clean parse: preview (full sheet rendering with the letter lane forced on so wrong strings are easy to spot, uncertain notes highlighted) beside an editable text box. Edits re-parse live (debounced 300 ms).
+7. On a clean parse: preview (full sheet rendering with the letter lane forced on so wrong strings are easy to spot) beside an editable text box. Edits re-parse live (debounced 300 ms).
 8. **Save** is enabled only when there are no errors. Nothing is ever partially saved.
 
 ### 11.2 Import prompt contents
@@ -589,9 +592,9 @@ The prompt is a template in `songFormat/prompts.ts`. It contains, in order:
 2. Header values pre-filled from the form, with the instruction to copy them exactly.
 3. The format specification: sections 5.2 to 5.6 condensed, including the metadata table and connection flag rule.
 4. The **string/fret to note name table** for all 6 strings, frets 0 to 12, in standard tuning (black keys listed with both spellings, e.g. `C#4/Db4`, plus the rule to add `(flat)` when the source writes a flat), with the instruction to **look up** positions in the table rather than compute them.
-5. Rhythm instructions: if confident of the song's rhythm, encode it; if not, place notes on consecutive slots of the default grid with length 1 and mark **every** such note uncertain with `?`. Never invent confident-looking rhythm.
+5. Rhythm instructions: if confident of the song's rhythm, encode it; if not, place notes on consecutive slots of the default grid with length 1. Never invent confident-looking rhythm.
 6. The worked example from 5.1, plus the tab equivalents table.
-7. Reminders of the most common errors: bar numbering is global, slots strictly increase, notes must fit inside their bar, one note per string per slot.
+7. Reminders of the most common errors: bar numbering is global, slots strictly increase, a note may ring past its bar, one note per string per slot.
 
 ### 11.3 Repair prompt contents
 
@@ -711,7 +714,7 @@ Real-device latency calibration (speakers, headphones), video sync drift over a 
 
 ## 15. Open questions
 
-1. **Teacher's open-string convention.** v1 displays fret 0 as zone `0`. Confirm with the actual notation and update 8.3 (and the v1.1 input parser) accordingly.
+1. ~~**Teacher's open-string convention.**~~ Closed 2026-11-05: the teacher notation lane was removed (specs/5-11-capo.md), so there is no convention to confirm. v1 displayed fret 0 as zone `0`. Confirm with the actual notation and update 8.3 (and the v1.1 input parser) accordingly.
 
 ---
 

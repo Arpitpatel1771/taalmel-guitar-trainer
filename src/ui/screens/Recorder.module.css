@@ -14,14 +14,17 @@
   gap: var(--space-3);
   padding: var(--space-4);
   background: var(--surface-1);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
   min-width: 0;
 }
 .wide { grid-column: 1 / -1; }
 .cardHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
 .sectionTitle { margin: 0; font-size: var(--text-md); font-weight: var(--weight-semibold); }
 .actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.recordBtn,
+.recordBtn:hover:not(:disabled) { background: var(--record); border-color: var(--record); color: #fff; }
+.recordBtn:hover:not(:disabled) { filter: brightness(1.08); }
 .iconBtn { display: inline-flex; align-items: center; gap: var(--space-2); }
 .hint { margin: 0; color: var(--text-muted); font-size: var(--text-xs); }
 .kbd {
@@ -190,3 +193,16 @@
 
 /* Leave a little room above the trimmer when it is scrolled into view. */
 .trimmerSection { scroll-margin-top: var(--space-4); }
+
+/* Volume boost */
+.boostRow { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--warn-tint, var(--surface-2));
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}

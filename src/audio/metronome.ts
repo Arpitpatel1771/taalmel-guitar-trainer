@@ -126,6 +126,8 @@ export class Metronome {
   private subdivisionOn = false;
   private enabled = true;
   private lastScheduledSongSec = -Infinity;
+  /** Set on a loop wrap until the next tick: clicks from here may be played slightly late. */
+  private loopStartSec: number | null = null;
 
   constructor(
     private readonly ctx: AudioContext,
@@ -153,7 +155,10 @@ export class Metronome {
     this.unsubscribeLoop?.();
     this.clock = clock;
     this.unsubscribeLoop = clock.onLoop(() => {
-      this.lastScheduledSongSec = clock.unclampedPositionSec() - 1e-6;
+      // The wrap is noticed a moment late: start from the loop start so its downbeat still clicks.
+      const r = clock.loop?.();
+      this.loopStartSec = r ? this.tempo.ticksToSec(r.startTick) : null;
+      this.lastScheduledSongSec = (this.loopStartSec ?? clock.unclampedPositionSec()) - 1e-6;
     });
   }
 
@@ -203,14 +208,17 @@ export class Metronome {
       this.lastScheduledSongSec = songSecNow - 1e-6;
     }
     const windowEndSongSec = songSecNow + SCHEDULE_AHEAD_SEC * speed;
+    const loopStart = this.loopStartSec;
+    this.loopStartSec = null;
 
     for (const click of this.clickSchedule) {
       if (click.subdivision && !this.subdivisionOn) continue;
       const sec = this.tempo.ticksToSec(click.tick);
       if (sec <= this.lastScheduledSongSec) continue;
       if (sec > windowEndSongSec) break; // tempo is monotonic, so tick order implies sec order
-      const audioTime = now + (sec - songSecNow) / speed;
-      if (audioTime < now) continue;
+      const due = now + (sec - songSecNow) / speed;
+      if (due < now && !(loopStart !== null && sec >= loopStart - 1e-6 && now - due < 0.3)) continue;
+      const audioTime = Math.max(now, due);
       const volume = this.volume * (click.subdivision ? SUBDIVISION_VOLUME_FACTOR : 1);
       scheduleClick(this.ctx, audioTime, click.accent, volume);
     }

@@ -1,6 +1,6 @@
 // Public API of src/recording: capture, clip storage, trimming and saving.
 
-export { listClips, saveClip, renameClip, updateClipFlags, updateClipPeaks, deleteClip, setClipBlob, type ClipRecord, type ClipFlag } from "./clipStore";
+export { listClips, saveClip, renameClip, updateClipFlags, updateClipPeaks, updateClipGain, setClipBoost, replaceClipMedia, deleteClip, setClipBlob, type ClipRecord, type ClipFlag } from "./clipStore";
 export {
   pickMimeType,
   extensionFor,
@@ -9,6 +9,7 @@ export {
   formatClipTime,
   parseClipTime,
   buildTrimPlan,
+  buildBoostPlan,
   windowAround,
   shiftFlagsIntoRange,
   type TrimMode,
@@ -19,3 +20,5 @@ export { ClipRecorder, openInput, stopStream, type RecordingResult } from "./rec
 export { trimClip, type TrimStage } from "./trim";
 export { saveBlobToDisk } from "./saveFile";
 export { computeClipPeaks, peaksToColumns, PEAK_BUCKETS } from "./waveform";
+export { computeGainDb, measureClipGain, ensureClipGain } from "./gain";
+export { gainFactor, effectiveGainDb, scalePeaks, routeMediaThroughGain, makeBoostPermanent, type BoostedPlayback, type BoostStage } from "./boost";

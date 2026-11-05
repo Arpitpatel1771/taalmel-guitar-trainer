@@ -1,4 +1,4 @@
-// Google-style account chip at the top of the sidebar: sign-in button when disconnected,
+// Google-style account chip at the bottom of the icon rail (avatar only when collapsed): sign-in button when disconnected,
 // avatar + name (with a sync status dot) and an account menu when connected.
 
 import { useState } from "react";
@@ -87,7 +87,7 @@ export function AccountChip({ collapsed, onOpenSettings }: { collapsed: boolean;
     <div className={st.root}>
       <Popover
         label={`Account: ${label}`}
-        placement="down"
+        placement="up"
         align="left"
         width={300}
         triggerClassName={`${st.chip}${collapsed ? ` ${st.chipCollapsed}` : ""}`}

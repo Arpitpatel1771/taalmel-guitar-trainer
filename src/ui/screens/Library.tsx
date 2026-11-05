@@ -3,11 +3,15 @@
 import { useShell } from "../shell/AppShellContext";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Dumbbell, MoreHorizontal, Music, Plus, Search, Trash2, Upload } from "lucide-react";
+import { Download, Dumbbell, MoreHorizontal, Music, Plus, RefreshCw, Search, Share2, Trash2, Upload, Users } from "lucide-react";
+import { ShareDialog } from "../sharing/ShareDialog";
+import { updateFromLibrary, updatesFor, useLibraryIndex } from "../sharing/libraryData";
 import { parse } from "../../songFormat";
 import { Popover } from "../components/Popover";
 import dock from "../components/TransportDock.module.css";
 import lib from "./Library.module.css";
+import pg from "../components/page.module.css";
+import { Button } from "../components/kit";
 import { SAMPLE_SONGS } from "../../samples";
 import type { SongRecord } from "../../model";
 import type { StorageAdapter } from "../storageTypes";
@@ -24,6 +28,8 @@ export interface LibraryProps {
   refreshToken: number;
   onOpenSample: (id: string) => void;
   onAddSample: (text: string) => void;
+  /** Search found nothing: ask the community (prefilled with the search). */
+  onAsk?: (query: string) => void;
 }
 
 function downloadFile(filename: string, content: string, mime: string) {
@@ -48,6 +54,7 @@ export function Library({
   refreshToken,
   onOpenSample,
   onAddSample,
+  onAsk,
 }: LibraryProps) {
   const [songs, setSongs] = useState<SongRecord[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +62,8 @@ export function Library({
   const [pendingImport, setPendingImport] = useState<LibraryImportPlan | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const { toast } = useShell();
+  const [shareSong, setShareSong] = useState<SongRecord | null>(null);
+  const { index: libraryIndex } = useLibraryIndex();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function refresh() {
@@ -148,6 +157,19 @@ export function Library({
     }
   }
 
+  const updates = useMemo(() => updatesFor(songs ?? [], libraryIndex), [songs, libraryIndex]);
+  async function handleUpdate(id: string) {
+    const entry = updates.get(id);
+    if (!entry) return;
+    try {
+      await updateFromLibrary(storage, id, entry);
+      toast(`${entry.title} updated.`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"updated" | "title">("updated");
   const summaries = useMemo(() => new Map((songs ?? []).map((s) => [s.id, summarize(s.text)])), [songs]);
@@ -161,12 +183,17 @@ export function Library({
 
   return (
     <div className="screen library-screen">
-      <div className="screen-header">
-        <h2>Library</h2>
-        <button className="btn-primary" onClick={onNewSong}>
-          <Plus size={16} /> New song
-        </button>
-      </div>
+      <header className={pg.head}>
+        <div className={pg.headText}>
+          <h1 className={pg.title}>Songs</h1>
+          <p className={pg.sub}>Your songs to practise. Open one to play along, or add a new one.</p>
+        </div>
+        <div className={pg.actions}>
+          <Button variant="primary" icon={<Plus size={16} />} onClick={onNewSong}>
+            Add a song
+          </Button>
+        </div>
+      </header>
 
       {showPersistBanner && (
         <div className="notice notice-info">
@@ -222,24 +249,31 @@ export function Library({
           <div className={lib.emptyIcon}>
             <Music size={26} />
           </div>
-          <h3>No songs yet</h3>
+          <h2 className={lib.emptyTitle}>No songs yet</h2>
           <p className={lib.emptyText}>
-            Turn a photo of your notes into a timed song with any LLM, or warm up with a generated exercise.
+            Paste a tab, draw the notes yourself, or turn a photo of your notes into a song with an AI chat. Or warm up with a generated exercise.
           </p>
           <div className={lib.emptyActions}>
-            <button className="btn-primary" onClick={onNewSong}>
-              <Plus size={16} /> Import from notes
-            </button>
-            <button onClick={onOpenExercises}>
-              <Dumbbell size={16} /> Try an exercise
-            </button>
+            <Button variant="primary" icon={<Plus size={16} />} onClick={onNewSong}>
+              Add a song
+            </Button>
+            <Button icon={<Dumbbell size={16} />} onClick={onOpenExercises}>
+              Try an exercise
+            </Button>
           </div>
-          <button className="btn-ghost" onClick={() => fileInputRef.current?.click()}>
-            <Upload size={15} /> Import a library or song file
-          </button>
+          <Button variant="ghost" icon={<Upload size={15} />} onClick={() => fileInputRef.current?.click()}>
+            Import a library or song file
+          </Button>
         </div>
       ) : visible.length === 0 ? (
-        <p className={lib.emptyText}>No songs match "{query}".</p>
+        <div className={lib.empty}>
+          <p className={lib.emptyText}>No songs match "{query}".</p>
+          {onAsk && (
+            <Button variant="primary" icon={<Users size={15} />} onClick={() => onAsk(query.trim())}>
+              Ask the community
+            </Button>
+          )}
+        </div>
       ) : (
         <ul className={lib.grid}>
           {visible.map((s) => {
@@ -255,6 +289,14 @@ export function Library({
                     <Popover label={`Actions for ${s.title}`} icon={<MoreHorizontal size={16} />} iconOnly placement="down" width={180}>
                       {(close) => (
                         <>
+                          {updates.has(s.id) && (
+                            <button className={dock.menuItem} onClick={() => { close(); void handleUpdate(s.id); }}>
+                              <RefreshCw size={15} /> Update from library
+                            </button>
+                          )}
+                          <button className={dock.menuItem} onClick={() => { close(); setShareSong(s); }}>
+                            <Share2 size={15} /> Share
+                          </button>
                           <button className={dock.menuItem} onClick={() => { close(); handleExportSong(s); }}>
                             <Download size={15} /> Export .txt
                           </button>
@@ -267,8 +309,10 @@ export function Library({
                   </span>
                 </div>
                 <div className={lib.meta}>
+                  {sum?.artist && <span className={lib.artist}>{sum.artist}</span>}
                   <span className={lib.metaStrong}>{s.bpm} BPM</span>
                   {sum?.time && <span className={lib.metaStrong}>{sum.time}</span>}
+                  {sum?.capo ? <span className={lib.metaStrong}>Capo {sum.capo}</span> : null}
                   {sum && sum.bars > 0 && <span>{sum.bars} bars</span>}
                 </div>
                 {sum && sum.density.length > 0 && (
@@ -282,6 +326,11 @@ export function Library({
                   {sum?.sections.map((name, i) => (
                     <span key={i} className={lib.chip}>{name}</span>
                   ))}
+                  {updates.has(s.id) && (
+                    <button className={`${lib.chip} ${lib.chipVideo}`} onClick={(e) => { e.stopPropagation(); void handleUpdate(s.id); }} title="A newer version is in the open library. Click to update.">
+                      Update available
+                    </button>
+                  )}
                   {s.hasVideo && <span className={`${lib.chip} ${lib.chipVideo}`}>Video</span>}
                   {sum && !sum.ok && <span className={`${lib.chip} ${lib.chipError}`}>Has errors</span>}
                 </div>
@@ -289,8 +338,8 @@ export function Library({
                 {confirmDeleteId === s.id && (
                   <div className={lib.confirm} onClick={(e) => e.stopPropagation()}>
                     Delete this song?
-                    <button className="btn-danger" onClick={() => void handleDelete(s.id)}>Delete</button>
-                    <button className="btn-ghost" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
+                    <Button className={lib.dangerBtn} onClick={() => void handleDelete(s.id)}>Delete</Button>
+                    <Button variant="ghost" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
                   </div>
                 )}
               </li>
@@ -300,7 +349,7 @@ export function Library({
       )}
 
       <div className={lib.examplesHeader}>
-        <h3>Example songs</h3>
+        <h2 className={pg.section}>Example songs</h2>
         <span className={lib.emptyText}>Public-domain melodies. Practise them as they are, or add a copy you can edit.</span>
       </div>
       <ul className={lib.grid}>
@@ -315,7 +364,9 @@ export function Library({
                 </button>
               </div>
               <div className={lib.meta}>
+                {sum.artist && <span className={lib.artist}>{sum.artist}</span>}
                 {sum.time && <span className={lib.metaStrong}>{sum.time}</span>}
+                {sum.capo ? <span className={lib.metaStrong}>Capo {sum.capo}</span> : null}
                 <span>{sum.bars} bars</span>
               </div>
               <div className={lib.density} aria-hidden>
@@ -343,6 +394,8 @@ export function Library({
         })}
       </ul>
 
+      {shareSong && <ShareDialog title={shareSong.title} text={shareSong.text} onClose={() => setShareSong(null)} />}
+
       {pendingImport && (
         <ConflictDialog plan={pendingImport} onConfirm={(d) => void confirmImport(d)} onCancel={() => setPendingImport(null)} />
       )}
@@ -351,9 +404,9 @@ export function Library({
 }
 
 /** Card details derived from the stored text (text is the source of truth). */
-function summarize(text: string): { ok: boolean; time: string | null; bars: number; sections: string[]; density: number[] } {
+function summarize(text: string): { ok: boolean; time: string | null; artist: string | null; capo: number; bars: number; sections: string[]; density: number[] } {
   const r = parse(text);
-  if (!r.ok) return { ok: false, time: null, bars: 0, sections: [], density: [] };
+  if (!r.ok) return { ok: false, time: null, artist: null, capo: 0, bars: 0, sections: [], density: [] };
   const bars = r.song.sections.flatMap((sec) => sec.bars);
   // Picked-note starts per bar, capped at 48 columns for the density strip.
   const perBar = bars.map((b) => new Set(b.notes.map((n) => n.startTick)).size);
@@ -362,6 +415,8 @@ function summarize(text: string): { ok: boolean; time: string | null; bars: numb
   for (let i = 0; i < perBar.length; i += step) density.push(Math.max(...perBar.slice(i, i + step)));
   return {
     ok: true,
+    artist: r.song.header.artist ?? null,
+    capo: Math.max(r.song.header.capo ?? 0, ...r.song.sections.map((sec) => sec.capo ?? 0)),
     time: `${r.song.header.time.numerator}/${r.song.header.time.denominator}`,
     bars: bars.length,
     sections: [...new Set(r.song.sections.map((sec) => sec.name))].slice(0, 5),
