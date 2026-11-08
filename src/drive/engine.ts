@@ -1339,8 +1339,12 @@ export class SyncEngine {
               this.emit();
             }
           } catch (e) {
-            if (e instanceof DriveError && e.status === 404 && url) {
-              url = undefined; // the session expired: start over
+            // The session expired (404), or Drive rejected the session itself (e.g. one an older version
+            // started with metadata Drive won't accept on an update, 400/403 fieldNotWritable): resuming it
+            // fails forever, so start over with a new session. Auth, rate and quota errors are handled above.
+            const c = classify(e);
+            if (e instanceof DriveError && (c === "notFound" || c === "other") && url) {
+              url = undefined;
               await this.store.updateQueueItem(q.key, { resumableUrl: undefined });
               continue;
             }

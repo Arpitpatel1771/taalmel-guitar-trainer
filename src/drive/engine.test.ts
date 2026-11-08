@@ -830,6 +830,42 @@ describe("clip media", () => {
     expect(mediaFiles(drive)).toHaveLength(1);
   });
 
+  it("a rejected upload session (403 fieldNotWritable) is dropped and the upload starts over", async () => {
+    // Regression: a session started with `parents` in an update was rejected by Drive at the end
+    // ("The parents field is not directly writable"); the saved session URL was resumed forever.
+    const drive = new FakeDrive();
+    const a = device(drive, { chunkSize: 4 });
+    await a.engine.connect({ interactive: true });
+    const origUpload = drive.uploadChunk.bind(drive);
+    const badSessions = new Set<string>();
+    const origStart = drive.startResumableUpload.bind(drive);
+    let first = true;
+    drive.startResumableUpload = async (meta, total, existing) => {
+      const url = await origStart(meta, total, existing);
+      if (first) badSessions.add(url);
+      first = false;
+      return url;
+    };
+    let failNetwork = true;
+    drive.uploadChunk = async (url, chunk, offset, total) => {
+      if (offset === 4 && failNetwork) {
+        failNetwork = false;
+        throw new DriveError(503, "backendError"); // leave the bad session saved in the queue
+      }
+      if (badSessions.has(url)) throw new DriveError(403, "fieldNotWritable", "The parents field is not directly writable in update requests.");
+      return origUpload(url, chunk, offset, total);
+    };
+    drive.queryUploadStatus = async (url) => {
+      if (badSessions.has(url)) throw new DriveError(403, "fieldNotWritable");
+      return { done: false, received: 0 };
+    };
+    await saveClip(a, clipOf("c1"));
+    await a.engine.syncNow();
+    await a.engine.syncNow();
+    expect(a.engine.getStatus().state).toBe("idle");
+    expect(drive.readText(mediaFiles(drive)[0].id)).toBe("0123456789");
+  });
+
   it("quota errors pause media uploads (driveFull) while metadata keeps syncing", async () => {
     const { drive, a } = await setup();
     drive.startResumableUpload = async () => {
