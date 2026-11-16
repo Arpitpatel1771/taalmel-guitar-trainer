@@ -37,3 +37,25 @@
 .volume { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--text-muted); min-width: 40px; }
 .options input[type="checkbox"] { align-self: flex-start; width: 18px; height: 18px; }
 .options > div { min-width: 0; align-items: flex-start; }
+
+/* Compact: bigger beat dots, a full-width Start, no keyboard hint (specs/8-11-mobile.md §2, stage 2). */
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  .card { padding: var(--space-5) var(--space-4); }
+  .dot { width: 18px; height: 18px; }
+  .dotAccent { width: 26px; height: 26px; }
+  .card .start { width: 100%; min-height: 56px; font-size: var(--text-lg); }
+  .hint { display: none; }
+  .options { grid-template-columns: 1fr; }
+}
+/* Short window (a phone held sideways): the number gets smaller so Start stays on screen. */
+@media (max-height: 500px) and ((max-width: 899.98px) or ((hover: none) and (pointer: coarse))) {
+  .bpmValue { font-size: 64px; }
+  /* Readout on the left, controls on the right, so Start is on screen without scrolling. */
+  .card { display: grid; grid-template-columns: 1fr 1fr; align-items: center; justify-items: center; column-gap: var(--space-5); row-gap: var(--space-2); padding-top: var(--space-3); max-width: none; }
+  .card > .dots { grid-column: 1; grid-row: 1; }
+  .card > .bpm { grid-column: 1; grid-row: 2; }
+  .card > .slider { grid-column: 1; grid-row: 3; }
+  .card > .row { grid-column: 2; grid-row: 1 / span 2; }
+  .card > .start { grid-column: 2; grid-row: 3; }
+  .card > .options { grid-column: 1 / -1; }
+}

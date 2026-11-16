@@ -102,13 +102,22 @@ export interface Hit {
   zone: HitZone;
 }
 
+export interface HitOpts {
+  /** Width of the resize handle at a note's right edge (a finger needs more than a mouse). */
+  handleW?: number;
+  /** Extra px above and below a note that still count as touching it. */
+  slopY?: number;
+}
+
 /** The topmost note under a grid point; the right edge is the resize handle. */
-export function hitTest(g: Geom, doc: EdDoc, x: number, y: number): Hit | null {
+export function hitTest(g: Geom, doc: EdDoc, x: number, y: number, opts: HitOpts = {}): Hit | null {
+  const handleW = opts.handleW ?? HANDLE_W;
+  const slopY = opts.slopY ?? 0;
   for (let i = doc.notes.length - 1; i >= 0; i--) {
     const n = doc.notes[i]!;
     const r = noteRect(g, doc, n);
-    if (x < r.x || x > r.x + r.w || y < r.y || y > r.y + r.h) continue;
-    return { id: n.id, zone: x >= r.x + r.w - Math.min(HANDLE_W, r.w / 2) ? "resize" : "body" };
+    if (x < r.x || x > r.x + r.w || y < r.y - slopY || y > r.y + r.h + slopY) continue;
+    return { id: n.id, zone: x >= r.x + r.w - Math.min(handleW, r.w / 2) ? "resize" : "body" };
   }
   return null;
 }

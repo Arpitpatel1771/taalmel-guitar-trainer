@@ -39,10 +39,17 @@ export function systemPrefersDark(): boolean {
   return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(DARK_QUERY).matches;
 }
 
+/** Browser / installed-app chrome colour per mode (keep in sync with the inline script in index.html). */
+export const THEME_COLOR: Record<ResolvedTheme, string> = { dark: "#1e1b16", light: "#f7f4ee" };
+
 function apply(pref: ThemePref, accent: AccentId): void {
   const root = document.documentElement;
-  root.setAttribute("data-theme", resolveTheme(pref, systemPrefersDark()));
+  const mode = resolveTheme(pref, systemPrefersDark());
+  root.setAttribute("data-theme", mode);
   root.setAttribute("data-accent", accent);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_COLOR[mode]);
+  // iOS reads this one at launch only; it's kept right for the next launch.
+  document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute("content", mode === "dark" ? "black-translucent" : "default");
 }
 
 /** Applies the settings to <html>, follows the OS live while "system", and caches them for first paint. */

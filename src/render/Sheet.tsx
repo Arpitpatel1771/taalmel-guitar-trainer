@@ -10,6 +10,7 @@ import type { BarBox, Layout, NoteBox, Row } from "../layout";
 import { LETTER_LINE_HEIGHT, STRING_COUNT, TAB_LANE_TOP, TAB_STRING_GAP } from "../layout";
 import { letterOfNote, tabGlyph } from "../notation";
 import type { SongIndex } from "./songIndex";
+import { barAtPoint } from "./barAtPoint";
 
 export interface SheetHandle {
   container: HTMLDivElement;
@@ -268,10 +269,11 @@ function RowView({
             key={bar.barNumber}
             className={`bar-labels${inLoop ? " in-loop" : ""}`}
             style={{ left: bar.x, width: bar.width }}
+            data-bar={bar.barNumber}
             onMouseDown={(e) => onBarMouseDown?.(bar.barNumber, e.shiftKey)}
             onMouseEnter={() => onBarMouseEnter?.(bar.barNumber)}
             role={onBarMouseDown ? "button" : undefined}
-            title="Click, shift-click or drag across bars to set the loop range"
+            title="Click, shift-click or drag across bars to set the loop range (on a touch screen: tap a bar, or hold and drag)"
           >
             <span className="bar-number">{bar.barNumber}</span>
             {section && <span className="section-name">{section}</span>}
@@ -292,6 +294,87 @@ export function Sheet({ song, layout, songIndex, lanes, onReady, loopRange, onBa
     if (el) canvasesRef.current.set(rowIndex, el);
     else canvasesRef.current.delete(rowIndex);
   };
+
+  // Touch has no hover or shift-click: a tap on a bar header sets that bar as the loop (the browser's tap
+  // compatibility events reach onBarMouseDown), and holding a header then dragging extends the range.
+  // Dragging only starts after the hold, so a plain swipe still scrolls the sheet.
+  const touchRef = useRef({ layout, onBarMouseDown, onBarMouseEnter });
+  touchRef.current = { layout, onBarMouseDown, onBarMouseEnter };
+  const touchEnabled = !!onBarMouseDown;
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !touchEnabled) return;
+    const HOLD_MS = 350;
+    const SLOP_PX = 10;
+    let timer: number | null = null;
+    let selecting = false;
+    let lastSelectEnd = 0;
+    let start = { x: 0, y: 0, bar: 0 };
+    let lastBar: number | null = null;
+    const clearTimer = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = null;
+    };
+    const barUnder = (t: Touch): number | null => {
+      const inner = el.firstElementChild as HTMLElement | null;
+      if (!inner) return null;
+      const r = inner.getBoundingClientRect();
+      return barAtPoint(touchRef.current.layout, t.clientX - r.left, t.clientY - r.top);
+    };
+    const onStart = (e: TouchEvent) => {
+      clearTimer();
+      selecting = false;
+      const t = e.touches[0];
+      const label = (e.target as HTMLElement).closest<HTMLElement>(".bar-labels");
+      if (e.touches.length !== 1 || !label || !el.contains(label)) return;
+      start = { x: t.clientX, y: t.clientY, bar: Number(label.dataset.bar) };
+      timer = window.setTimeout(() => {
+        timer = null;
+        selecting = true;
+        lastBar = start.bar;
+        touchRef.current.onBarMouseDown?.(start.bar, false);
+        navigator.vibrate?.(15);
+      }, HOLD_MS);
+    };
+    const onMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!selecting) {
+        if (timer !== null && Math.hypot(t.clientX - start.x, t.clientY - start.y) > SLOP_PX) clearTimer();
+        return;
+      }
+      e.preventDefault(); // the finger is picking bars, not scrolling
+      const bar = barUnder(t);
+      if (bar !== null && bar !== lastBar) {
+        lastBar = bar;
+        touchRef.current.onBarMouseEnter?.(bar);
+      }
+    };
+    const onEnd = (e: TouchEvent) => {
+      clearTimer();
+      if (!selecting) return;
+      selecting = false;
+      lastSelectEnd = Date.now();
+      if (e.cancelable) e.preventDefault(); // no emulated click after the hold
+      window.dispatchEvent(new MouseEvent("mouseup")); // ends the engine's drag anchor
+    };
+    // Android opens a context menu on a long press.
+    const onContextMenu = (e: Event) => {
+      if (selecting || Date.now() - lastSelectEnd < 600) e.preventDefault();
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd);
+    el.addEventListener("touchcancel", onEnd);
+    el.addEventListener("contextmenu", onContextMenu);
+    return () => {
+      clearTimer();
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+      el.removeEventListener("contextmenu", onContextMenu);
+    };
+  }, [touchEnabled]);
 
   useEffect(() => {
     if (containerRef.current && cursorRef.current) {

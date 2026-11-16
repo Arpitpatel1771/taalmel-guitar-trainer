@@ -217,3 +217,24 @@
 .syntaxTable td { padding: 3px var(--space-2) 3px 0; vertical-align: top; color: var(--text-muted); }
 .syntaxTable td:first-child { white-space: nowrap; }
 .syntaxTable code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text); }
+
+/* ---- Compact layout (specs/8-11-mobile.md stage 4): one column, text big enough that phones don't zoom. ---- */
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  .stepper { flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
+  .stepLine { width: 16px; }
+  .card { max-width: none; min-width: 0; padding: var(--space-4); }
+  .fields { grid-template-columns: minmax(0, 1fr); }
+  .actions { flex-wrap: wrap; }
+  .codeBlock { font-size: 14px; }
+  .replyBox { font-size: max(16px, 1em); }
+  .split { flex: none; grid-template-columns: minmax(0, 1fr); }
+  .preview { flex: none; min-height: 200px; }
+  .previewEmpty { min-height: 96px; }
+  .pane { min-width: 0; }
+  .editorHost { min-height: 240px; }
+  .editorHost :global(.cm-content), .editorHost :global(.cm-gutters) { font-size: 16px; }
+  .problemsHeader { flex-wrap: wrap; }
+  .problem { min-height: 44px; align-items: center; }
+  .syntaxSummary { min-height: 44px; }
+  .syntaxBody { grid-template-columns: minmax(0, 1fr); }
+}

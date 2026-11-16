@@ -1,7 +1,10 @@
 // Minimal popover: a trigger button and a floating panel that closes on
 // outside click or Escape. Opens upward (it lives in the bottom dock).
+// In the compact layout (phones, tablets) the panel opens as a bottom sheet instead.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCompact } from "../compact";
+import { BottomSheet } from "./BottomSheet";
 import styles from "./TransportDock.module.css";
 
 export function Popover({
@@ -42,9 +45,19 @@ export function Popover({
     onOpenChange?.(next);
   };
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const compact = useCompact();
+  // Switching layout (window resized, tablet rotated) closes it rather than turning a panel into a sheet.
+  const wasCompact = useRef(compact);
+  useEffect(() => {
+    if (wasCompact.current === compact) return;
+    wasCompact.current = compact;
+    if (open) setOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compact]);
 
   useEffect(() => {
-    if (!open) return;
+    // The sheet handles its own closing (and lives outside rootRef, in a portal).
+    if (!open || compact) return;
     const onDown = (e: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
@@ -58,7 +71,8 @@ export function Popover({
       document.removeEventListener("keydown", onKey);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, compact]);
+  const content = typeof children === "function" ? children(() => setOpen(false)) : children;
 
   return (
     <div className={styles.popoverRoot} ref={rootRef}>
@@ -77,14 +91,18 @@ export function Popover({
           </>
         )}
       </button>
-      {open && (
+      {compact ? (
+        <BottomSheet open={open} onClose={() => setOpen(false)} title={label}>
+          {content}
+        </BottomSheet>
+      ) : open && (
         <div
           className={`${styles.popover}${placement === "down" ? ` ${styles.popoverDown}` : ""}`}
           role="dialog"
           aria-label={label}
           style={{ ...(width ? { width } : null), ...(align === "left" ? { left: 0, right: "auto" } : null) }}
         >
-          {typeof children === "function" ? children(() => setOpen(false)) : children}
+          {content}
         </div>
       )}
     </div>

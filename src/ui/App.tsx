@@ -1,7 +1,7 @@
 // App shell: settings load + persist banner, screen routing (spec 11.4).
 // No external state/router library (spec 3): plain useState-based routing.
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_SETTINGS, type Settings } from "../model";
 import type { StorageAdapter } from "./storageTypes";
 import { Library } from "./screens/Library";
@@ -20,6 +20,9 @@ import type { ClipRecord } from "../recording";
 import { SAMPLE_SONGS } from "../samples";
 import { ShellProvider, useShell, useStatusSlot } from "./shell/AppShellContext";
 import { Rail, type NavTarget } from "./shell/Rail";
+import { TabBar, hidesTabBar } from "./shell/TabBar";
+import { nextBackTarget } from "./shell/backTarget";
+import { useCompact } from "./compact";
 import { Pocket, type PocketHide } from "./shell/Pocket";
 import { Home, type HomeTarget } from "./screens/Home";
 import { pickedFromName, type PickedChord } from "./chordPractice/picked";
@@ -66,9 +69,18 @@ function initialScreen(): Screen {
 
 export function App({ storage }: AppProps) {
   const [settings, setSettingsState] = useState<Settings>(DEFAULT_SETTINGS);
+  const compact = useCompact();
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [persisted, setPersisted] = useState(true);
   const [screen, setScreen] = useState<Screen>(initialScreen);
+  // Back arrows return to the top-level screen the person came from (Home, Songs, Library…).
+  const backTo = useRef<Screen>({ kind: "library" });
+  const prevScreen = useRef<Screen>(screen);
+  useEffect(() => {
+    backTo.current = nextBackTarget(backTo.current, prevScreen.current, screen);
+    prevScreen.current = screen;
+  }, [screen]);
+  const goBack = () => setScreen(backTo.current);
   const [askTitle, setAskTitle] = useState<string | null>(null);
   const [songText, setSongText] = useState<string | null>(null);
   const [songError, setSongError] = useState<string | null>(null);
@@ -185,6 +197,7 @@ export function App({ storage }: AppProps) {
         ? "library"
         : null;
   const inPractice = screen.kind === "song" || screen.kind === "sample";
+  const showTabBar = compact && !hidesTabBar(screen.kind);
   const pocketHide: PocketHide = screen.kind === "tuner" ? "tuner" : screen.kind === "metronome" ? "metronome" : screen.kind === "recorder" ? "recorder" : null;
 
   /** Saves an example as an editable library copy and opens it. */
@@ -306,7 +319,7 @@ export function App({ storage }: AppProps) {
                 if (r.ok) setScreen({ kind: "song", id: r.id });
                 return r.ok ? { ok: true as const } : r;
               }}
-              onBack={() => setScreen({ kind: "library" })}
+              onBack={goBack}
               onSettingsChange={persistSettings}
             />
           ) : (
@@ -321,7 +334,7 @@ export function App({ storage }: AppProps) {
           settings={settings}
           onSaveSong={handleSaveNewSong}
           onSaved={(id) => setScreen({ kind: "song", id })}
-          onCancel={() => setScreen({ kind: "library" })}
+          onCancel={goBack}
           onOpenEditor={openEditor}
           onOpenSharedLibrary={() => setScreen({ kind: "shared" })}
         />
@@ -359,7 +372,7 @@ export function App({ storage }: AppProps) {
             initialText={songText}
             settings={settings}
             onSave={(text) => handleSaveSong(text, screen.kind === "song" ? screen.id : undefined)}
-            onBack={() => setScreen({ kind: "library" })}
+            onBack={goBack}
             onEdit={(text) => openEditor({ kind: "song", songId: screen.id, songText: text })}
             onSettingsChange={persistSettings}
           />
@@ -370,7 +383,7 @@ export function App({ storage }: AppProps) {
           settings={settings}
           onSaveAsSong={handleSaveNewSong}
           onSaved={(id) => setScreen({ kind: "song", id })}
-          onBack={() => setScreen({ kind: "library" })}
+          onBack={goBack}
           onSettingsChange={persistSettings}
         />
       )}
@@ -388,7 +401,7 @@ export function App({ storage }: AppProps) {
           settings={settings}
           onChange={persistSettings}
           onOpenCalibration={() => setScreen({ kind: "calibration", returnTo: "settings" })}
-          onBack={() => setScreen({ kind: "library" })}
+          onBack={goBack}
         />
       )}
 
@@ -412,15 +425,28 @@ export function App({ storage }: AppProps) {
       <DriveDialogs />
       <SharingProvider storage={storage} settings={settings} onSettingsChange={persistSettings}>
       <div className={shellStyles.layout}>
-        <Rail
-          active={activeNav}
-          onNavigate={navigate}
-          theme={settings.theme}
-          resolvedDark={resolveTheme(settings.theme, systemDark) === "dark"}
-          onThemeChange={(theme) => persistSettings({ ...settings, theme })}
-          account={<AccountChip collapsed onOpenSettings={() => setScreen({ kind: "settings" })} />}
-        />
-        <main className={shellStyles.main}>
+        {compact ? (
+          showTabBar && (
+            <TabBar
+              active={activeNav}
+              onNavigate={navigate}
+              theme={settings.theme}
+              resolvedDark={resolveTheme(settings.theme, systemDark) === "dark"}
+              onThemeChange={(theme) => persistSettings({ ...settings, theme })}
+              account={<AccountChip collapsed={false} onOpenSettings={() => setScreen({ kind: "settings" })} />}
+            />
+          )
+        ) : (
+          <Rail
+            active={activeNav}
+            onNavigate={navigate}
+            theme={settings.theme}
+            resolvedDark={resolveTheme(settings.theme, systemDark) === "dark"}
+            onThemeChange={(theme) => persistSettings({ ...settings, theme })}
+            account={<AccountChip collapsed onOpenSettings={() => setScreen({ kind: "settings" })} />}
+          />
+        )}
+        <main className={`${shellStyles.main}${showTabBar ? ` ${shellStyles.mainWithTabs}` : ""}`}>
           <StatusSlot />
           {!persisted && !settings.persistBannerDismissed ? (
             <ChipRow>
@@ -436,7 +462,7 @@ export function App({ storage }: AppProps) {
           {content}
         </main>
       </div>
-      <Pocket settings={settings} onSettingsChange={persistSettings} hide={pocketHide} inPractice={inPractice} />
+      <Pocket settings={settings} onSettingsChange={persistSettings} hide={pocketHide} inPractice={inPractice} aboveTabBar={showTabBar} />
       </SharingProvider>
       </DriveProviderWithToasts>
     </ShellProvider>

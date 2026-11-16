@@ -39,6 +39,8 @@ export class PlaybackController {
   private following = true;
   private scrollAnim: { fromTop: number; toTop: number; startMs: number } | null = null;
   private programmaticScroll = false;
+  /** The scrollTop the follow animation last set: a scroll event landing there is ours, not the user's. */
+  private lastProgrammaticTop = Number.NaN;
   private envelopeQueue: EnvelopePoint[] = [];
   private verdictQueue: Verdict[] = [];
   private rafHandle: number | null = null;
@@ -53,6 +55,8 @@ export class PlaybackController {
 
   private onScroll = (): void => {
     if (this.programmaticScroll) return;
+    // The browser delivers scroll events a frame after we set scrollTop, after the flag above is cleared.
+    if (Math.abs(this.opts.container.scrollTop - this.lastProgrammaticTop) <= 1.5) return;
     this.onManualScrollHint();
   };
 
@@ -194,6 +198,7 @@ export class PlaybackController {
     const value = fromTop + (toTop - fromTop) * eased;
     this.programmaticScroll = true;
     this.opts.container.scrollTop = value;
+    this.lastProgrammaticTop = this.opts.container.scrollTop;
     window.setTimeout(() => {
       this.programmaticScroll = false;
     }, 0);

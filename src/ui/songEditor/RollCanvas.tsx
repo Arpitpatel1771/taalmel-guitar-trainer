@@ -1,7 +1,8 @@
 // The piano roll: one canvas for ruler, keyboard column, grid and notes, inside a scroll box. All
 // mouse handling lives here; edits go out as operations through the callbacks.
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { Pause, Play } from "lucide-react";
 import { createVideoSongMapper, type TickSecMap, type VideoHints } from "../../audio/hints";
 import {
   SNAP_TICKS,
@@ -19,11 +20,14 @@ import {
 } from "../../songEditor";
 import type { StringNumber } from "../../model";
 import { soundingMidi } from "../../notation";
+import { useCompact } from "../compact";
 import { FLAG_HIT_W, FLAG_Y0, FLAG_Y1, STRING_LETTERS, drawRoll, readRollTheme, type RollTheme } from "./rollDraw";
 import {
   DRAG_THRESHOLD,
   KEY_W,
   LANE_H,
+  MAX_ZOOM,
+  MIN_ZOOM,
   RULER_H,
   applyDrag,
   drawSpan,
@@ -41,6 +45,19 @@ import {
   type Rect,
   type RollView,
 } from "./rollGeometry";
+import {
+  LONG_PRESS_MS,
+  LONG_PRESS_SLOP,
+  TOUCH_HANDLE_W,
+  TOUCH_HIT_SLOP_Y,
+  isDoubleTap,
+  midpoint,
+  panScroll,
+  pinchScale,
+  pinchScrollX,
+  pinchZoom,
+  type Pt,
+} from "./touchGestures";
 import styles from "./songEditor.module.css";
 
 export type RollTool = "select" | "draw";
@@ -82,6 +99,12 @@ export interface RollCanvasProps {
   onScroll: (x: number, y: number) => void;
   /** Ctrl + wheel changes the time zoom; Shift + Ctrl + wheel changes the row height. */
   onZoomWheel: (dir: 1 | -1, axis: "x" | "y") => void;
+  /** Pinching with two fingers sets the time zoom directly. */
+  onZoomSet: (zoom: number) => void;
+  /** Compact layout: a play/pause button over the roll, so it stays in reach while the roll fills the screen. */
+  onTogglePlay?: () => void;
+  /** Compact layout: controls pinned over the roll's bottom-right corner (the selection bar). */
+  overlay?: ReactNode;
   onPreviewPitch: (midi: number) => void;
   apiRef: MutableRefObject<RollApi | null>;
 }
@@ -98,10 +121,23 @@ const EDGE_SPEED = 18;
 
 type Drag =
   | { kind: "move" | "resize"; startDoc: EdDoc; ids: number[]; anchorId: number; x0: number; y0: number; sx0: number; sy0: number; started: boolean; result: OpResult | null }
-  | { kind: "box"; x0: number; y0: number; base: number[] }
+  | { kind: "box"; x0: number; y0: number; base: number[]; started: boolean }
   | { kind: "draw"; x0: number; y0: number; midi: number; string: StringNumber; started: boolean }
   | { kind: "ruler"; x0: number; tick0: number; started: boolean }
   | { kind: "flag"; x0: number; offset0: number; started: boolean };
+
+/** Two fingers on the roll: pinch sets the zoom, dragging pans. `anchorTick` stays under the fingers' midpoint. */
+interface Gesture {
+  ids: [number, number];
+  a0: Pt;
+  b0: Pt;
+  zoom0: number;
+  anchorTick: number;
+  /** Midpoint now, px from the grid's left edge. */
+  gridX: number;
+  midY0: number;
+  scrollY0: number;
+}
 
 interface Tip {
   x: number;
@@ -128,6 +164,14 @@ export function RollCanvas(props: RollCanvasProps) {
   const hoverRef = useRef<number | null>(null);
   const lastClick = useRef<{ t: number; x: number; y: number } | null>(null);
   const raf = useRef(0);
+  const compact = useCompact();
+  // Touch: fingers down, the two-finger gesture, the last tap (for double-tap) and the long-press timer.
+  const touches = useRef(new Map<number, Pt>());
+  const gesture = useRef<Gesture | null>(null);
+  const ignoreTouch = useRef(false);
+  const lastTouchTap = useRef<{ t: number; x: number; y: number } | null>(null);
+  const lastType = useRef("mouse");
+  const pressTimer = useRef(0);
   const sizeRef = useRef(size);
   sizeRef.current = size;
 
@@ -235,7 +279,9 @@ export function RollCanvas(props: RollCanvasProps) {
     const prev = prevGeom.current;
     prevGeom.current = g;
     if (!el || prev === g) return;
-    if (prev.pxPerTick !== g.pxPerTick) {
+    if (prev.pxPerTick !== g.pxPerTick && gesture.current) {
+      el.scrollLeft = pinchScrollX(gesture.current.anchorTick, g.pxPerTick, gesture.current.gridX);
+    } else if (prev.pxPerTick !== g.pxPerTick) {
       const gridW = el.clientWidth - KEY_W;
       const centre = (el.scrollLeft + gridW / 2) / prev.pxPerTick;
       el.scrollLeft = Math.max(0, centre * g.pxPerTick - gridW / 2);
@@ -331,7 +377,90 @@ export function RollCanvas(props: RollCanvasProps) {
     return text + (conflictSet.has(id) ? ". No free string for this note." : "");
   };
 
+  const clearLongPress = (): void => {
+    window.clearTimeout(pressTimer.current);
+    pressTimer.current = 0;
+  };
+  useEffect(() => clearLongPress, []);
+  /** Movement a press may make before it is a drag: a finger jitters more than a mouse. */
+  const dragSlop = (): number => (lastType.current === "touch" ? LONG_PRESS_SLOP : DRAG_THRESHOLD);
+
+  const cancelDrag = (): void => {
+    clearLongPress();
+    dragRef.current = null;
+    previewDoc.current = null;
+    boxRef.current = null;
+    ghostRef.current = null;
+    previewLoop.current = null;
+    previewOffset.current = null;
+    requestDraw();
+  };
+
+  const startGesture = (): void => {
+    const el = scrollerRef.current;
+    const [first, second] = [...touches.current.entries()];
+    if (!el || !first || !second) return;
+    cancelDrag();
+    const mid = midpoint(first[1], second[1]);
+    const r = canvasRef.current!.getBoundingClientRect();
+    const gridX = mid.x - r.left - KEY_W;
+    gesture.current = {
+      ids: [first[0], second[0]],
+      a0: first[1],
+      b0: second[1],
+      zoom0: P.current.zoom,
+      anchorTick: xToTick(g, scrollPos.current.x + gridX),
+      gridX,
+      midY0: mid.y,
+      scrollY0: el.scrollTop,
+    };
+  };
+
+  const moveGesture = (): void => {
+    const gs = gesture.current;
+    const el = scrollerRef.current;
+    const a = touches.current.get(gs?.ids[0] ?? -1);
+    const b = touches.current.get(gs?.ids[1] ?? -1);
+    if (!gs || !el || !a || !b) return;
+    const mid = midpoint(a, b);
+    gs.gridX = mid.x - canvasRef.current!.getBoundingClientRect().left - KEY_W;
+    const zoom = pinchZoom(gs.zoom0, pinchScale(gs.a0, gs.b0, a, b), MIN_ZOOM, MAX_ZOOM);
+    if (zoom !== P.current.zoom) P.current.onZoomSet(zoom);
+    // The new zoom isn't laid out yet (the layout effect finishes the scroll once it is); pan with what fits now.
+    el.scrollLeft = pinchScrollX(gs.anchorTick, makeGeom(zoom, P.current.rowH, P.current.view).pxPerTick, gs.gridX);
+    el.scrollTop = panScroll(gs.scrollY0, mid.y - gs.midY0);
+  };
+
+  /** Long-press on a note does what right-click does: delete it. */
+  const fireLongPress = (): void => {
+    pressTimer.current = 0;
+    const drag = dragRef.current;
+    if (!drag || (drag.kind !== "move" && drag.kind !== "resize") || drag.started) return;
+    const p = P.current;
+    dragRef.current = null;
+    previewDoc.current = null;
+    p.onEdit(deleteNotes(p.doc, [drag.anchorId]));
+    if (p.selected.includes(drag.anchorId)) p.onSelect(p.selected.filter((id) => id !== drag.anchorId));
+    requestDraw();
+  };
+  const startLongPress = (): void => {
+    clearLongPress();
+    pressTimer.current = window.setTimeout(fireLongPress, LONG_PRESS_MS);
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>): void => {
+    lastType.current = e.pointerType;
+    const touch = e.pointerType === "touch";
+    if (touch) {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      e.currentTarget.setPointerCapture(e.pointerId);
+      if (touches.current.size >= 2) {
+        if (!gesture.current) startGesture();
+        ignoreTouch.current = true;
+        return;
+      }
+      if (ignoreTouch.current) return;
+    }
     if (e.button !== 0) return;
     scrollerRef.current?.focus({ preventScroll: true });
     const p = P.current;
@@ -361,7 +490,10 @@ export function RollCanvas(props: RollCanvasProps) {
       const tick = Math.max(0, xToTick(g, x));
       const prevClick = lastClick.current;
       lastClick.current = { t: e.timeStamp, x: e.clientX, y: e.clientY };
-      if (prevClick && e.timeStamp - prevClick.t < 400 && Math.hypot(prevClick.x - e.clientX, prevClick.y - e.clientY) < 5) {
+      const again = touch
+        ? isDoubleTap(prevClick, lastClick.current)
+        : !!prevClick && e.timeStamp - prevClick.t < 400 && Math.hypot(prevClick.x - e.clientX, prevClick.y - e.clientY) < 5;
+      if (again) {
         lastClick.current = null;
         const len = barLengthTicks(d);
         const bar = Math.floor(tick / len);
@@ -374,7 +506,7 @@ export function RollCanvas(props: RollCanvasProps) {
     }
 
     const { x, y } = gridPoint(cx, cy);
-    const hit = hitTest(g, d, x, y);
+    const hit = hitTest(g, d, x, y, touch ? { handleW: TOUCH_HANDLE_W, slopY: TOUCH_HIT_SLOP_Y } : undefined);
     const sel = new Set(p.selected);
     if (hit) {
       const n = noteById(d, hit.id)!;
@@ -392,6 +524,7 @@ export function RollCanvas(props: RollCanvasProps) {
       if (ids.join() !== p.selected.join()) p.onSelect(ids);
       if (hit.zone === "body") p.onPreviewPitch(noteMidi(d, n));
       dragRef.current = { kind: hit.zone === "resize" ? "resize" : "move", startDoc: d, ids, anchorId: hit.id, x0: e.clientX, y0: e.clientY, sx0: scrollPos.current.x, sy0: scrollPos.current.y, started: false, result: null };
+      if (touch) startLongPress();
       return;
     }
     if (p.tool === "draw") {
@@ -401,7 +534,7 @@ export function RollCanvas(props: RollCanvasProps) {
       requestDraw();
       return;
     }
-    dragRef.current = { kind: "box", x0: x, y0: y, base: e.shiftKey ? [...p.selected] : [] };
+    dragRef.current = { kind: "box", x0: x, y0: y, base: e.shiftKey ? [...p.selected] : [], started: false };
   };
 
   // FL-style shortcuts in either tool: double-click empty space adds a note, right-click a note deletes it.
@@ -412,17 +545,30 @@ export function RollCanvas(props: RollCanvasProps) {
     return { x, y, hit: hitTest(g, P.current.doc, x, y) };
   };
 
-  const onDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>): void => {
+  const addAtPoint = (x: number, y: number): void => {
     const p = P.current;
-    const at = notePointAt(e);
-    if (!at || at.hit || p.tool !== "select") return;
     dragRef.current = null;
-    const span = drawSpan(g, p.doc, at.x, at.x, snapTicks, p.drawLength, false);
-    const string = stringAtY(at.y);
-    p.onAddNote(span.startTick, g.view === "pitch" ? midiAtY(g, at.y) : soundingMidi(string, 0, capoAtTick(p.doc, span.startTick)), span.durationTicks, g.view === "strings" ? string : undefined);
+    const span = drawSpan(g, p.doc, x, x, snapTicks, p.drawLength, false);
+    const string = stringAtY(y);
+    p.onAddNote(span.startTick, g.view === "pitch" ? midiAtY(g, y) : soundingMidi(string, 0, capoAtTick(p.doc, span.startTick)), span.durationTicks, g.view === "strings" ? string : undefined);
+  };
+
+  const onDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>): void => {
+    if (lastType.current === "touch") return; // a double-tap is handled on pointer up
+    const at = notePointAt(e);
+    if (!at || at.hit || P.current.tool !== "select") return;
+    addAtPoint(at.x, at.y);
   };
 
   const onContextMenu = (e: React.MouseEvent<HTMLCanvasElement>): void => {
+    if (lastType.current === "touch") {
+      e.preventDefault(); // no system menu; the browser's own long-press signal can beat our timer
+      if (pressTimer.current) {
+        clearLongPress();
+        fireLongPress();
+      }
+      return;
+    }
     const p = P.current;
     const at = notePointAt(e);
     if (!at?.hit) return;
@@ -473,6 +619,15 @@ export function RollCanvas(props: RollCanvasProps) {
     [],
   );
 
+  const onCanvasMove = (e: React.PointerEvent<HTMLCanvasElement>): void => {
+    if (e.pointerType === "touch") {
+      if (touches.current.has(e.pointerId)) touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (gesture.current) moveGesture();
+      if (gesture.current || ignoreTouch.current || !dragRef.current) return;
+    }
+    onPointerMove(e);
+  };
+
   const onPointerMove = (e: PtrPos): void => {
     const p = P.current;
     const drag = dragRef.current;
@@ -508,8 +663,9 @@ export function RollCanvas(props: RollCanvasProps) {
     if (drag.kind === "move" || drag.kind === "resize") {
       const dx = e.clientX - drag.x0 + (scrollPos.current.x - drag.sx0);
       const dy = e.clientY - drag.y0 + (scrollPos.current.y - drag.sy0);
-      if (!drag.started && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+      if (!drag.started && Math.hypot(dx, dy) < dragSlop()) return;
       drag.started = true;
+      clearLongPress();
       canvasRef.current!.style.cursor = drag.kind === "resize" ? "ew-resize" : "grabbing";
       const res = applyDrag(drag.startDoc, g, { mode: drag.kind, ids: drag.ids, anchorId: drag.anchorId, dxPx: dx, dyPx: dy, snapTicks, free: e.altKey });
       drag.result = res;
@@ -517,6 +673,8 @@ export function RollCanvas(props: RollCanvasProps) {
       requestDraw();
     } else if (drag.kind === "box") {
       const { x, y } = gridPoint(cx, cy);
+      if (!drag.started && lastType.current === "touch" && Math.hypot(x - drag.x0, y - drag.y0) < dragSlop()) return;
+      drag.started = true;
       const box = { x: Math.min(drag.x0, x), y: Math.min(drag.y0, y), w: Math.abs(x - drag.x0), h: Math.abs(y - drag.y0) };
       boxRef.current = box;
       const ids = new Set([...drag.base, ...notesInBox(g, p.doc, box)]);
@@ -524,13 +682,13 @@ export function RollCanvas(props: RollCanvasProps) {
       requestDraw();
     } else if (drag.kind === "draw") {
       const { x } = gridPoint(cx, cy);
-      if (!drag.started && Math.abs(x - drag.x0) < DRAG_THRESHOLD) return;
+      if (!drag.started && Math.abs(x - drag.x0) < dragSlop()) return;
       drag.started = true;
       const span = drawSpan(g, p.doc, drag.x0, x, snapTicks, p.drawLength, true);
       ghostRef.current = ghostRect(span.startTick, span.durationTicks, drag.midi, drag.string);
       requestDraw();
     } else if (drag.kind === "ruler") {
-      if (!drag.started && Math.abs(e.clientX - drag.x0) < DRAG_THRESHOLD) return;
+      if (!drag.started && Math.abs(e.clientX - drag.x0) < dragSlop()) return;
       drag.started = true;
       const { x } = gridPoint(cx, cy);
       const t1 = Math.max(0, beatSnap(xToTick(g, x)));
@@ -539,7 +697,7 @@ export function RollCanvas(props: RollCanvasProps) {
       previewLoop.current = b > a ? { startTick: a, endTick: b } : null;
       requestDraw();
     } else if (drag.kind === "flag") {
-      if (!drag.started && Math.abs(e.clientX - drag.x0) < DRAG_THRESHOLD) return;
+      if (!drag.started && Math.abs(e.clientX - drag.x0) < dragSlop()) return;
       drag.started = true;
       const ticks = (e.clientX - drag.x0) / g.pxPerTick;
       // The flag marks a moment in the video: dragging it right onto a later downbeat makes bar 1 later in the video.
@@ -554,7 +712,13 @@ export function RollCanvas(props: RollCanvasProps) {
     const p = P.current;
     const drag = dragRef.current;
     dragRef.current = null;
+    clearLongPress();
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    if (e.pointerType === "touch") {
+      touches.current.delete(e.pointerId);
+      if (touches.current.size < 2) gesture.current = null;
+      if (touches.current.size === 0) ignoreTouch.current = false;
+    }
     if (!drag) return;
     const { cx, cy } = local(e);
     const pdoc = previewDoc.current;
@@ -570,8 +734,16 @@ export function RollCanvas(props: RollCanvasProps) {
       if (drag.started && drag.result) p.onEdit(drag.result, drag.kind === "move");
       else if (pdoc) requestDraw();
     } else if (drag.kind === "box") {
-      if (!box || (box.w < DRAG_THRESHOLD && box.h < DRAG_THRESHOLD)) {
+      if (!box || (box.w < dragSlop() && box.h < dragSlop())) {
         if (!e.shiftKey) p.onSelect([]);
+      }
+      // A second quick tap on empty space adds a note, like double-click.
+      if (e.pointerType === "touch" && !drag.started) {
+        const tap = { t: e.timeStamp, x: e.clientX, y: e.clientY };
+        if (isDoubleTap(lastTouchTap.current, tap)) {
+          lastTouchTap.current = null;
+          if (p.tool === "select") addAtPoint(drag.x0, drag.y0);
+        } else lastTouchTap.current = tap;
       }
     } else if (drag.kind === "draw") {
       const { x } = gridPoint(cx, cy);
@@ -603,7 +775,11 @@ export function RollCanvas(props: RollCanvasProps) {
       className={styles.rollScroller}
       tabIndex={0}
       role="group"
-      aria-label="Notes. Double-click empty space to add a note, right-click a note to delete it. Arrow keys move the selected notes, Delete removes them, Space plays and pauses."
+      aria-label={
+        compact
+          ? "Notes. Double-tap empty space to add a note, long-press a note to delete it, pinch to zoom, drag with two fingers to scroll. Arrow keys move the selected notes, Delete removes them, Space plays and pauses."
+          : "Notes. Double-click empty space to add a note, right-click a note to delete it. Arrow keys move the selected notes, Delete removes them, Space plays and pauses."
+      }
       onScroll={onScroll}
     >
       <div className={styles.rollSizer} style={{ width: totalW, height: totalH }}>
@@ -614,13 +790,19 @@ export function RollCanvas(props: RollCanvasProps) {
             style={{ width: size.w, height: size.h }}
             aria-hidden="true"
             onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
+            onPointerMove={onCanvasMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
             onPointerLeave={onPointerLeave}
             onDoubleClick={onDoubleClick}
             onContextMenu={onContextMenu}
           />
+          {props.onTogglePlay && (
+            <button type="button" className={styles.rollPlay} aria-label={props.playing ? "Pause" : "Play"} onClick={props.onTogglePlay}>
+              {props.playing ? <Pause size={20} aria-hidden /> : <Play size={20} aria-hidden />}
+            </button>
+          )}
+          {props.overlay}
           {tip && (
             <div className={styles.rollTip} style={{ left: Math.min(tip.x, size.w - 260), top: tip.y }} role="presentation">
               {tip.text}

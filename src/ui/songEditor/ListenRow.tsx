@@ -29,6 +29,7 @@ export function ListenRow({
   pb,
   bpm,
   hints,
+  hintsAvailable,
   hasVideo,
   brightness,
   onBrightness,
@@ -43,6 +44,8 @@ export function ListenRow({
   /** The song's tempo; the speed buttons are labelled in bpm of it. */
   bpm: number;
   hints: HintsHandle;
+  /** False where the browser can't capture a tab's audio (no getDisplayMedia): the pitch hints controls are left out. */
+  hintsAvailable: boolean;
   hasVideo: boolean;
   brightness: number;
   onBrightness: (v: number) => void;
@@ -118,13 +121,13 @@ export function ListenRow({
                 Your notes
               </label>
             )}
-            {hasVideo && <span className={s.divider} aria-hidden />}
-            {hasVideo && (
+            {hintsAvailable && <span className={s.divider} aria-hidden />}
+            {hintsAvailable && (
               <Toggle on={hints.layerOn} onClick={onHintsToggle} title="Show which pitches the video is playing">
                 <AudioLines size={15} aria-hidden /> Pitch hints
               </Toggle>
             )}
-            {hasVideo && hints.layerOn && (
+            {hintsAvailable && hints.layerOn && (
               <>
                 <label className={s.balance}>
                   Brightness

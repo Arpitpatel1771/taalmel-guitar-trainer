@@ -61,3 +61,69 @@
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
 }
+
+/* Compact practice (specs/8-11-mobile.md §2, stage 2): back arrow, a title that may take two lines, the
+ * song's actions folded into a sheet, a one-line chip row, and room under the sheet for the transport bar
+ * (72px, 56px in a short landscape window, plus the safe area). */
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  :global(.screen.song-view) {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    gap: var(--space-2);
+  }
+  .header { gap: var(--space-1); padding: 0 0 var(--space-1); }
+  .titleRow { flex-wrap: nowrap; gap: var(--space-2); }
+  .title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: var(--text-xl);
+    line-height: 1.2;
+  }
+  .backBtn, .moreBtn {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+    padding: 0;
+    border-radius: 50%;
+    background: transparent;
+    border-color: transparent;
+    color: var(--text);
+  }
+  .backBtn { margin-left: calc(-1 * var(--space-2)); }
+  .meta { flex-wrap: wrap; row-gap: 0; font-size: var(--text-md); }
+  /* One scrolling line instead of a wall of chips. */
+  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: calc(-1 * var(--gutter)); padding-right: var(--gutter); }
+  .chips::-webkit-scrollbar { display: none; }
+  .chips > * { flex-shrink: 0; }
+  .chipsInline { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .chipsInline:empty { display: none; }
+  .sheetActions { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); }
+  .sheetActions button { width: 100%; justify-content: flex-start; gap: var(--space-3); }
+  .sheetClock { display: flex; }
+  .sheetClock > * { width: 100%; }
+
+  /* The sheet scrolls inside its own box; leave room at its end so the Tools button never hides a bar. */
+  :global(.practice-area .sheet-scroll) { padding-bottom: 76px; overscroll-behavior: contain; }
+  /* A bar header is a role=button, so it is already 44px tall here. */
+  :global(.bar-labels) { -webkit-touch-callout: none; }
+}
+
+/* Short window (a phone held sideways): every pixel of height goes to the sheet. */
+@media (max-height: 500px) and ((max-width: 899.98px) or ((hover: none) and (pointer: coarse))) {
+  :global(.screen.song-view) { padding-bottom: calc(56px + env(safe-area-inset-bottom)); padding-top: calc(4px + env(safe-area-inset-top)); gap: var(--space-1); }
+  .meta { display: none; }
+  /* Back arrow, title, status chips and the menu share one row. */
+  .header { flex-direction: row; align-items: center; gap: var(--space-2); }
+  .titleRow { display: contents; }
+  .backBtn { order: 0; }
+  .title { order: 1; }
+  .chipsInline { order: 2; flex-wrap: nowrap; flex-shrink: 0; }
+  .titleRow > div { order: 3; }
+  .chips { order: 4; }
+  .title { font-size: var(--text-lg); -webkit-line-clamp: 1; line-clamp: 1; }
+  :global(.practice-area .sheet-scroll) { padding-bottom: 8px; }
+}

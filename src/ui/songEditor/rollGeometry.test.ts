@@ -39,6 +39,15 @@ describe("roll geometry", () => {
     expect(hitTest(g, doc, r.x + 4, r.y + 40)).toBeNull();
   });
 
+  it("gives a finger a wider resize handle and a little vertical slack", () => {
+    const doc = docWith({ start: 0, midi: E4, len: PPQ * 4 });
+    const r = noteRect(g, doc, doc.notes[0]!);
+    expect(hitTest(g, doc, r.x + r.w - 12, r.y + 3)).toEqual({ id: 1, zone: "body" });
+    expect(hitTest(g, doc, r.x + r.w - 12, r.y + 3, { handleW: 16 })).toEqual({ id: 1, zone: "resize" });
+    expect(hitTest(g, doc, r.x + 4, r.y - 2)).toBeNull();
+    expect(hitTest(g, doc, r.x + 4, r.y - 2, { slopY: 3 })).toEqual({ id: 1, zone: "body" });
+  });
+
   it("box selects every touched note", () => {
     const doc = docWith({ start: 0, midi: E4, len: PPQ }, { start: PPQ * 2, midi: E4 + 2, len: PPQ });
     const first = noteRect(g, doc, doc.notes[0]!);

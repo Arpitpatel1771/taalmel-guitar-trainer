@@ -36,6 +36,10 @@
   .start, .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .title { font-size: 32px; }
 }
-@media (max-width: 560px) {
-  .start, .grid { grid-template-columns: minmax(0, 1fr); }
+/* Compact (specs/8-11-mobile.md §6.1): one column, continue card first, toolbox 2 across. */
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  .continue { grid-template-columns: minmax(0, 1fr); }
+  .start { grid-template-columns: minmax(0, 1fr); }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+  .title { font-size: 28px; }
 }

@@ -922,3 +922,18 @@ h4 {
   pointer-events: none;
 }
 .playback-cursor.chip-left .cursor-chip { left: auto; right: 10px; }
+
+/* ---- Compact layout: touch basics (specs/8-11-mobile.md §4). Laptop styles above stay untouched. ---- */
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  html, body { overflow-x: hidden; }
+  .screen {
+    padding-left: calc(var(--gutter) + env(safe-area-inset-left));
+    padding-right: calc(var(--gutter) + env(safe-area-inset-right));
+    padding-top: calc(16px + env(safe-area-inset-top));
+  }
+  /* Tap targets: at least 44 × 44 px. */
+  button, [role="button"], a.btn, select { min-height: 44px; }
+  button, [role="button"] { min-width: 44px; }
+  /* Phone browsers zoom the page when a smaller input is focused. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: max(16px, 1em); min-height: 44px; }
+}

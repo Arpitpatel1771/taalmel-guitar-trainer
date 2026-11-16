@@ -67,3 +67,21 @@
 .draftCard { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
 .draftMain { flex: 1; min-width: 0; }
 .draftTitle { font-weight: var(--weight-semibold); }
+
+/* ---- Compact layout (specs/8-11-mobile.md stage 4): one column, thumb-sized controls. ---- */
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  .stack { max-width: none; }
+  .card { padding: var(--space-4); }
+  .cardHead { gap: var(--space-3); }
+  .fields { grid-template-columns: minmax(0, 1fr); }
+  .field input { font-size: max(16px, 1em); }
+  .bpmRow input { flex: 1; min-width: 0; }
+  .tabBox { min-height: 180px; font-size: max(16px, 1em); }
+  .actions { flex-direction: column; align-items: stretch; }
+  .actionsEnd { margin-left: 0; justify-content: center; }
+  .choices { grid-template-columns: minmax(0, 1fr); max-width: none; }
+  .choice { padding: var(--space-4); }
+  .drafts { max-width: none; }
+  .draftCard { flex-wrap: wrap; }
+  .draftMain { flex: 1 1 100%; }
+}

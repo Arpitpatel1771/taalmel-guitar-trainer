@@ -69,3 +69,63 @@
 .sampleCard:hover { background: var(--surface-1); }
 .addBtn { align-self: flex-start; height: 32px; font-size: var(--text-sm); border-radius: var(--radius-pill); background: var(--accent-tint); color: var(--accent-text); border-color: transparent; }
 .addBtn:hover:not(:disabled) { background: var(--accent-tint); border-color: var(--accent); }
+
+/* ---- Compact layout (specs/8-11-mobile.md §6.2): one-column rows, sticky search, floating + button. ---- */
+.fab { display: none; }
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  /* Only in compact: a size container is a new stacking context, which would change laptop menus. */
+  .listWrap { container-type: inline-size; }
+  /* Doubled class: page.module.css (loaded later) sets the actions' display. */
+  .headActions.headActions { display: none; }
+  /* Room to scroll the last row clear of the floating + button. */
+  :global(.library-screen) { padding-bottom: calc(56px + var(--space-6)); }
+  .toolbar {
+    position: sticky;
+    top: calc(-16px - env(safe-area-inset-top));
+    z-index: 5;
+    flex-wrap: nowrap;
+    margin: 0 calc(-1 * var(--gutter));
+    padding: var(--space-2) var(--gutter);
+    background: var(--surface-0);
+  }
+  .search { max-width: none; min-width: 0; }
+  .search input, .toolbar select { height: 44px; }
+  .searchIcon { top: 14px; }
+  .toolbar select { max-width: 42%; }
+  .spacer { display: none; }
+  .grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+  .card { gap: var(--space-2); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); }
+  .cardTop { align-items: center; }
+  .title {
+    min-height: 44px;
+    font-size: var(--text-lg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+    display: block;
+    line-height: 44px;
+  }
+  .chips, .foot { display: none; }
+  .density { height: 18px; }
+  .fab {
+    position: fixed;
+    left: calc(var(--gutter) + env(safe-area-inset-left));
+    bottom: calc(var(--tabbar-h) + var(--space-4) + env(safe-area-inset-bottom));
+    z-index: 45;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border-radius: 50%;
+    border: 0;
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: var(--shadow-float);
+  }
+  /* Tablets in landscape: two columns of rows when there is room. */
+  @container (min-width: 700px) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+}

@@ -13,6 +13,7 @@ import {
   resumeAudio,
   type Subdivision,
 } from "../../audio";
+import { useCompact } from "../compact";
 import { Field, Segmented, Stepper } from "../components/Controls";
 import { Button, Card, Slider } from "../components/kit";
 import { PageHead } from "../components/PageHead";
@@ -29,6 +30,7 @@ const TAP_RESET_MS = 2000;
 const TAP_AVERAGE = 4;
 
 export function MetronomeScreen({ settings, onChange }: { settings: Settings; onChange: (next: Settings) => void }) {
+  const compact = useCompact();
   const [bpm, setBpm] = useState(120);
   const [beatsPerBar, setBeatsPerBar] = useState(4);
   const [subdivision, setSubdivision] = useState<Subdivision>(1);
@@ -109,7 +111,7 @@ export function MetronomeScreen({ settings, onChange }: { settings: Settings; on
 
   return (
     <div className="screen">
-      <PageHead title="Metronome" sub="A steady click to play along to. Press Space to start and stop." />
+      <PageHead title="Metronome" sub={compact ? "A steady click to play along to." : "A steady click to play along to. Press Space to start and stop."} />
       <Card className={st.card}>
         <div className={st.dots} aria-hidden>
           {Array.from({ length: beatsPerBar }, (_, i) => (

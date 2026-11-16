@@ -188,12 +188,16 @@ export function Library({
           <h1 className={pg.title}>Songs</h1>
           <p className={pg.sub}>Your songs to practise. Open one to play along, or add a new one.</p>
         </div>
-        <div className={pg.actions}>
+        <div className={`${pg.actions} ${lib.headActions}`}>
           <Button variant="primary" icon={<Plus size={16} />} onClick={onNewSong}>
             Add a song
           </Button>
         </div>
       </header>
+      {/* Compact layout: Add a song is a floating button above the tab bar (hidden on laptops by CSS). */}
+      <button type="button" className={lib.fab} onClick={onNewSong} aria-label="Add a song">
+        <Plus size={24} />
+      </button>
 
       {showPersistBanner && (
         <div className="notice notice-info">
@@ -275,6 +279,7 @@ export function Library({
           )}
         </div>
       ) : (
+        <div className={lib.listWrap}>
         <ul className={lib.grid}>
           {visible.map((s) => {
             const sum = summaries.get(s.id);
@@ -346,12 +351,14 @@ export function Library({
             );
           })}
         </ul>
+        </div>
       )}
 
       <div className={lib.examplesHeader}>
         <h2 className={pg.section}>Example songs</h2>
         <span className={lib.emptyText}>Public-domain melodies. Practise them as they are, or add a copy you can edit.</span>
       </div>
+      <div className={lib.listWrap}>
       <ul className={lib.grid}>
         {SAMPLE_SONGS.map((sample) => {
           const sum = summarize(sample.text);
@@ -393,6 +400,7 @@ export function Library({
           );
         })}
       </ul>
+      </div>
 
       {shareSong && <ShareDialog title={shareSong.title} text={shareSong.text} onClose={() => setShareSong(null)} />}
 

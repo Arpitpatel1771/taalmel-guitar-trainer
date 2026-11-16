@@ -18,13 +18,20 @@ import { SessionSummaryPanel } from "../components/SessionSummaryPanel";
 import { usePlaybackEngine } from "../usePlaybackEngine";
 import { copyToClipboard, useDebouncedValue } from "../utils";
 import { useElementWidth } from "../useElementWidth";
-import { Copy, Mic, MicOff, Share2, VideoOff } from "lucide-react";
+import { ArrowLeft, Copy, MoreHorizontal, Mic, MicOff, Share2, VideoOff } from "lucide-react";
 import { ShareDialog } from "../sharing/ShareDialog";
 import { Chip, SegmentedControl } from "../components/kit";
+import { Popover } from "../components/Popover";
+import { useCompact } from "../compact";
 import { updateRecentSong } from "../../storage/recent";
 import { practiceBpmRange } from "../tempoLabels";
 import pr from "./Practice.module.css";
 import { ChipRow, StatusChip } from "../shell/StatusChip";
+
+/** Status chips go to the shell slot on a laptop; compact keeps them in the page flow, under the header. */
+function ChipsHost({ inline, children }: { inline: boolean; children: React.ReactNode }) {
+  return inline ? <div className={pr.chipsInline}>{children}</div> : <ChipRow>{children}</ChipRow>;
+}
 import { useRegisterPractice, useShell, useShellMic } from "../shell/AppShellContext";
 
 const OFFSET_STEPS_MS = [-100, -10, 10, 100];
@@ -47,6 +54,9 @@ function EditorPreview({ song, settings }: { song: Song; settings: Settings }) {
 const VIDEO_DOCK_MIN_WIDTH = 1100;
 const VIDEO_DOCK_WIDTH = 420;
 
+/** The song's action buttons. In the compact header they sit in a sheet (`inSheet`), and `close` shuts it. */
+export type HeaderActions = (close?: () => void, inSheet?: boolean) => React.ReactNode;
+
 export interface PracticeInitialState {
   loop: { startBar: number; endBar: number } | null;
 }
@@ -61,6 +71,8 @@ export function PracticeArea({
   recentId,
   initialState,
   headerActions,
+  onBack,
+  unsaved,
 }: {
   song: Song;
   settings: Settings;
@@ -74,9 +86,14 @@ export function PracticeArea({
   /** Loop and speed to start with (Home's Continue). */
   initialState?: PracticeInitialState;
   /** Buttons at the right of the practice header (edit, back). */
-  headerActions?: React.ReactNode;
+  headerActions?: HeaderActions;
+  /** The compact header's back arrow. */
+  onBack?: () => void;
+  /** The song text has changes that are not saved yet (shown in the compact header). */
+  unsaved?: boolean;
 }) {
   const shell = useShell();
+  const compact = useCompact();
   const engine = usePlaybackEngine({
     song,
     settings,
@@ -210,25 +227,78 @@ export function PracticeArea({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  const clockControl = (
+    <SegmentedControl<PracticeMode>
+      label="Clock"
+      value={engine.mode}
+      onChange={engine.setMode}
+      options={[
+        { value: "grid", label: "Metronome", title: "The metronome is the clock" },
+        { value: "video", label: "YouTube video", title: "The video is the clock" },
+      ]}
+    />
+  );
+
+  const statusChips = (
+      <ChipsHost inline={compact}>
+        {engine.micErrorMessage ? (
+          <StatusChip tone="error" icon={<MicOff size={13} />} title={engine.micErrorMessage}>
+            Mic unavailable
+          </StatusChip>
+        ) : engine.micListening ? (
+          <StatusChip tone="info" pulse title="Measuring room noise: stay quiet for a moment.">
+            Listening… stay quiet
+          </StatusChip>
+        ) : engine.micOn ? (
+          <StatusChip tone="ok" icon={<Mic size={13} />}>
+            Mic on
+          </StatusChip>
+        ) : compact ? null : (
+          <StatusChip icon={<MicOff size={13} />}>Mic off</StatusChip>
+        )}
+        {engine.micNotCalibrated && (
+          <StatusChip tone="warning" title="Timing may look late until you calibrate." onClick={shell.openCalibration}>
+            Not calibrated
+          </StatusChip>
+        )}
+        {engine.playNotes && engine.micOn && (
+          <StatusChip tone="warning" title="On speakers the mic hears the synthetic guitar and grades it as your playing.">
+            Play notes + mic: use headphones
+          </StatusChip>
+        )}
+        {engine.videoNotice && (
+          <StatusChip tone="warning" icon={<VideoOff size={13} />} title={engine.videoNotice}>
+            Video unavailable, using grid
+          </StatusChip>
+        )}
+      </ChipsHost>
+  );
+
   return (
     <div className="practice-area" ref={(el) => widthRef(el)}>
       <header className={pr.header}>
         <div className={pr.titleRow}>
+          {compact && onBack && (
+            <button className={pr.backBtn} onClick={onBack} aria-label="Back to library">
+              <ArrowLeft size={22} />
+            </button>
+          )}
           <h2 className={pr.title}>{song.header.title}</h2>
-          <div className={pr.actions}>
-            {engine.hasVideo && (
-              <SegmentedControl<PracticeMode>
-                label="Clock"
-                value={engine.mode}
-                onChange={engine.setMode}
-                options={[
-                  { value: "grid", label: "Metronome", title: "The metronome is the clock" },
-                  { value: "video", label: "YouTube video", title: "The video is the clock" },
-                ]}
-              />
-            )}
-            {headerActions}
-          </div>
+          {compact ? (
+            <Popover label="Song options" align="right" trigger={<MoreHorizontal size={22} />} triggerClassName={pr.moreBtn}>
+              {(close) => (
+                <div className={pr.sheetActions}>
+                  {engine.hasVideo && <div className={pr.sheetClock}>{clockControl}</div>}
+                  {headerActions?.(close, true)}
+                </div>
+              )}
+            </Popover>
+          ) : (
+            <div className={pr.actions}>
+              {engine.hasVideo && clockControl}
+              {headerActions?.()}
+            </div>
+          )}
         </div>
         <div className={pr.meta}>
           <span className={pr.metaMono}>
@@ -240,7 +310,9 @@ export function PracticeArea({
           </span>
           <span className={pr.dot}>&middot;</span>
           <span>{songCapo > 0 ? `Capo ${songCapo}` : "No capo"}</span>
+          {compact && unsaved && <span className={pr.unsaved}>Unsaved</span>}
         </div>
+        {compact && statusChips}
         {sectionRanges.length > 1 && (
           <div className={pr.chips} role="group" aria-label="Sections">
             {sectionRanges.map((sec) => {
@@ -262,38 +334,7 @@ export function PracticeArea({
         )}
       </header>
 
-      <ChipRow>
-        {engine.micErrorMessage ? (
-          <StatusChip tone="error" icon={<MicOff size={13} />} title={engine.micErrorMessage}>
-            Mic unavailable
-          </StatusChip>
-        ) : engine.micListening ? (
-          <StatusChip tone="info" pulse title="Measuring room noise: stay quiet for a moment.">
-            Listening… stay quiet
-          </StatusChip>
-        ) : engine.micOn ? (
-          <StatusChip tone="ok" icon={<Mic size={13} />}>
-            Mic on
-          </StatusChip>
-        ) : (
-          <StatusChip icon={<MicOff size={13} />}>Mic off</StatusChip>
-        )}
-        {engine.micNotCalibrated && (
-          <StatusChip tone="warning" title="Timing may look late until you calibrate." onClick={shell.openCalibration}>
-            Not calibrated
-          </StatusChip>
-        )}
-        {engine.playNotes && engine.micOn && (
-          <StatusChip tone="warning" title="On speakers the mic hears the synthetic guitar and grades it as your playing.">
-            Play notes + mic: use headphones
-          </StatusChip>
-        )}
-        {engine.videoNotice && (
-          <StatusChip tone="warning" icon={<VideoOff size={13} />} title={engine.videoNotice}>
-            Video unavailable, using grid
-          </StatusChip>
-        )}
-      </ChipRow>
+      {!compact && statusChips}
       {!engine.following && (
         <button className="resume-follow-btn" onClick={engine.resumeFollow}>
           Resume follow
@@ -487,24 +528,24 @@ export function SongView({ initialText, settings, onSave, onBack, onEdit, onSett
     if (!onEdit || !parseResult.ok) return;
     onEdit(serialize(parseResult.song));
   }
-  const editButtons = (
+  const editButtons = (close?: () => void) => (
     <>
       {onEdit && (
-        <button className="btn-primary" onClick={openEditor} disabled={!parseResult.ok || unsaved} title={unsaved ? "Save or undo your text changes first" : "Fix and add notes on a piano roll"}>
+        <button className="btn-primary" onClick={() => { close?.(); openEditor(); }} disabled={!parseResult.ok || unsaved} title={unsaved ? "Save or undo your text changes first" : "Fix and add notes on a piano roll"}>
           Edit
         </button>
       )}
-      <button onClick={() => setEditing((v) => !v)}>{editing ? "Preview / practice" : "Edit text"}</button>
+      <button onClick={() => { close?.(); setEditing((v) => !v); }}>{editing ? "Preview / practice" : "Edit text"}</button>
     </>
   );
-  const actionButtons = (
+  const actionButtons: HeaderActions = (close, inSheet) => (
     <>
-      {unsaved && <span className={pr.unsaved}>Unsaved changes</span>}
-      <button onClick={() => setShareOpen(true)} disabled={!parseResult.ok}>
+      {unsaved && !inSheet && <span className={pr.unsaved}>Unsaved changes</span>}
+      <button onClick={() => { close?.(); setShareOpen(true); }} disabled={!parseResult.ok}>
         <Share2 size={14} /> Share
       </button>
-      {editButtons}
-      <button onClick={onBack}>Back to library</button>
+      {editButtons(close)}
+      {!inSheet && <button onClick={onBack}>Back to library</button>}
     </>
   );
 
@@ -519,7 +560,7 @@ export function SongView({ initialText, settings, onSave, onBack, onEdit, onSett
           <button onClick={() => setShareOpen(true)} disabled={!parseResult.ok}>
             <Share2 size={14} /> Share
           </button>
-          {editButtons}
+          {editButtons()}
           <button onClick={onBack}>Back to library</button>
         </div>
       </div>
@@ -570,6 +611,8 @@ export function SongView({ initialText, settings, onSave, onBack, onEdit, onSett
           recentId={recentId}
           initialState={initialState}
           headerActions={actionButtons}
+          onBack={onBack}
+          unsaved={unsaved}
         />
       ) : (
         <ProblemsPanel errors={errors} onJump={(line, col) => { setEditing(true); window.setTimeout(() => jumpToLine(line, col), 0); }} />

@@ -364,7 +364,7 @@ export function RecorderScreen({
 
           {stream && <RecorderLevel stream={stream} />}
 
-          <div className={st.actions}>
+          <div className={`${st.actions} ${st.recordActions}`}>
             {!stream ? (
               <Button variant="primary" size="lg" onClick={() => void enableInput(mode)}>
                 Enable {mode === "video" ? "camera & mic" : "mic"}
@@ -390,7 +390,7 @@ export function RecorderScreen({
             )}
           </div>
 
-          {stream && !recording && <p className={st.hint}>Press M while recording to drop a flag</p>}
+          {stream && !recording && <p className={`${st.hint} ${st.keyHint}`}>Press M while recording to drop a flag</p>}
 
           <div className={st.metro}>
             <span className={st.metroTitle}>
@@ -437,6 +437,7 @@ export function RecorderScreen({
                       defaultValue={c.name}
                       key={c.name}
                       aria-label="Clip name"
+                      title={c.name}
                       onBlur={(e) => void handleRename(c, e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                     />
@@ -468,12 +469,12 @@ export function RecorderScreen({
                     <div className={st.clipActions}>
                       <button className="btn-ghost" onClick={() => void openTrim(c)}
                         disabled={unavailable}
-                        title={unavailable ? NOT_UPLOADED_TITLE : "Play / trim"}>
+                        title={unavailable ? NOT_UPLOADED_TITLE : "Play / trim"} aria-label="Play / trim">
                         <Scissors size={15} />
                       </button>
                       <button className="btn-ghost" onClick={() => void download(c)}
                         disabled={!c.blob}
-                        title={unavailable ? NOT_UPLOADED_TITLE : c.blob ? "Save to computer" : NO_MEDIA_TITLE}>
+                        title={unavailable ? NOT_UPLOADED_TITLE : c.blob ? "Save to computer" : NO_MEDIA_TITLE} aria-label="Save to computer">
                         <Download size={15} />
                       </button>
                       {!c.hasVideo && (
@@ -506,7 +507,7 @@ export function RecorderScreen({
                           <HardDriveDownload size={15} />
                         </button>
                       )}
-                      <button className="btn-ghost" onClick={() => setConfirmDeleteId(c.id)} title="Delete">
+                      <button className="btn-ghost" onClick={() => setConfirmDeleteId(c.id)} title="Delete" aria-label="Delete">
                         <Trash2 size={15} />
                       </button>
                     </div>

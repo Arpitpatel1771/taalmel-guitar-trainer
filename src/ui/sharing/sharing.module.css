@@ -42,6 +42,18 @@
 .wide { width: min(980px, 100%); }
 .dialogHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .dialogHead h3 { margin: 0; font-family: var(--font-display); font-size: var(--text-lg); }
+/* Compact (specs/8-11-mobile.md §3.3): a centred sheet on tablets, a full-screen page on phones. */
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  .dialog, .dialog.wide { width: min(560px, 100%); max-height: 90dvh; }
+}
+@media (max-width: 599.98px) {
+  .backdrop { padding: 0; }
+  .dialog, .dialog.wide {
+    width: 100dvw; height: 100dvh; max-height: none; border: none; border-radius: 0;
+    padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+  }
+  .dialogHead { justify-content: flex-start; }
+}
 .close { padding: 4px; }
 .form { display: flex; flex-direction: column; gap: var(--space-3); }
 .form, .form label { text-align: left; }
@@ -61,4 +73,16 @@
 @media (max-width: 560px) {
   .title { font-size: 28px; }
   .replies { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---- Compact layout (specs/8-11-mobile.md §6.3): sticky tabs and search, one-column rows. ---- */
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  .head { padding-top: var(--space-2); }
+  .title { font-size: 28px; }
+  .head > [role="radiogroup"], .head > div:last-child { width: 100%; }
+  .search { flex: 1 1 100%; min-width: 0; max-width: none; }
+  .grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+  .songCard, .reqCard { gap: var(--space-2); }
+  /* Only list rows truncate their title; empty states and notices wrap. */
+  .songCard .cardTitle, .reqCard .cardTitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }

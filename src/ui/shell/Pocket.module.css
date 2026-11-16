@@ -50,3 +50,51 @@
 .actions { display: flex; gap: var(--space-2); }
 .actions > * { flex: 1; }
 .hint { margin: 0; color: var(--text-muted); font-size: var(--text-md); line-height: 1.5; }
+
+/* ---- Compact layout (specs/8-11-mobile.md §3.2): one Tools button with a live chip, tools in a sheet. ---- */
+
+.tools {
+  position: fixed;
+  right: calc(var(--gutter) + env(safe-area-inset-right));
+  /* Full-height screens (practice, editor): clear their own bottom bar. */
+  bottom: calc(var(--bottom-bar-h, 96px) + env(safe-area-inset-bottom));
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* Practice: above the transport bar, which wraps onto two rows on phones until stage 2 redesigns it. */
+/* Practice: just above the compact transport (73px tall, 57px in a short landscape window). */
+.toolsInPractice { bottom: calc(89px + env(safe-area-inset-bottom)); }
+@media (max-height: 500px) {
+  .toolsInPractice { bottom: calc(73px + env(safe-area-inset-bottom)); }
+  /* Landscape phones: a smaller button covers less of the sheet and the roll. */
+  .toolsBtn.toolsBtn { width: 44px; height: 44px; }
+}
+.toolsAboveTabs { bottom: calc(var(--tabbar-h) + var(--space-4) + env(safe-area-inset-bottom)); }
+
+.toolsBtn {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--pocket);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-float);
+  color: var(--text);
+}
+
+.liveChip {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 0;
+  box-shadow: var(--shadow-float);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+}
+
+.sheetBody { display: flex; flex-direction: column; gap: var(--space-4); }
+.sheetBody > .record { justify-content: center; min-height: 48px; }

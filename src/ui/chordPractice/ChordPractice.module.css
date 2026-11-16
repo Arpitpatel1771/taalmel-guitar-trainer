@@ -28,3 +28,9 @@
 .chip:hover:not(:disabled) { background: var(--surface-3); border-color: transparent; color: var(--text); }
 .chipOn, .chipOn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .placeholder { color: var(--text-muted); font-size: var(--text-sm); }
+
+/* Compact layout: tighter card padding so the controls and diagrams get the width. */
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  .card { padding: var(--space-4) var(--space-3); }
+  .option { min-height: 64px; }
+}

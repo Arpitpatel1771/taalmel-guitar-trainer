@@ -19,6 +19,7 @@ import {
   type EdDoc,
   type OpResult,
 } from "../../songEditor";
+import { useCompact } from "../compact";
 import { Button } from "../components/kit";
 import { EditableText, Group, IconButton } from "./bits";
 import { flagText } from "./rollDraw";
@@ -51,8 +52,19 @@ const KEYS: [string, string][] = [
   ["Ctrl + wheel", "Zoom"],
 ];
 
+/** What the roll does with a finger (the keyboard list means nothing on a phone). */
+const TOUCH: [string, string][] = [
+  ["Drag a note", "Move it"],
+  ["Drag its right end", "Change the length"],
+  ["Double-tap", "Add a note"],
+  ["Long-press a note", "Delete it"],
+  ["Pinch", "Zoom the time"],
+  ["Two fingers", "Scroll the roll"],
+];
+
 export function SongPanel({ doc, playheadBar, getVideoTime, onEdit, onToast }: SongPanelProps) {
   const h = doc.header;
+  const compact = useCompact();
   const taps = useRef<number[]>([]);
   const [tapInfo, setTapInfo] = useState("");
   const [timeText, setTimeText] = useState<string | null>(null);
@@ -264,13 +276,11 @@ export function SongPanel({ doc, playheadBar, getVideoTime, onEdit, onToast }: S
         </div>
       </Group>
 
-      <Group title="Keys">
+      <Group title={compact ? "Touch" : "Keys"}>
         <dl className={s.keys}>
-          {KEYS.map(([k, v]) => (
+          {(compact ? TOUCH : KEYS).map(([k, v]) => (
             <div key={k} className={s.keyRow}>
-              <dt>
-                <kbd>{k}</kbd>
-              </dt>
+              <dt>{compact ? k : <kbd>{k}</kbd>}</dt>
               <dd>{v}</dd>
             </div>
           ))}

@@ -88,6 +88,7 @@
 .clipList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .clip {
   display: flex;
+  flex-wrap: wrap; /* the buttons drop under the name when the row is too narrow for both */
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
@@ -97,11 +98,11 @@
 }
 .clip:hover { background: var(--surface-2); }
 .clipActive { border-color: var(--accent); }
-.clipInfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.clipInfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 240px; }
 .clipName { width: 100%; background: transparent; border-color: transparent; padding-left: var(--space-1); font-weight: var(--weight-medium); }
 .clipName:hover { border-color: var(--border-subtle); }
 .clipMeta { color: var(--text-muted); font-size: var(--text-xs); font-family: var(--font-mono); padding-left: var(--space-1); }
-.clipActions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+.clipActions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; flex-wrap: wrap; margin-left: auto; }
 .mp3Btn { font-family: var(--font-mono); font-size: var(--text-xs); min-width: 40px; }
 
 /* Trimmer */
@@ -205,4 +206,63 @@
   border-left: 3px solid var(--warn);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
+}
+
+/* Compact layout (phones and tablets, specs/8-11-mobile.md): one column, big tap targets, nothing keyboard-only. */
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  .kbd, .keyHint { display: none; }
+  .card { padding: var(--space-3); }
+  .cardHeader { align-items: flex-start; }
+  .preview { aspect-ratio: 4 / 3; }
+  .previewAudio { aspect-ratio: auto; height: 96px; }
+  /* Record / Stop / Flag / Turn off: full-width rows, easy to hit while holding a guitar. */
+  .actions { flex-direction: column; align-items: stretch; }
+  /* Controls first, right under the header: the Tools button floats bottom-right and would cover them lower down. */
+  .cardHeader { order: -2; }
+  .recordActions { order: -1; }
+  .trimHeader { flex-wrap: nowrap; }
+  .trimHeader .sectionTitle { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+  .actions > button { width: 100%; min-height: 52px; justify-content: center; }
+  .metro > button { align-self: flex-end; }
+  .check { min-height: 44px; }
+
+  /* Clip row: name and meta get the full width, the actions sit in a tidy row beneath. */
+  .clipList { gap: var(--space-2); }
+  .clip {
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-2);
+    border-color: var(--border-subtle);
+  }
+  .clipActive { border-color: var(--accent); }
+  .clipInfo { flex: 0 0 auto; }
+  .clipName { text-overflow: ellipsis; padding-left: 0; }
+  .clipMeta { padding-left: 0; overflow-wrap: anywhere; }
+  .clipActions {
+    margin-left: 0;
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+    padding-top: var(--space-1);
+    border-top: 1px solid var(--border-subtle);
+  }
+  .clipActions > button { flex: 1 1 0; max-width: 88px; }
+  /* Delete confirmation: the question on its own line, then two wide buttons. */
+  .clipActions:has(> .clipMeta) { flex-wrap: wrap; }
+  .clipActions > .clipMeta { flex: 1 0 100%; max-width: none; padding: 0; font-size: var(--text-sm); }
+  .clipActions:has(> .clipMeta) > button { max-width: none; }
+
+  /* Trimmer: the handles get a finger-sized (44px) hit area; the visible bar and grip stay slim. */
+  .rangeTrack { touch-action: none; }
+  .waveform { left: calc(var(--thumb, 14px) / 2); width: calc(100% - var(--thumb, 14px)); }
+  .rangeThumb::-webkit-slider-thumb { width: 44px; }
+  .rangeThumb::-moz-range-thumb { width: 44px; }
+  .trimFields { grid-template-columns: minmax(0, 1fr); }
+  .flagRow { gap: var(--space-1); }
+  .flagRow > .flagLabel { flex: 1 0 100%; order: -1; }
+  .flagTime { align-self: center; }
+  .actions > .hint { text-align: center; }
+  .player { max-height: 280px; }
 }

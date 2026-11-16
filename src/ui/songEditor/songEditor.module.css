@@ -162,6 +162,8 @@
   font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.45; color: var(--text);
 }
 .tabLine { white-space: pre; }
+/* Fret numbers in the tab view stay text-sized; the compact layout's 44px tap-target rule doesn't apply. */
+.tabCell.tabCell, .tabCellOn.tabCellOn { min-width: 0; min-height: 0; }
 .tabCell, .tabCellOn {
   display: inline; height: auto; padding: 0; margin: 0; gap: 0; border: 0; border-radius: 3px; background: transparent;
   font: inherit; color: var(--accent-text); cursor: pointer;
@@ -213,7 +215,7 @@
   box-shadow: var(--shadow-float); font-size: var(--text-sm);
 }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.scrim { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.5); padding: var(--space-4); }
+.scrim { position: fixed; inset: 0; z-index: 50; /* above the compact Tools button (45) */ display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.5); padding: var(--space-4); }
 .sheet {
   width: min(520px, 100%); padding: var(--space-5); border-radius: var(--radius-lg);
   background: var(--sheet); border: 1px solid var(--border); box-shadow: var(--shadow-float);
@@ -226,4 +228,61 @@
 @media (max-width: 900px) {
   .videoBox, .noVideo { flex: 1 1 100%; }
   .inspector { max-width: none; flex: 1 1 100%; }
+}
+
+/* ---- compact layout (specs/8-11-mobile.md stage 4): phones and tablets. Laptop styles above stay untouched. ---- */
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  /* Header: back and the actions on one line, the title under them. */
+  .headActions { order: 1; }
+  .titleBlock { order: 2; flex: 1 1 100%; }
+  .iconBtn { width: 44px; height: 44px; }
+  .primaryBtn { height: 44px; }
+  .titleInput { font-size: var(--text-2xl, 24px); }
+  .artistInput { width: 160px; font-size: max(16px, 1em); }
+
+  .banner { bottom: calc(var(--space-5) + 112px); }
+  .toast { bottom: calc(var(--space-5) + 72px); }
+
+  /* Listen row: the video takes the width, the transport wraps under it. */
+  .videoBox { flex: 1 1 100%; height: auto; aspect-ratio: 16 / 9; }
+  .noVideo { flex: 1 1 100%; min-height: 0; padding: var(--space-3); }
+  .transport { flex: 1 1 100%; padding: var(--space-3); }
+  .transportShort { align-self: stretch; }
+  .toggle { height: 44px; }
+  .balance { flex-wrap: wrap; }
+  .balanceSlider, .briSlider { width: 120px; }
+  .statusPill { padding: 8px 12px; }
+
+  /* The roll fills the width and most of the height. It scrolls inside itself; the page scrolls around it. */
+  .rollScroller { height: clamp(300px, 62dvh, 640px); }
+  .rollCanvas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .rollPlay {
+    position: absolute; left: 6px; bottom: 6px; z-index: 3; width: 48px; height: 48px; padding: 0; justify-content: center;
+    border-radius: 999px; background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-float);
+  }
+  .rollArea { flex-direction: column; flex-wrap: nowrap; align-items: stretch; width: 100%; min-width: 0; }
+  .rollCard { flex: 1 1 auto; }
+  .inspector { flex: 1 1 auto; min-width: 0; max-width: none; }
+
+  /* With notes selected the inspector moves into a sheet that this bar opens; it sits in the roll's corner so the notes stay reachable. */
+  .selBar {
+    position: absolute; right: 6px; bottom: 6px; z-index: 3;
+    display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+    background: var(--surface-3); border: 1px solid var(--card-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-float);
+  }
+  .selText { white-space: nowrap; font-weight: var(--weight-semibold); }
+  .sheetBody { overflow-y: auto; padding: 0 var(--space-4) var(--space-4); }
+
+  .sheet { max-height: 90dvh; overflow-y: auto; }
+  .keyRow { grid-template-columns: 140px 1fr; }
+}
+
+/* A phone on its side: the video sits beside the transport and the roll uses the whole height. */
+@media (max-width: 899.98px) and (orientation: landscape) and (max-height: 500px), (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+  .headActions, .titleBlock { order: 0; }
+  .titleBlock { flex: 1 1 240px; }
+  .videoBox { flex: 0 0 220px; }
+  .noVideo { flex: 0 0 300px; }
+  .transport { flex: 1 1 400px; }
+  .rollScroller { height: max(220px, calc(100dvh - 48px)); }
 }

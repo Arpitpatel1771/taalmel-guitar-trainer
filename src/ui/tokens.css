@@ -179,6 +179,9 @@
   /* Shell */
   --rail-width: 88px;
   --topbar-height: 48px;
+  /* Compact layout (specs/8-11-mobile.md): bottom tab bar height (plus the safe area) and side gutter. */
+  --tabbar-h: 64px;
+  --gutter: 16px;
   --pocket-clearance: 112px;
 }
 

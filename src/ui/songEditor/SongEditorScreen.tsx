@@ -40,6 +40,8 @@ import {
 } from "../../songEditor";
 import type { StringNumber } from "../../model";
 import { deleteEditorDraft, saveEditorDraft, type EditorDraft } from "../../storage/importDrafts";
+import { useCompact } from "../compact";
+import { BottomSheet } from "../components/BottomSheet";
 import { Button } from "../components/kit";
 import { EditableText } from "./bits";
 import { ExplainerSheet } from "./ExplainerSheet";
@@ -52,6 +54,7 @@ import { ToolRow } from "./ToolRow";
 import { buildInit, type EditorStart } from "./editorInit";
 import { MAX_ROW, MAX_ZOOM, MIN_ROW, MIN_ZOOM, fitZoom, type RollView } from "./rollGeometry";
 import { previewPitch } from "./previewNote";
+import { hintsAvailable } from "./hintsAvailable";
 import { useEditorPlayback } from "./useEditorPlayback";
 import { useHints } from "./useHints";
 import s from "./songEditor.module.css";
@@ -121,6 +124,9 @@ function Editor({ settings, onSettingsChange, onSave, onSaved, onExit, init }: S
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [draftStatus, setDraftStatus] = useState("");
+  const compact = useCompact();
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const canHints = hintsAvailable();
 
   const snapTicks = SNAP_TICKS[snap];
   const conflicts = useMemo(() => findConflicts(doc), [doc]);
@@ -245,6 +251,7 @@ function Editor({ settings, onSettingsChange, onSave, onSaved, onExit, init }: S
   const zoomBy = useCallback((dir: 1 | -1) => {
     setZoom((z) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.round(dir > 0 ? z * ZOOM_STEP : z / ZOOM_STEP))));
   }, []);
+  const zoomTo = useCallback((z: number) => setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z))), []);
   const rowBy = useCallback((dir: 1 | -1) => {
     setRowH((r) => Math.max(MIN_ROW, Math.min(MAX_ROW, r + dir * 2)));
   }, []);
@@ -513,6 +520,7 @@ function Editor({ settings, onSettingsChange, onSave, onSaved, onExit, init }: S
         pb={pb}
         bpm={h.bpm}
         hints={hints}
+        hintsAvailable={canHints}
         hasVideo={!!h.youtube}
         brightness={brightness}
         onBrightness={setBrightness}
@@ -563,7 +571,7 @@ function Editor({ settings, onSettingsChange, onSave, onSaved, onExit, init }: S
             follow={pb.followOn}
             getPlayhead={pb.getPlayhead}
             loop={pb.loopRange}
-            hints={hints.layerOn ? hints.hints : null}
+            hints={canHints && hints.layerOn ? hints.hints : null}
             hintBrightness={brightness / 100}
             hintsVersion={hints.version}
             tempo={pb.tempo}
@@ -581,19 +589,41 @@ function Editor({ settings, onSettingsChange, onSave, onSaved, onExit, init }: S
             onFlag={(offset) => commit(setVideoOffset(docRef.current, offset))}
             onScroll={(x, y) => (scroll.current = { x, y })}
             onZoomWheel={(dir, axis) => (axis === "y" ? rowBy(dir) : zoomBy(dir))}
+            onZoomSet={zoomTo}
+            onTogglePlay={compact && pb.player ? pb.togglePlay : undefined}
+            overlay={
+              compact && selected.length > 0 ? (
+                <div className={s.selBar} role="group" aria-label="Selected notes">
+                  <span className={s.selText}>{selected.length} selected</span>
+                  <button type="button" className={s.primaryBtn} onClick={() => setInspectorOpen(true)}>
+                    Edit
+                  </button>
+                  <button type="button" onClick={() => setSelected([])}>
+                    Done
+                  </button>
+                </div>
+              ) : undefined
+            }
             onPreviewPitch={hear}
             apiRef={rollApi}
           />
           <TabViewPanel doc={doc} selected={selected} range={tabBars} onSelect={showNote} />
         </div>
+        {/* Compact: the note inspector is a sheet opened from the bar on the roll, and the song panel stays put
+            below (removing it on select would shrink the page and jump the roll under the finger). */}
         <aside className={s.inspector} aria-label="Inspector">
-          {selected.length > 0 ? (
-            <Inspector doc={doc} selected={selected} snapTicks={snapTicks} onEdit={commit} onHear={hear} />
-          ) : (
-            <SongPanel doc={doc} playheadBar={Math.floor(pb.getPlayhead() / barLen)} getVideoTime={pb.getVideoTime} onEdit={commit} onToast={flash} />
-          )}
-        </aside>
+            {selected.length > 0 && !compact ? (
+              <Inspector doc={doc} selected={selected} snapTicks={snapTicks} onEdit={commit} onHear={hear} />
+            ) : (
+              <SongPanel doc={doc} playheadBar={Math.floor(pb.getPlayhead() / barLen)} getVideoTime={pb.getVideoTime} onEdit={commit} onToast={flash} />
+            )}
+          </aside>
       </section>
+      <BottomSheet open={compact && inspectorOpen && selected.length > 0} onClose={() => setInspectorOpen(false)} title={selected.length === 1 ? "Edit note" : `Edit ${selected.length} notes`}>
+        <div className={s.sheetBody}>
+          <Inspector doc={doc} selected={selected} snapTicks={snapTicks} onEdit={commit} onHear={hear} />
+        </div>
+      </BottomSheet>
 
       <div className={s.srOnly} role="status" aria-live="polite">
         {toast?.text}

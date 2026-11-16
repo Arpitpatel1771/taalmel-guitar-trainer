@@ -25,7 +25,7 @@ Build order: 0 → 5. Each spec has its own internal order.
 
 ### Devices
 
-- Phone and tablet layout (at least a tablet on a music stand). Laptop stays the main target for now.
+- Phone and tablet layout: `specs/8-11-mobile.md` (draft). One responsive app; four stages, starting with the shell and list screens.
 
 ### Song import
 

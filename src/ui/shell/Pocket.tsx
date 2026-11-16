@@ -3,15 +3,18 @@
 // and quick record. Hidden chips: the one for the screen that is the tool.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Gauge, Metronome as MetronomeIcon, Minus, Pause, Play, Plus, Square } from "lucide-react";
+import { Gauge, Metronome as MetronomeIcon, Minus, Pause, Play, Plus, Square, Wrench } from "lucide-react";
 import type { Settings } from "../../model";
 import { FreeMetronome, FREE_MAX_BPM, FREE_MIN_BPM, clampFreeBpm, getAudioContext, resumeAudio, useInputLevel } from "../../audio";
 import { ClipRecorder, defaultClipName, ensureClipGain, formatClipTime, openInput, saveClip, stopStream } from "../../recording";
+import { BottomSheet } from "../components/BottomSheet";
 import { Popover } from "../components/Popover";
 import { TunerPanel } from "../components/TunerPanel";
-import { Button, Meter, Slider } from "../components/kit";
+import { Button, Meter, SegmentedControl, Slider } from "../components/kit";
+import { useCompact } from "../compact";
 import { LEVEL_TEXT } from "../components/levelText";
 import { useMicRegistry, usePracticeInfo, useShell } from "./AppShellContext";
+import { pocketChipText } from "./pocketChip";
 import styles from "./Pocket.module.css";
 
 /** The screen that is itself the tool hides that chip. */
@@ -33,17 +36,28 @@ export function Pocket({
   onSettingsChange,
   hide,
   inPractice,
+  aboveTabBar = false,
 }: {
   settings: Settings;
   onSettingsChange: (next: Settings) => void;
   hide: PocketHide;
   /** Practice view: its own M key toggles the mic, so the pocket leaves M alone. */
   inPractice: boolean;
+  /** Compact layout with the tab bar showing: the Tools button sits above it. */
+  aboveTabBar?: boolean;
 }) {
+  const compact = useCompact();
   const { toast } = useShell();
   const practice = usePracticeInfo();
   const { sources } = useMicRegistry();
   const [open, setOpen] = useState<OpenId>(null);
+  // A layout switch (resize, rotation) closes whatever was open instead of carrying it to the other layout.
+  const wasCompact = useRef(compact);
+  useEffect(() => {
+    if (wasCompact.current === compact) return;
+    wasCompact.current = compact;
+    setOpen(null);
+  }, [compact]);
 
   // ---- Tuner ----
   const [tuned, setTuned] = useState<{ name: string; inTune: boolean } | null>(null);
@@ -196,6 +210,114 @@ export function Pocket({
   const bump = (d: number) => setBpm((b) => clampFreeBpm(b + d));
   const mm = (n: number) => formatClipTime(Math.floor(n));
 
+  // The tool panels, shared by the laptop pocket (popovers) and the compact Tools sheet.
+  const tunerPanel = <TunerPanel compact autoStart a4Hz={settings.a4Hz} onA4Change={(hz) => onSettingsChange({ ...settings, a4Hz: hz })} onReading={setTuned} />;
+  const metroPanel = practice ? (
+    <div className={styles.panel}>
+      <div className={styles.bigBpm}>
+        <span className={styles.mono}>{Math.round(practice.bpm)}</span>
+        <span className={styles.unit}>BPM</span>
+      </div>
+      <p className={styles.hint}>
+        {practice.videoClock
+          ? "Video is the clock. The video sets the tempo, so there is no click."
+          : "This follows the song at the practice tempo. Change it with the transport."}
+      </p>
+      {metroRunning && (
+        <Button icon={<Square size={14} fill="currentColor" />} onClick={() => void toggleMetro()}>
+          Stop the free metronome
+        </Button>
+      )}
+    </div>
+  ) : (
+    <div className={styles.panel}>
+      <div className={styles.bpmRow}>
+        <Button variant="ghost" aria-label="Slower" onClick={() => bump(-1)}>
+          <Minus size={16} />
+        </Button>
+        <div className={styles.bigBpm}>
+          <span className={styles.mono}>{bpm}</span>
+          <span className={styles.unit}>BPM</span>
+        </div>
+        <Button variant="ghost" aria-label="Faster" onClick={() => bump(1)}>
+          <Plus size={16} />
+        </Button>
+      </div>
+      <Slider min={FREE_MIN_BPM} max={FREE_MAX_BPM} value={bpm} label="BPM" onChange={setBpm} />
+      <div className={styles.actions}>
+        <Button variant="primary" icon={metroRunning ? <Pause size={16} /> : <Play size={16} />} onClick={() => void toggleMetro()}>
+          {metroRunning ? "Stop" : "Start"}
+        </Button>
+        <Button onClick={tap}>Tap tempo</Button>
+      </div>
+    </div>
+  );
+  const micPanel = (
+    <div className={styles.panel}>
+      <Meter bars={level.bars} tone={levelText.tone} label={levelText.word} />
+      <p className={styles.hint}>{levelText.hint}</p>
+    </div>
+  );
+  const recordButton = hide !== "recorder" && (
+    <button
+      type="button"
+      className={`${styles.chip} ${styles.record}${recording ? ` ${styles.recording}` : ""}`}
+      onClick={toggleQuick}
+      title={recording ? "Stop and save (R)" : "Quick record (R)"}
+      aria-pressed={recording}
+    >
+      {recording ? <Square size={14} fill="currentColor" /> : <span className={styles.dot} />}
+      {recording ? <span className={styles.mono}>{mm(elapsed)}</span> : practice ? "Record this take" : "Record"}
+    </button>
+  );
+  const showTuner = hide !== "tuner";
+  const showMetro = hide !== "metronome" && hide !== "recorder";
+
+  if (compact) {
+    const tab: "tuner" | "metro" = open === "tuner" && showTuner ? "tuner" : showMetro ? "metro" : "tuner";
+    const chip = pocketChipText({ metronomeBpm: metroRunning ? bpm : null, recordingSec: recording ? elapsed : null });
+    const openSheet = () => setOpen(showMetro ? "metro" : showTuner ? "tuner" : "metro");
+    return (
+      <>
+        <div className={`${styles.tools}${aboveTabBar ? ` ${styles.toolsAboveTabs}` : inPractice ? ` ${styles.toolsInPractice}` : ""}`}>
+          {chip && (
+            <button type="button" className={styles.liveChip} onClick={openSheet} aria-label={`Open tools: ${chip}`}>
+              {chip}
+            </button>
+          )}
+          <button type="button" className={styles.toolsBtn} onClick={openSheet} aria-label="Tools">
+            <Wrench size={22} />
+          </button>
+        </div>
+        <BottomSheet
+          open={open !== null}
+          onClose={() => {
+            setOpen(null);
+            setTuned(null);
+          }}
+          title="Tools"
+        >
+          <div className={styles.sheetBody}>
+            {showTuner && showMetro && (
+              <SegmentedControl
+                label="Tool"
+                value={tab}
+                onChange={(v) => setOpen(v)}
+                options={[
+                  { value: "tuner", label: "Tuner" },
+                  { value: "metro", label: "Metronome" },
+                ]}
+              />
+            )}
+            {tab === "tuner" && showTuner ? tunerPanel : showMetro ? metroPanel : null}
+            {levelSource && micPanel}
+            {recordButton}
+          </div>
+        </BottomSheet>
+      </>
+    );
+  }
+
   return (
     <div className={styles.pocket} role="toolbar" aria-label="Tools">
       {hide !== "tuner" && (
@@ -222,7 +344,7 @@ export function Pocket({
             </>
           }
         >
-          <TunerPanel compact autoStart a4Hz={settings.a4Hz} onA4Change={(hz) => onSettingsChange({ ...settings, a4Hz: hz })} onReading={setTuned} />
+          {tunerPanel}
         </Popover>
       )}
 
@@ -241,41 +363,7 @@ export function Pocket({
             </>
           }
         >
-          {practice ? (
-            <div className={styles.panel}>
-              <div className={styles.bigBpm}>
-                <span className={styles.mono}>{Math.round(practice.bpm)}</span>
-                <span className={styles.unit}>BPM</span>
-              </div>
-              <p className={styles.hint}>
-                {practice.videoClock
-                  ? "Video is the clock. The video sets the tempo, so there is no click."
-                  : "This follows the song at the practice tempo. Change it with the transport."}
-              </p>
-            </div>
-          ) : (
-            <div className={styles.panel}>
-              <div className={styles.bpmRow}>
-                <Button variant="ghost" aria-label="Slower" onClick={() => bump(-1)}>
-                  <Minus size={16} />
-                </Button>
-                <div className={styles.bigBpm}>
-                  <span className={styles.mono}>{bpm}</span>
-                  <span className={styles.unit}>BPM</span>
-                </div>
-                <Button variant="ghost" aria-label="Faster" onClick={() => bump(1)}>
-                  <Plus size={16} />
-                </Button>
-              </div>
-              <Slider min={FREE_MIN_BPM} max={FREE_MAX_BPM} value={bpm} label="BPM" onChange={setBpm} />
-              <div className={styles.actions}>
-                <Button variant="primary" icon={metroRunning ? <Pause size={16} /> : <Play size={16} />} onClick={() => void toggleMetro()}>
-                  {metroRunning ? "Stop" : "Start"}
-                </Button>
-                <Button onClick={tap}>Tap tempo</Button>
-              </div>
-            </div>
-          )}
+          {metroPanel}
         </Popover>
       )}
 
@@ -293,25 +381,11 @@ export function Pocket({
             </>
           }
         >
-          <div className={styles.panel}>
-            <Meter bars={level.bars} tone={levelText.tone} label={levelText.word} />
-            <p className={styles.hint}>{levelText.hint}</p>
-          </div>
+          {micPanel}
         </Popover>
       )}
 
-      {hide !== "recorder" && (
-        <button
-          type="button"
-          className={`${styles.chip} ${styles.record}${recording ? ` ${styles.recording}` : ""}`}
-          onClick={toggleQuick}
-          title={recording ? "Stop and save (R)" : "Quick record (R)"}
-          aria-pressed={recording}
-        >
-          {recording ? <Square size={14} fill="currentColor" /> : <span className={styles.dot} />}
-          {recording ? <span className={styles.mono}>{mm(elapsed)}</span> : practice ? "Record this take" : "Record"}
-        </button>
-      )}
+      {recordButton}
     </div>
   );
 }

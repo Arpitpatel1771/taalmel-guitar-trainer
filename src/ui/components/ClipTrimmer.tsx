@@ -2,7 +2,7 @@
 // handles), preview or loop the selection, then trim with ffmpeg.wasm and
 // save to disk or back into the clip list.
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { Flag, Pause, Play, Repeat, Trash2, Volume2, X } from "lucide-react";
 import { getAudioContext, resumeAudio } from "../../audio";
 import {
@@ -35,11 +35,14 @@ import { Field, NumberInput, Segmented } from "./Controls";
 import { Button, Chip } from "./kit";
 import { WaveformCanvas } from "./WaveformCanvas";
 import { useShell } from "../shell/AppShellContext";
+import { useCompact } from "../compact";
 import st from "../screens/Recorder.module.css";
 
 const MIN_LENGTH_SEC = 0.1;
 /** Range-input thumb width (px) in Recorder.module.css: thumb centres run from THUMB/2 to width - THUMB/2. */
 const THUMB_PX = 14;
+/** Compact layouts use a 44px-wide handle so a finger can grab it (kept in step with Recorder.module.css). */
+const THUMB_PX_COMPACT = 44;
 
 /** Plain M key (no modifiers, not repeating, not typing in a field): the "drop a flag" hotkey. */
 export function isFlagHotkey(e: KeyboardEvent): boolean {
@@ -104,6 +107,8 @@ export function ClipTrimmer({
   onFlagsChanged?: () => void;
 }) {
   const { toast } = useShell();
+  const compact = useCompact();
+  const thumbPx = compact ? THUMB_PX_COMPACT : THUMB_PX;
   // Created in an effect (not useMemo) so StrictMode's mount/unmount/mount
   // can't leave the player pointing at an already-revoked URL.
   const [url, setUrl] = useState<string | null>(null);
@@ -355,7 +360,7 @@ export function ClipTrimmer({
     if (!track) return;
     const toTime = (clientX: number) => {
       const r = track.getBoundingClientRect();
-      const f = (clientX - r.left - THUMB_PX / 2) / Math.max(1, r.width - THUMB_PX);
+      const f = (clientX - r.left - thumbPx / 2) / Math.max(1, r.width - thumbPx);
       return Math.max(0, Math.min(1, f)) * duration;
     };
     scrubTo(toTime(e.clientX));
@@ -472,7 +477,7 @@ export function ClipTrimmer({
   }
 
   /** Same horizontal mapping as the native thumbs, so bar, playhead and handles line up. */
-  const at = (t: number) => `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * ${duration > 0 ? t / duration : 0})`;
+  const at = (t: number) => `calc(${thumbPx / 2}px + (100% - ${thumbPx}px) * ${duration > 0 ? t / duration : 0})`;
   const busyLabel =
     busy?.stage === "loading"
       ? `Loading trimmer…${busy.fraction !== null ? ` ${Math.round(busy.fraction * 100)}%` : ""}`
@@ -502,7 +507,7 @@ export function ClipTrimmer({
 
   return (
     <div className={st.trimmer}>
-      <div className={st.cardHeader}>
+      <div className={`${st.cardHeader} ${st.trimHeader}`}>
         <h3 className={st.sectionTitle}>{clip.name}</h3>
         <button className="btn-ghost" onClick={onClose} aria-label="Close trimmer">
           <X size={16} />
@@ -550,7 +555,7 @@ export function ClipTrimmer({
         </div>
       )}
 
-      <div ref={trackRef} className={st.rangeTrack} onPointerDown={onTrackPointerDown}>
+      <div ref={trackRef} className={st.rangeTrack} style={compact ? ({ "--thumb": `${thumbPx}px` } as CSSProperties) : undefined} onPointerDown={onTrackPointerDown}>
         <WaveformCanvas className={st.waveform} peaks={shownPeaks} duration={duration} start={start} end={end} />
         {peaksState !== "ready" && (
           <span className={st.waveStatus}>{peaksState === "computing" ? "Drawing waveform…" : "Waveform unavailable"}</span>
@@ -649,7 +654,7 @@ export function ClipTrimmer({
             </label>
           </div>
           {flags.length === 0 ? (
-            <p className={st.hint}>No flags. Press M while recording or reviewing to add one.</p>
+            <p className={st.hint}>{compact ? "No flags. Tap Add flag at playhead to mark a spot." : "No flags. Press M while recording or reviewing to add one."}</p>
           ) : (
             <ul className={st.flagList}>
               {flags.map((f) => (

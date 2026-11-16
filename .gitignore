@@ -143,3 +143,6 @@ vite.config.ts.timestamp-*
 .vite/
 .vercel
 .env*
+
+# Superpowers plan workspaces (ledgers, briefs)
+.superpowers/

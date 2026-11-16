@@ -24,3 +24,23 @@
 .row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; justify-content: center; }
 .level { width: 160px; height: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
 .levelFill { height: 100%; background: var(--ok); }
+
+/* Compact (full-size tuner only; the Tools sheet uses the .compact variant): one column with a big
+ * readout, a tall meter and a full-width start button (specs/8-11-mobile.md §2, stage 2). */
+@media (max-width: 899.98px), (hover: none) and (pointer: coarse) {
+  .tuner:not(.compact) { padding: var(--space-5) var(--space-4); gap: var(--space-4); }
+  .tuner:not(.compact) .note { font-size: 112px; }
+  .tuner:not(.compact) .sub { font-size: var(--text-body); min-height: 2.4em; }
+  .tuner:not(.compact) .meter { height: 64px; }
+  .tuner:not(.compact) .scale { top: 30px; height: 6px; }
+  .tuner:not(.compact) .zone { top: 20px; height: 26px; }
+  .tuner:not(.compact) .tick { top: 22px; height: 22px; }
+  .tuner:not(.compact) .needle { top: 6px; width: 6px; height: 52px; margin-left: -3px; }
+  .tuner:not(.compact) .labels { font-size: var(--text-sm); }
+  .tuner:not(.compact) .row > button { flex: 1 1 100%; min-height: 52px; font-size: var(--text-lg); }
+}
+/* Short window (a phone held sideways): note and meter side by side would not fit, so shrink the readout. */
+@media (max-height: 500px) and ((max-width: 899.98px) or ((hover: none) and (pointer: coarse))) {
+  .tuner:not(.compact) { gap: var(--space-2); padding: var(--space-3); }
+  .tuner:not(.compact) .note { font-size: 64px; }
+}
