@@ -2,7 +2,7 @@
 // over the package's DriveConflictDialog / DriveDeleteConfirm, rendered in Taalmel's modal.
 
 import type { ReactNode } from "react";
-import { DriveConflictDialog, DriveDeleteConfirm } from "@arpitpatel/drive-sync/react";
+import { DriveConflictDialog, DriveDeleteConfirm } from "@arpitpatel1771/drive-sync/react";
 import st from "./DriveUi.module.css";
 
 function when(ms: number): string {

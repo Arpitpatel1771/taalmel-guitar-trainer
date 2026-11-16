@@ -5,7 +5,7 @@ import { ACCENT_IDS, type AccentId, type LaneId, type PracticeMode, type Setting
 import { Button, SegmentedControl, Slider } from "../components/kit";
 import pg from "../components/page.module.css";
 import { Field, Stepper } from "../components/Controls";
-import { relativeTime, useDriveSync } from "@arpitpatel/drive-sync/react";
+import { relativeTime, useDriveSync } from "@arpitpatel1771/drive-sync/react";
 import { useShell } from "../shell/AppShellContext";
 import st from "./Settings.module.css";
 

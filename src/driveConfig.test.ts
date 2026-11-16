@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it } from "vitest";
-import { createDriveSync, type DocumentCollection, type FileCollection } from "@arpitpatel/drive-sync";
-import { FakeAuth, FakeDrive, createMemorySyncStore } from "@arpitpatel/drive-sync/testing";
+import { createDriveSync, type DocumentCollection, type FileCollection } from "@arpitpatel1771/drive-sync";
+import { FakeAuth, FakeDrive, createMemorySyncStore } from "@arpitpatel1771/drive-sync/testing";
 import type { ClipRecord } from "./recording/clipStore";
 import { CLIPS_DB_NAME, _resetClipsDbForTests, getClip, saveClip } from "./recording/clipStore";
 import { resetTaalmelDb } from "./storage/testSetup";

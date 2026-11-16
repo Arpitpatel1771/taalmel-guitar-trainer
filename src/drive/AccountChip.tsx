@@ -3,7 +3,7 @@
 
 import { useEffect, useRef } from "react";
 import { Download, LogIn, LogOut, RefreshCw, Settings as SettingsIcon, TriangleAlert } from "lucide-react";
-import { DriveAccountChip } from "@arpitpatel/drive-sync/react";
+import { DriveAccountChip } from "@arpitpatel1771/drive-sync/react";
 import { useCompact } from "../ui/compact";
 import { BottomSheet } from "../ui/components/BottomSheet";
 import dock from "../ui/components/TransportDock.module.css";

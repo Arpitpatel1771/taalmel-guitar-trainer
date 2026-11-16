@@ -30,7 +30,7 @@ import { ClipTrimmer, isFlagHotkey } from "../components/ClipTrimmer";
 import { RecorderLevel } from "../components/RecorderLevel";
 import { Button, SegmentedControl } from "../components/kit";
 import { LiveWaveform } from "../components/LiveWaveform";
-import { itemBadge, useDriveSync } from "@arpitpatel/drive-sync/react";
+import { itemBadge, useDriveSync } from "@arpitpatel1771/drive-sync/react";
 import { useShell, useShellMic } from "../shell/AppShellContext";
 import st from "./Recorder.module.css";
 

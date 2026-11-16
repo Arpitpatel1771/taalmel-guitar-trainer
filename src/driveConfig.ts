@@ -1,4 +1,4 @@
-// Taalmel's Google Drive sync, configured on top of @arpitpatel/drive-sync. The on-Drive format (folder ids, tags,
+// Taalmel's Google Drive sync, configured on top of @arpitpatel1771/drive-sync. The on-Drive format (folder ids, tags,
 // sidecar JSON, hashes) is exactly what Taalmel wrote before the package, so existing users' data keeps working.
 
 import {
@@ -11,8 +11,8 @@ import {
   type FileStore,
   type DocumentStore,
   type SettingsSync,
-} from "@arpitpatel/drive-sync";
-import { FakeAuth, FakeDrive, createMemorySyncStore } from "@arpitpatel/drive-sync/testing";
+} from "@arpitpatel1771/drive-sync";
+import { FakeAuth, FakeDrive, createMemorySyncStore } from "@arpitpatel1771/drive-sync/testing";
 import type { Settings, SongRecord } from "./model/index";
 import { computeClipPeaks } from "./recording";
 import { deleteClip, getClip, listClips, saveClip, setClipBlob, type ClipRecord } from "./recording/clipStore";

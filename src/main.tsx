@@ -14,7 +14,7 @@ import "@fontsource/jetbrains-mono/600.css";
 import "@fontsource/jetbrains-mono/700.css";
 import "./ui/tokens.css";
 import "./ui/styles.css";
-import "@arpitpatel/drive-sync/styles.css";
+import "@arpitpatel1771/drive-sync/styles.css";
 import "./drive/driveTheme.css";
 
 const rootEl = document.getElementById("root");

@@ -20,7 +20,7 @@ import {
   type MyRequest,
   type SharingDeps,
 } from "../../sharing";
-import { useDriveSync } from "@arpitpatel/drive-sync/react";
+import { useDriveSync } from "@arpitpatel1771/drive-sync/react";
 import type { StorageAdapter } from "../storageTypes";
 
 export const POLL_MS = 10 * 60 * 1000;

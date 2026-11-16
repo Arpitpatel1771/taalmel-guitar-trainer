@@ -29,7 +29,7 @@ import { pickedFromName, type PickedChord } from "./chordPractice/picked";
 import { useTheme, resolveTheme, systemPrefersDark } from "./theme";
 import { ChipRow, StatusChip } from "./shell/StatusChip";
 import { AccountChip } from "../drive/AccountChip";
-import { DriveSyncProvider, useDriveSync } from "@arpitpatel/drive-sync/react";
+import { DriveSyncProvider, useDriveSync } from "@arpitpatel1771/drive-sync/react";
 import { taalmelDrive } from "../driveConfig";
 import { DriveDialogs } from "../drive/DriveUi";
 import shellStyles from "./shell/Shell.module.css";
