@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { inject } from "@vercel/analytics";
 import * as storage from "./storage";
 import { App } from "./ui/App";
 import "@fontsource/inter/400.css";
@@ -16,6 +17,8 @@ import "./ui/tokens.css";
 import "./ui/styles.css";
 import "@arpitpatel1771/drive-sync/styles.css";
 import "./drive/driveTheme.css";
+
+inject();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {
