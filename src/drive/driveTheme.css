@@ -1,0 +1,12 @@
+/* Taalmel's look for @arpitpatel/drive-sync: the package's nine theme variables mapped to Taalmel tokens. */
+:root {
+  --drive-accent: var(--accent);
+  --drive-surface: var(--pocket);
+  --drive-surface-2: var(--surface-2);
+  --drive-text: var(--text-primary);
+  --drive-text-muted: var(--text-muted);
+  --drive-border: var(--border-subtle);
+  --drive-danger: var(--danger);
+  --drive-radius: var(--radius-md);
+  --drive-font: var(--font-ui);
+}

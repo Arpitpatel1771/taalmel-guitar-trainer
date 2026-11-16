@@ -80,6 +80,11 @@ export async function listClips(): Promise<ClipRecord[]> {
   return all.sort((a, b) => b.createdAt - a.createdAt);
 }
 
+/** One clip by id (a keyed read, not a scan of every clip), or undefined. */
+export async function getClip(id: string): Promise<ClipRecord | undefined> {
+  return run("readonly", (s) => s.get(id) as IDBRequest<ClipRecord | undefined>);
+}
+
 export async function saveClip(
   clip: Omit<ClipRecord, "id" | "size"> & { id?: string; size?: number },
   opts?: WriteOptions

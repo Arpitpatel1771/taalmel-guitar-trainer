@@ -30,8 +30,7 @@ import { ClipTrimmer, isFlagHotkey } from "../components/ClipTrimmer";
 import { RecorderLevel } from "../components/RecorderLevel";
 import { Button, SegmentedControl } from "../components/kit";
 import { LiveWaveform } from "../components/LiveWaveform";
-import { useDriveSync } from "../../drive/useDriveSync";
-import { clipBadge } from "../../drive/syncUi";
+import { itemBadge, useDriveSync } from "@arpitpatel/drive-sync/react";
 import { useShell, useShellMic } from "../shell/AppShellContext";
 import st from "./Recorder.module.css";
 
@@ -424,7 +423,9 @@ export function RecorderScreen({
           ) : (
             <ul className={st.clipList}>
               {clips.map((c) => {
-                const unavailable = !c.blob && !c.driveFileId;
+                const driveStatus = drive.itemStatus("clip", c.id);
+                const inDrive = driveStatus === "inDrive" || driveStatus === "notDownloaded";
+                const unavailable = !c.blob && !inDrive;
                 return (
                 <li
                   key={c.id}
@@ -449,14 +450,14 @@ export function RecorderScreen({
                     </span>
                     {driveOn && (
                       <span className={st.clipMeta} data-testid="drive-badge">
-                        {c.id in downloading ? `Downloading ${Math.round(downloading[c.id] * 100)}%` : clipBadge(c, drive.status.uploads).text}
+                        {c.id in downloading ? `Downloading ${Math.round(downloading[c.id] * 100)}%` : itemBadge(driveStatus, drive.uploadProgress("clip", c.id)).text}
                       </span>
                     )}
                   </div>
                   {confirmDeleteId === c.id ? (
                     <div className={st.clipActions}>
                       <span className={st.clipMeta}>
-                        {driveOn && c.driveFileId ? "Delete here and in Drive (moved to Drive trash)?" : "Delete?"}
+                        {driveOn && inDrive ? "Delete here and in Drive (moved to Drive trash)?" : "Delete?"}
                       </span>
                       <button className="btn-danger" onClick={() => void handleDelete(c.id)}>
                         Delete
@@ -487,20 +488,20 @@ export function RecorderScreen({
                           {convertingId === c.id ? "…" : "MP3"}
                         </button>
                       )}
-                      {driveOn && !c.driveFileId && c.blob && !(c.id in drive.status.uploads) && (
+                      {driveOn && driveStatus === "local" && (
                         <button
                           className="btn-ghost"
-                          onClick={() => void driveAction(() => drive.uploadClip(c.id), "Uploaded to Drive.")}
+                          onClick={() => void driveAction(() => drive.upload("clip", c.id), "Uploaded to Drive.")}
                           title="Upload to Drive"
                           aria-label="Upload to Drive"
                         >
                           <CloudUpload size={15} />
                         </button>
                       )}
-                      {driveOn && c.driveFileId && c.blob && (
+                      {driveOn && driveStatus === "inDrive" && (
                         <button
                           className="btn-ghost"
-                          onClick={() => void driveAction(() => drive.removeLocalMedia(c.id), "Removed from this device.")}
+                          onClick={() => void driveAction(() => drive.removeLocal("clip", c.id), "Removed from this device.")}
                           title="Remove from this device"
                           aria-label="Remove from this device"
                         >

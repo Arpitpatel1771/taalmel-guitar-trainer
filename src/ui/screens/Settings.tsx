@@ -5,8 +5,7 @@ import { ACCENT_IDS, type AccentId, type LaneId, type PracticeMode, type Setting
 import { Button, SegmentedControl, Slider } from "../components/kit";
 import pg from "../components/page.module.css";
 import { Field, Stepper } from "../components/Controls";
-import { useDriveSync } from "../../drive/useDriveSync";
-import { relativeTime } from "../../drive/syncUi";
+import { relativeTime, useDriveSync } from "@arpitpatel/drive-sync/react";
 import { useShell } from "../shell/AppShellContext";
 import st from "./Settings.module.css";
 
@@ -95,13 +94,13 @@ function DriveSection() {
           <Row label="Upload recordings to Drive" help="Clips that are not uploaded stay on this device only.">
             <SegmentedControl
               label="Upload recordings to Drive"
-              value={drive.uploadSetting}
+              value={drive.uploadSetting("clip") as "off" | "audio" | "all"}
               options={[
                 { value: "off" as const, label: "Off" },
                 { value: "audio" as const, label: "Audio only" },
                 { value: "all" as const, label: "Everything" },
               ]}
-              onChange={(v) => void run(() => drive.setUploadSetting(v))}
+              onChange={(v) => void run(() => drive.setUploadSetting("clip", v))}
             />
           </Row>
           <Row label="Import from Drive" help="Pick .txt songs, audio or video files from your Drive.">
@@ -110,7 +109,7 @@ function DriveSection() {
               onClick={() =>
                 void run(async () => {
                   const r = await drive.importFromDrive();
-                  if (r) toast(`Imported ${r.songs} song(s) and ${r.clips} recording(s).`);
+                  if ((r.song ?? 0) + (r.clip ?? 0) > 0) toast(`Imported ${r.song ?? 0} song(s) and ${r.clip ?? 0} recording(s).`);
                 })
               }
             >

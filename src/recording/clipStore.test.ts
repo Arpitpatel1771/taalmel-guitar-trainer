@@ -4,6 +4,7 @@ import {
   CLIPS_DB_NAME,
   _resetClipsDbForTests,
   deleteClip,
+  getClip,
   listClips,
   renameClip,
   replaceClipMedia,
@@ -43,6 +44,15 @@ describe("clipStore", () => {
 
     await deleteClip(b.id);
     expect((await listClips()).map((c) => c.id)).toEqual([a.id]);
+  });
+
+  it("getClip reads one clip by id, undefined when missing", async () => {
+    const a = await saveClip(clip("A", 1));
+    await saveClip(clip("B", 2));
+    const got = await getClip(a.id);
+    expect(got?.name).toBe("A");
+    expect(got?.blob?.size).toBe(3);
+    expect(await getClip("missing")).toBeUndefined();
   });
 
   it("stores flags sorted by time; older clips have none", async () => {

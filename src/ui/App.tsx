@@ -29,7 +29,8 @@ import { pickedFromName, type PickedChord } from "./chordPractice/picked";
 import { useTheme, resolveTheme, systemPrefersDark } from "./theme";
 import { ChipRow, StatusChip } from "./shell/StatusChip";
 import { AccountChip } from "../drive/AccountChip";
-import { DriveSyncProvider, useDriveSync } from "../drive/useDriveSync";
+import { DriveSyncProvider, useDriveSync } from "@arpitpatel/drive-sync/react";
+import { taalmelDrive } from "../driveConfig";
 import { DriveDialogs } from "../drive/DriveUi";
 import shellStyles from "./shell/Shell.module.css";
 import { SharingProvider } from "./sharing/SharingContext";
@@ -489,8 +490,12 @@ function GlobalErrorToast({ error, onShown }: { error: string | null; onShown: (
 /** Drive sync context; unexpected sync errors surface as error toasts. */
 function DriveProviderWithToasts({ children }: { children: ReactNode }) {
   const { toast } = useShell();
-  const onError = useCallback((m: string) => toast(`Drive: ${m}`, "error"), [toast]);
-  return <DriveSyncProvider onError={onError}>{children}</DriveSyncProvider>;
+  const onToast = useCallback((m: string, tone: "error" | "info") => (tone === "error" ? toast(`Drive: ${m}`, "error") : toast(m)), [toast]);
+  return (
+    <DriveSyncProvider drive={taalmelDrive} toast={onToast}>
+      {children}
+    </DriveSyncProvider>
+  );
 }
 
 /** Recorder with Drive-backed media download (progress shown in the clip badge). */
@@ -500,8 +505,8 @@ function RecorderWithDrive({ settings }: { settings: Settings }) {
   const connected = drive.status.state !== "disconnected";
   const onNeedMedia = useCallback(
     async (clip: ClipRecord, onProgress?: (fraction: number) => void) => {
-      if (!clip.driveFileId) return null;
-      const blob = await drive.downloadClipMedia(clip.id, onProgress);
+      if (drive.itemStatus("clip", clip.id) !== "notDownloaded") return null;
+      const blob = await drive.download("clip", clip.id, onProgress);
       toast("Downloaded.");
       return blob;
     },

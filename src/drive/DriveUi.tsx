@@ -1,52 +1,19 @@
-// Drive UI pieces that live outside Settings: song conflict dialog
-// and remote-delete confirmation.
+// Drive dialogs that live outside Settings: the song conflict dialog and the remote-delete confirmation. Thin wrappers
+// over the package's DriveConflictDialog / DriveDeleteConfirm, rendered in Taalmel's modal.
 
-import { useEffect } from "react";
-import { useShell } from "../ui/shell/AppShellContext";
-import type { SongConflict } from "./engine";
-import { useDriveSync } from "./useDriveSync";
+import type { ReactNode } from "react";
+import { DriveConflictDialog, DriveDeleteConfirm } from "@arpitpatel/drive-sync/react";
 import st from "./DriveUi.module.css";
 
 function when(ms: number): string {
   return ms ? new Date(ms).toLocaleString() : "unknown";
 }
 
-function ConflictDialog({ conflict, index, total }: { conflict: SongConflict; index: number; total: number }) {
-  const { resolveConflict } = useDriveSync();
-  const { toast } = useShell();
-  async function choose(choice: "local" | "remote" | "both") {
-    try {
-      await resolveConflict(conflict.songId, choice);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : String(err), "error");
-    }
-  }
+function TaalmelModal({ title, children, wide }: { title: string; children: ReactNode; wide?: boolean }) {
   return (
     <div className="modal-overlay">
-      <div className={`modal ${st.wide}`} role="dialog" aria-label="Song conflict">
-        <h3>
-          “{conflict.localTitle}” changed on this device and in Drive
-          {total > 1 ? ` (${index + 1} of ${total})` : ""}
-        </h3>
-        <div className={st.cols}>
-          <div className={st.col}>
-            <span className={st.colTitle}>This device: {conflict.localTitle}</span>
-            <span className={st.colWhen}>Changed {when(conflict.localUpdatedAt)}</span>
-            <pre className={st.text}>{conflict.localText}</pre>
-          </div>
-          <div className={st.col}>
-            <span className={st.colTitle}>Drive: {conflict.remoteTitle}</span>
-            <span className={st.colWhen}>Changed {when(conflict.remoteUpdatedAt)}</span>
-            <pre className={st.text}>{conflict.remoteText}</pre>
-          </div>
-        </div>
-        <div className="modal-actions">
-          <button onClick={() => void choose("local")}>Keep this device's</button>
-          <button onClick={() => void choose("remote")}>Keep Drive's</button>
-          <button className="btn-primary" onClick={() => void choose("both")}>
-            Keep both
-          </button>
-        </div>
+      <div className={`modal ${st.scope}${wide ? ` ${st.wide}` : ""}`} role="dialog" aria-label={title}>
+        {children}
       </div>
     </div>
   );
@@ -54,48 +21,28 @@ function ConflictDialog({ conflict, index, total }: { conflict: SongConflict; in
 
 /** Mounts the conflict dialog (when opened) and the remote-delete confirmation. */
 export function DriveDialogs() {
-  const { status, conflictsOpen, setConflictsOpen, resolveRemoteDeletes } = useDriveSync();
-  const { toast } = useShell();
-  const deletes = status.pendingRemoteDeletes;
-  const noConflicts = status.conflicts.length === 0;
-  useEffect(() => {
-    if (conflictsOpen && noConflicts) setConflictsOpen(false);
-  }, [conflictsOpen, noConflicts, setConflictsOpen]);
-
-  if (deletes.length > 0) {
-    const ids = deletes.map((d) => d.id);
-    const answer = async (accept: boolean) => {
-      try {
-        await resolveRemoteDeletes(ids, accept);
-      } catch (err) {
-        toast(err instanceof Error ? err.message : String(err), "error");
-      }
-    };
-    return (
-      <div className="modal-overlay">
-        <div className="modal" role="dialog" aria-label="Deleted in Drive">
-          <h3>
-            {deletes.length === 1 ? "1 item was" : `${deletes.length} items were`} deleted in Drive. Delete {deletes.length === 1 ? "it" : "them"} here too?
-          </h3>
-          <ul className={st.list}>
-            {deletes.map((d) => (
-              <li key={`${d.kind}:${d.id}`}>
-                {d.title} <span className={st.colWhen}>({d.kind === "song" ? "song" : "recording"})</span>
-              </li>
-            ))}
-          </ul>
-          <div className="modal-actions">
-            <button onClick={() => void answer(false)}>Keep (re-upload)</button>
-            <button className="btn-danger" onClick={() => void answer(true)}>
-              Delete here
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const conflicts = status.conflicts;
-  if (conflictsOpen && conflicts.length > 0) return <ConflictDialog conflict={conflicts[0]} index={0} total={conflicts.length} />;
-  return null;
+  return (
+    <>
+      <DriveDeleteConfirm renderDialog={({ children }) => <TaalmelModal title="Deleted in Drive">{children}</TaalmelModal>} />
+      <DriveConflictDialog
+        renderDialog={({ children }) => (
+          <TaalmelModal title="Song conflict" wide>
+            {children}
+          </TaalmelModal>
+        )}
+        renderVersion={(c, side) => {
+          const local = side === "local";
+          return (
+            <>
+              <span className={st.colTitle}>
+                {local ? "This device" : "Drive"}: {local ? c.localTitle : c.remoteTitle}
+              </span>
+              <span className={st.colWhen}>Changed {when(local ? c.localUpdatedAt : c.remoteUpdatedAt)}</span>
+              <pre className={st.text}>{local ? c.localText : c.remoteText}</pre>
+            </>
+          );
+        }}
+      />
+    </>
+  );
 }
